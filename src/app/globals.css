@@ -24,3 +24,67 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ======================================
+   BEHIND THE BOOTH
+   Modern Heritage Design System
+   ====================================== */
+
+:root {
+  --color-paper: #F4F0E6;
+  --color-ink: #252521;
+  --color-rust: #AD573B;
+  --color-olive: #777C60;
+  --color-sand: #D9C6A3;
+  --color-muted: #55554E;
+  --color-card: #EAE3D5;
+}
+
+/* Reusable heritage components */
+
+.heritage-heading {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+.heritage-label {
+  color: var(--color-rust);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.heritage-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background-color: var(--color-rust);
+  color: white;
+  padding: 1rem 2rem;
+  border: 1px solid var(--color-rust);
+  border-radius: 2px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background-color 0.2s ease;
+}
+
+.heritage-button:hover {
+  background-color: #8D422C;
+}
+
+.heritage-card {
+  background-color: var(--color-paper);
+  border: 1px solid rgba(37, 37, 33, 0.2);
+  padding: 2rem;
+  transition: border-color 0.2s ease;
+}
+
+.heritage-card:hover {
+  border-color: var(--color-rust);
+}
