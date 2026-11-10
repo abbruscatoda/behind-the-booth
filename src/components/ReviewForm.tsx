@@ -1,7 +1,8 @@
-
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { createClient } from "../lib/supabase/client";
 
 const ratingLabels = [
   "Poor",
@@ -72,7 +73,52 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
-export default function ReviewForm() {
+export default function ReviewForm({ marketId }: { marketId: string }) {
+  const [access, setAccess] = useState<"loading" | "signin" | "verify" | "ready" | "exists" | "error">("loading");
+  const [reviewStatus, setReviewStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const submitting = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    async function checkAccess() {
+      setAccess("loading");
+      setError("");
+      setSubmitted(false);
+      try {
+        const supabase = createClient();
+        const { data: auth, error: authError } = await supabase.auth.getUser();
+        if (authError && authError.name !== "AuthSessionMissingError") throw authError;
+        if (!auth.user) {
+          if (active) setAccess("signin");
+          return;
+        }
+        const { data: review, error: reviewError } = await supabase
+          .from("reviews").select("status")
+          .eq("market_id", marketId).eq("vendor_id", auth.user.id).maybeSingle();
+        if (reviewError) throw reviewError;
+        if (review) {
+          if (active) { setReviewStatus(review.status); setAccess("exists"); }
+          return;
+        }
+        const { data: profile, error: profileError } = await supabase
+          .from("vendor_profiles").select("verification_status")
+          .eq("user_id", auth.user.id).maybeSingle();
+        if (profileError) throw profileError;
+        if (active) setAccess(profile?.verification_status === "approved" ? "ready" : "verify");
+      } catch (cause) {
+        console.error("Unable to check review access:", cause);
+        if (active) {
+          setError("We couldn't check your review access. Please refresh to try again.");
+          setAccess("error");
+        }
+      }
+    }
+    void checkAccess();
+    return () => { active = false; };
+  }, [marketId]);
   const [ratings, setRatings] = useState<
     Partial<Record<CategoryKey, number>>
   >({});
@@ -104,7 +150,9 @@ export default function ReviewForm() {
   const validBoothCost =
     hasBoothCost &&
     Number.isFinite(parsedBoothCost) &&
-    parsedBoothCost >= 0;
+    parsedBoothCost >= 0 &&
+    parsedBoothCost <= 99999999.99 &&
+    Math.abs(parsedBoothCost * 100 - Math.round(parsedBoothCost * 100)) < 0.00001;
 
   // Calculate event duration
   const parsedDays = Number(numberOfDays);
@@ -113,7 +161,7 @@ export default function ReviewForm() {
     boothDuration === "multi" &&
     numberOfDays.trim() !== "" &&
     Number.isInteger(parsedDays) &&
-    parsedDays >= 2;
+    parsedDays >= 2 && parsedDays <= 2147483647;
 
   const totalDays =
     boothDuration === "single"
@@ -147,7 +195,7 @@ export default function ReviewForm() {
 
     if (hasBoothCost && !validBoothCost) {
       alert(
-        "Please enter a valid booth cost of $0 or more, or leave it blank."
+        "Please enter a booth cost between $0 and $99,999,999.99 with up to two decimal places, or leave it blank."
       );
       return;
     }
@@ -166,6 +214,60 @@ export default function ReviewForm() {
     setShowPreview(true);
   }
 
+  async function handleSubmit() {
+    if (submitting.current || !showPreview || access !== "ready") return;
+    if (!allRated || !experience.trim() || !["Yes", "No", "Maybe"].includes(wouldReturn) ||
+      (hasBoothCost && !validBoothCost) ||
+      (boothDuration === "multi" && numberOfDays.trim() !== "" && !validMultiDay)) {
+      setError("Please check your answers and preview the review again.");
+      setShowPreview(false);
+      return;
+    }
+    submitting.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const supabase = createClient();
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || !auth.user) {
+        setAccess("signin");
+        throw new Error("Please sign in again before submitting.");
+      }
+      const { error: insertError } = await supabase.from("reviews").insert({
+        market_id: marketId,
+        vendor_id: auth.user.id,
+        vendor_categories: selectedVendorCategories,
+        other_category: selectedVendorCategories.includes("Other") && otherCategory.trim() ? otherCategory.trim() : null,
+        booth_value: ratings.value,
+        foot_traffic: ratings.traffic,
+        organization: ratings.organization,
+        promotion: ratings.promotion,
+        overall: ratings.overall,
+        booth_cost: hasBoothCost ? parsedBoothCost : null,
+        booth_duration: boothDuration || null,
+        number_of_days: totalDays,
+        experience: experience.trim(),
+        would_return: wouldReturn,
+      });
+      if (insertError) {
+        if (insertError.code === "23505") throw new Error("You already have a review for this market. Refresh to see its status.");
+        if (insertError.code === "42501") throw new Error("You don't currently have permission to submit. Refresh and check your vendor verification status.");
+        throw insertError;
+      }
+      setReviewStatus("pending");
+      setSubmitted(true);
+      setAccess("exists");
+      setShowPreview(false);
+      setExperience("");
+    } catch (cause) {
+      console.error("Unable to submit review:", cause);
+      setError(cause instanceof Error ? cause.message : "We couldn't submit your review. Please try again.");
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
+  }
+
   const displayVendorCategories =
     selectedVendorCategories.map((category) => {
       if (category === "Other" && otherCategory.trim()) {
@@ -174,6 +276,21 @@ export default function ReviewForm() {
 
       return category;
     });
+
+  if (access !== "ready") {
+    return (
+      <section className="mt-10 border border-[#252521]/20 bg-[#F4F0E6] p-6 text-[#252521] sm:p-10">
+        <h3 className="font-serif text-3xl font-bold">Share Your Experience</h3>
+        <div className="mt-5 leading-relaxed text-[#55554E]" role="status">
+          {access === "loading" && <p>Checking your review access...</p>}
+          {access === "signin" && <><p>Sign in before sharing your vendor experience.</p><Link href="/login" className="mt-4 inline-block font-semibold text-[#AD573B] underline">Sign In / Create Account →</Link></>}
+          {access === "verify" && <><p>Your vendor account must be approved before submitting reviews.</p><Link href="/verify" className="mt-4 inline-block font-semibold text-[#AD573B] underline">Apply or Check Verification →</Link></>}
+          {access === "exists" && <><h4 className="font-serif text-2xl font-bold">{submitted ? "Review received!" : "You have reviewed this market."}</h4><p className="mt-4">{reviewStatus === "pending" ? "Your review is pending moderation and is not public." : reviewStatus === "approved" ? "Your review has been approved. Public review display is being connected next." : "Your review was not approved for publication. Editing and resubmission are not available yet."}</p></>}
+        </div>
+        {error && <p role="alert" className="mt-5 text-sm text-[#AD573B]">{error}</p>}
+      </section>
+    );
+  }
 
   return (
     <section className="mt-10 overflow-hidden border border-[#252521]/20 bg-[#F4F0E6] text-[#252521]">
@@ -194,11 +311,15 @@ export default function ReviewForm() {
       </div>
 
       <div className="px-5 py-7 sm:px-10">
+        <fieldset disabled={busy} className="min-w-0 border-0 p-0">
+        <legend className="sr-only">Your market review</legend>
         {/* Demo notice */}
         <div className="mb-8 border-l-2 border-[#AD573B] bg-[#EAE3D5] px-4 py-3">
           <p className="text-xs leading-relaxed text-[#55554E]">
-            <strong>Demonstration only:</strong> Your answers
-            will not be saved, submitted, or published.
+            <strong>Private until approved:</strong> Submissions are saved for
+            moderation before publication. Your account name and email will not
+            appear publicly. Avoid including identifying details in your review
+            if you want to remain anonymous.
           </p>
         </div>
 
@@ -389,7 +510,7 @@ export default function ReviewForm() {
 
                             <p className="mt-2 max-w-xs text-xs leading-relaxed text-[#777C60]">
                               Enter the total amount you paid
-                              for your booth, if you'd like
+                              for your booth, if you&apos;d like
                               to share.
                             </p>
                           </div>
@@ -671,7 +792,7 @@ export default function ReviewForm() {
           </button>
 
           <p className="text-xs text-[#777C60]">
-            Preview only. Nothing will be submitted.
+            Preview your answers first. Nothing is saved until you submit.
           </p>
         </div>
 
@@ -790,10 +911,25 @@ export default function ReviewForm() {
             </div>
 
             <p className="mt-6 border-t border-[#252521]/10 pt-5 text-xs italic text-[#AD573B]">
-              This is a demonstration preview. Nothing has
-              been saved, submitted, or published.
+              Nothing has been submitted yet. By submitting, you confirm this
+              describes your firsthand vendor experience. Your review will be held
+              for moderation. Editing after submission is not available yet.
             </p>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={busy}
+              className="heritage-button mt-6 disabled:cursor-wait disabled:opacity-50"
+            >
+              {busy ? "Submitting..." : "Submit for Moderation"}
+            </button>
           </div>
+        )}
+        </fieldset>
+        {error && (
+          <p role="alert" className="mt-6 border-l-2 border-[#AD573B] bg-[#EAE3D5] p-4 text-sm text-[#AD573B]">
+            {error}
+          </p>
         )}
       </div>
     </section>

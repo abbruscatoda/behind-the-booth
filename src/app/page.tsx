@@ -1,4 +1,3 @@
-
 import Link from "next/link";
 
 const features = [
@@ -40,13 +39,21 @@ export default function Home() {
             Behind the Booth<span className="text-[#AD573B]">.</span>
           </Link>
 
-          <div className="flex items-center gap-7 text-sm font-semibold">
+          <div className="flex flex-wrap items-center gap-x-7 gap-y-3 text-sm font-semibold">
             <Link href="/markets" className="hover:text-[#AD573B]">
               Explore Markets
             </Link>
+
             <a href="#about" className="hover:text-[#AD573B]">
               Our Mission
             </a>
+
+            <Link
+              href="/login"
+              className="border border-[#AD573B] px-4 py-2 text-[#AD573B] transition hover:bg-[#AD573B] hover:text-white"
+            >
+              My Account
+            </Link>
           </div>
         </nav>
       </header>
@@ -149,9 +156,7 @@ export default function Home() {
           </p>
 
           <h2 className="font-serif text-4xl font-bold leading-tight md:text-5xl">
-            Because your time,
-            money, and hard work
-            matter.
+            Because your time, money, and hard work matter.
           </h2>
         </div>
 
