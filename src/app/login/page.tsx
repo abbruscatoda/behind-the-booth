@@ -165,14 +165,9 @@ export default function LoginPage() {
         : "Want to share your own experience? Apply for vendor verification before submitting reviews. You can already read full market reports.";
 
   return (
-    <main className="min-h-screen bg-[#F4F0E6] text-[#252521]">
-      <div className="bg-[#252521] px-5 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-[#F4F0E6]">An independent resource for the vendor community</div>
-      <header className="border-b border-[#252521]/20">
-        <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-5 px-6 py-7">
-          <Link href="/" className="font-serif text-2xl font-black tracking-tight md:text-3xl">Behind the Booth<span className="text-[#AD573B]">.</span></Link>
-          <Link href="/markets" className="text-sm font-semibold hover:text-[#AD573B]">Explore Markets</Link>
-        </nav>
-      </header>
+    <main className="flex-1 bg-[#F4F0E6] text-[#252521]">
+      
+      
 
       <section className="mx-auto max-w-2xl px-6 py-14 md:py-20">
         <p className="heritage-label">{signedIn ? "My Account" : "The Vendor Community"}</p>
@@ -181,7 +176,7 @@ export default function LoginPage() {
 
         {checking ? <p className="mt-10 text-[#55554E]" role="status">Checking your sign-in...</p> : signedIn ? (
           <div className="mt-8 space-y-4">
-            <section className="border border-[#252521]/20 bg-[#FFFDF8] p-5 sm:p-6">
+            <section className="border border-[#252521]/20 bg-[#FFFCF6] p-5 sm:p-6">
               <p className="heritage-label">Free Membership</p>
               <h2 className="mt-3 font-serif text-2xl font-bold">Your full vendor report access is active.</h2>
               <p className="mt-3 text-sm leading-relaxed text-[#55554E]">Read approved reviews, explore all five rating breakdowns, compare reported booth costs within a market, and see whether vendors would return.</p>
@@ -191,47 +186,47 @@ export default function LoginPage() {
             <section className="border border-[#252521]/20 p-5 sm:p-6" aria-labelledby="vendor-status-heading">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 id="vendor-status-heading" className="heritage-label">Vendor Verification</h2>
-                {statusReady && !profileError && <span className={`border px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${status === "approved" ? "border-[#777C60] text-[#555A40]" : "border-[#D9C6A3] text-[#AD573B]"}`}>{statusLabel}</span>}
+                {statusReady && !profileError && <span className={`border px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${status === "approved" ? "border-[#626C57] text-[#07472B]" : "border-[#D6D4BF] text-[#07472B]"}`}>{statusLabel}</span>}
               </div>
               {profileError ? (
                 <div className="mt-4">
-                  <p role="alert" className="text-sm leading-relaxed text-[#AD573B]">{profileError}</p>
-                  <button type="button" onClick={() => setProfileRefresh((previous) => previous + 1)} className="mt-4 text-sm font-semibold text-[#AD573B] underline">Retry Status Check</button>
-                  <Link href="/verify" className="ml-5 inline-block text-sm font-semibold text-[#AD573B] underline">Open Verification →</Link>
+                  <p role="alert" className="text-sm leading-relaxed text-[#07472B]">{profileError}</p>
+                  <button type="button" onClick={() => setProfileRefresh((previous) => previous + 1)} className="mt-4 text-sm font-semibold text-[#07472B] underline">Retry Status Check</button>
+                  <Link href="/verify" className="ml-5 inline-block text-sm font-semibold text-[#07472B] underline">Open Verification →</Link>
                 </div>
               ) : !statusReady ? <p className="mt-4 text-sm text-[#55554E]" role="status">Checking your vendor status...</p> : (
                 <>
                   <h3 className="mt-4 font-serif text-2xl font-bold">{currentProfile?.business_name ?? "Share your vendor experience."}</h3>
                   <p className="mt-3 text-sm leading-relaxed text-[#55554E]">{statusDescription}</p>
                   <div className="mt-5 flex flex-wrap items-center gap-5">
-                    <Link href="/verify" className="text-sm font-semibold text-[#AD573B] underline underline-offset-4">{status === "approved" ? "View Verification" : status === "pending" ? "View Application Status" : status === "rejected" ? "View Application" : "Apply for Vendor Verification"} →</Link>
-                    <button type="button" onClick={() => setProfileRefresh((previous) => previous + 1)} className="text-xs text-[#777C60] underline underline-offset-4">Refresh Status</button>
+                    <Link href="/verify" className="text-sm font-semibold text-[#07472B] underline underline-offset-4">{status === "approved" ? "View Verification" : status === "pending" ? "View Application Status" : status === "rejected" ? "View Application" : "Apply for Vendor Verification"} →</Link>
+                    <button type="button" onClick={() => setProfileRefresh((previous) => previous + 1)} className="text-xs text-[#626C57] underline underline-offset-4">Refresh Status</button>
                   </div>
                 </>
               )}
-              <p className="mt-5 border-t border-[#252521]/15 pt-4 text-xs leading-relaxed text-[#777C60]">Business information submitted for verification stays private. Email confirmation verifies your email address; vendor approval is a separate review.</p>
+              <p className="mt-5 border-t border-[#252521]/15 pt-4 text-xs leading-relaxed text-[#626C57]">Business information submitted for verification stays private. Email confirmation verifies your email address; vendor approval is a separate review.</p>
             </section>
-            <button type="button" onClick={handleSignOut} disabled={busy} className="mt-3 text-sm font-semibold text-[#AD573B] underline underline-offset-4 disabled:opacity-50">{busy ? "Please wait..." : "Sign Out"}</button>
+            <button type="button" onClick={handleSignOut} disabled={busy} className="mt-3 text-sm font-semibold text-[#07472B] underline underline-offset-4 disabled:opacity-50">{busy ? "Please wait..." : "Sign Out"}</button>
           </div>
         ) : (
           <div className="heritage-card mt-8">
             <div className="mb-8 flex gap-6 border-b border-[#252521]/20 pb-5">
-              <button type="button" onClick={() => changeMode("signin")} disabled={busy} aria-pressed={mode === "signin"} className={`text-sm font-bold ${mode === "signin" ? "text-[#AD573B] underline underline-offset-8" : "text-[#777C60]"}`}>Sign In</button>
-              <button type="button" onClick={() => changeMode("signup")} disabled={busy} aria-pressed={mode === "signup"} className={`text-sm font-bold ${mode === "signup" ? "text-[#AD573B] underline underline-offset-8" : "text-[#777C60]"}`}>Create Account</button>
+              <button type="button" onClick={() => changeMode("signin")} disabled={busy} aria-pressed={mode === "signin"} className={`text-sm font-bold ${mode === "signin" ? "text-[#07472B] underline underline-offset-8" : "text-[#626C57]"}`}>Sign In</button>
+              <button type="button" onClick={() => changeMode("signup")} disabled={busy} aria-pressed={mode === "signup"} className={`text-sm font-bold ${mode === "signup" ? "text-[#07472B] underline underline-offset-8" : "text-[#626C57]"}`}>Create Account</button>
             </div>
             <form onSubmit={handleSubmit}>
               <label htmlFor="email" className="block text-sm font-semibold">Email Address</label>
-              <input id="email" type="email" autoComplete="email" required disabled={busy} value={email} onChange={(event) => setEmail(event.target.value)} className="mt-3 w-full border border-[#D9C6A3] bg-[#FFFDF8] px-4 py-3 outline-none focus:border-[#AD573B]" />
+              <input id="email" type="email" autoComplete="email" required disabled={busy} value={email} onChange={(event) => setEmail(event.target.value)} className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]" />
               <label htmlFor="password" className="mt-6 block text-sm font-semibold">Password</label>
-              <input id="password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 8 : undefined} required disabled={busy} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-3 w-full border border-[#D9C6A3] bg-[#FFFDF8] px-4 py-3 outline-none focus:border-[#AD573B]" />
-              {mode === "signup" && <p className="mt-2 text-xs text-[#777C60]">Use at least 8 characters. Membership is free.</p>}
+              <input id="password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 8 : undefined} required disabled={busy} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]" />
+              {mode === "signup" && <p className="mt-2 text-xs text-[#626C57]">Use at least 8 characters. Membership is free.</p>}
               <button type="submit" disabled={busy} className="heritage-button mt-8 w-full disabled:cursor-wait disabled:opacity-50">{busy ? "Please wait..." : mode === "signup" ? "Create My Free Account" : "Sign In"}</button>
             </form>
           </div>
         )}
 
-        {message && <div role="status" className="mt-6 border-l-2 border-[#777C60] bg-[#EAE3D5] p-5 text-sm leading-relaxed">{message}</div>}
-        {error && <div role="alert" className="mt-6 border-l-2 border-[#AD573B] bg-[#EAE3D5] p-5 text-sm leading-relaxed text-[#AD573B]">{error}</div>}
+        {message && <div role="status" className="mt-6 border-l-2 border-[#626C57] bg-[#E9E7DA] p-5 text-sm leading-relaxed">{message}</div>}
+        {error && <div role="alert" className="mt-6 border-l-2 border-[#07472B] bg-[#E9E7DA] p-5 text-sm leading-relaxed text-[#07472B]">{error}</div>}
       </section>
     </main>
   );

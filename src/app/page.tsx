@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
+import greenIcon from "../assets/brand/icon-green.png";
 
 const features = [
   {
@@ -23,94 +25,51 @@ const features = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#F4F0E6] text-[#252521]">
-      {/* Announcement bar */}
-      <div className="bg-[#252521] px-5 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-[#F4F0E6]">
-        An independent resource for the vendor community
-      </div>
+    <main className="flex-1 bg-[#F4F0E6] text-[#252521]">
+      
+      
 
-      {/* Navigation */}
-      <header className="border-b border-[#252521]/20">
-        <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-5 px-6 py-7">
-          <Link
-            href="/"
-            className="font-serif text-2xl font-black tracking-tight md:text-3xl"
-          >
-            Behind the Booth<span className="text-[#AD573B]">.</span>
-          </Link>
-
-          <div className="flex flex-wrap items-center gap-x-7 gap-y-3 text-sm font-semibold">
-            <Link href="/markets" className="hover:text-[#AD573B]">
-              Explore Markets
-            </Link>
-
-            <a href="#about" className="hover:text-[#AD573B]">
-              Our Mission
-            </a>
-
-            <Link
-              href="/login"
-              className="border border-[#AD573B] px-4 py-2 text-[#AD573B] transition hover:bg-[#AD573B] hover:text-white"
-            >
-              My Account
-            </Link>
-          </div>
-        </nav>
-      </header>
+      
+      
 
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6 pb-24 pt-20 md:pb-32 md:pt-28">
-        <div className="mb-8 flex items-center gap-4">
-          <span className="h-px w-12 bg-[#AD573B]" />
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#AD573B]">
-            The Vendor&apos;s Field Guide
-          </p>
+      <section className="brand-home-hero mx-auto max-w-6xl px-6 pb-14 pt-14 md:pb-20 md:pt-20">
+        <div className="brand-hero-grid">
+          <div>
+            <div className="mb-7 flex items-center gap-4">
+              <span className="h-px w-10 bg-[#AD573B]" />
+              <p className="heritage-label">The Vendor&apos;s Field Guide</p>
+            </div>
+            <h1 className="heritage-heading brand-hero-title">
+              Know the market.<br />
+              <span className="brand-hero-emphasis">Before you book</span><br />
+              the booth.
+            </h1>
+            <div className="mt-7 max-w-xl border-l-2 border-[#AD573B] pl-5">
+              <p className="text-base leading-relaxed text-[#55554E] md:text-lg">Every booth has a story. Discover local markets, learn from fellow vendors, and make informed decisions before investing in your next event.</p>
+            </div>
+            <div className="mt-8 flex flex-wrap items-center gap-5">
+              <Link href="/markets" className="heritage-button">Explore Markets <span aria-hidden="true">→</span></Link>
+              <a href="#about" className="border-b border-[#07472B] pb-1 text-xs font-bold uppercase tracking-wider text-[#07472B]">Learn Our Story</a>
+            </div>
+          </div>
+          <div className="brand-emblem-panel" aria-hidden="true">
+            <Image src={greenIcon} alt="" sizes="200px" className="brand-emblem" priority />
+            <p className="brand-emblem-caption">Behind the Booth</p>
+            <span className="brand-emblem-rule" />
+            <p className="brand-emblem-text">Good markets start with shared experience.</p>
+          </div>
         </div>
-
-        <h1 className="max-w-5xl font-serif text-5xl font-bold leading-[1.08] tracking-tight md:text-7xl lg:text-8xl">
-          Know the market.
-          <br />
-          <span className="italic text-[#AD573B]">
-            Before you book
-          </span>
-          <br />
-          the booth.
-        </h1>
-
-        <div className="mt-10 max-w-2xl border-l-2 border-[#AD573B] pl-6">
-          <p className="text-lg leading-relaxed text-[#55554E] md:text-xl">
-            Every booth has a story. Discover local markets, learn
-            from fellow vendors, and make informed decisions before
-            investing in your next event.
-          </p>
-        </div>
-
-        <div className="mt-12 flex flex-wrap items-center gap-6">
-          <Link
-            href="/markets"
-            className="inline-flex items-center gap-3 rounded-sm bg-[#AD573B] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-[#8D422C]"
-          >
-            Explore Markets <span aria-hidden="true">→</span>
-          </Link>
-
-          <a
-            href="#about"
-            className="border-b border-[#252521] pb-1 text-sm font-bold uppercase tracking-wider hover:text-[#AD573B]"
-          >
-            Learn Our Story
-          </a>
-        </div>
-
-        <div className="mt-24 flex flex-wrap items-center justify-between gap-4 border-t border-[#252521]/25 pt-5 text-xs font-semibold uppercase tracking-[0.16em] text-[#777C60]">
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-[#252521]/20 pt-5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#626C57] sm:text-xs">
           <span>Rooted in Raleigh, North Carolina</span>
           <span>Built for independent vendors</span>
         </div>
       </section>
 
       {/* Feature section */}
-      <section className="border-y border-[#252521]/20 bg-[#EAE3D5] px-6 py-24">
+      <section className="border-y border-[#252521]/20 bg-[#E9E7DA] px-6 py-16 md:py-20">
         <div className="mx-auto max-w-6xl">
-          <p className="mb-5 text-xs font-bold uppercase tracking-[0.25em] text-[#AD573B]">
+          <p className="mb-5 text-xs font-bold uppercase tracking-[0.25em] text-[#07472B]">
             What We&apos;re Building
           </p>
 
@@ -126,7 +85,7 @@ export default function Home() {
                 key={feature.number}
                 className="border border-[#252521]/20 bg-[#F4F0E6] p-8"
               >
-                <span className="font-serif text-3xl italic text-[#AD573B]">
+                <span className="font-serif text-3xl italic text-[#07472B]">
                   {feature.number}
                 </span>
 
@@ -148,10 +107,10 @@ export default function Home() {
       {/* Mission */}
       <section
         id="about"
-        className="mx-auto grid max-w-6xl gap-12 px-6 py-24 md:grid-cols-2 md:py-32"
+        className="mx-auto grid max-w-6xl gap-10 px-6 py-16 md:grid-cols-2 md:py-24"
       >
         <div>
-          <p className="mb-5 text-xs font-bold uppercase tracking-[0.25em] text-[#AD573B]">
+          <p className="mb-5 text-xs font-bold uppercase tracking-[0.25em] text-[#07472B]">
             Behind the Mission
           </p>
 
@@ -176,32 +135,15 @@ export default function Home() {
 
           <Link
             href="/markets"
-            className="mt-8 self-start border-b border-[#AD573B] pb-2 text-sm font-bold uppercase tracking-wider text-[#AD573B]"
+            className="mt-8 self-start border-b border-[#07472B] pb-2 text-sm font-bold uppercase tracking-wider text-[#07472B]"
           >
             Browse the Directory →
           </Link>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-[#252521] px-6 py-12 text-[#F4F0E6]">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6">
-          <div>
-            <p className="font-serif text-2xl font-bold">
-              Behind the Booth.
-            </p>
-            <p className="mt-2 text-sm text-[#C7C0B3]">
-              A better view from behind the booth.
-            </p>
-          </div>
-
-          <div className="text-sm text-[#C7C0B3]">
-            © 2026 Behind the Booth.
-            <br />
-            Raleigh, North Carolina
-          </div>
-        </div>
-      </footer>
+      
+      
     </main>
   );
 }

@@ -66,48 +66,24 @@ export default function MarketsPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#F4F0E6] text-[#252521]">
-      {/* Announcement */}
-      <div className="bg-[#252521] px-5 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-[#F4F0E6]">
-        An independent resource for the vendor community
-      </div>
+    <main className="flex-1 bg-[#F4F0E6] text-[#252521]">
+      
+      
 
-      {/* Navigation */}
-      <header className="border-b border-[#252521]/20">
-        <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-5 px-6 py-7">
-          <Link
-            href="/"
-            className="font-serif text-2xl font-black tracking-tight md:text-3xl"
-          >
-            Behind the Booth<span className="text-[#AD573B]">.</span>
-          </Link>
-
-          <div className="flex items-center gap-7 text-sm font-semibold">
-            <Link href="/" className="hover:text-[#AD573B]">
-              Home
-            </Link>
-            <Link
-              href="/markets"
-              aria-current="page"
-              className="text-[#AD573B]"
-            >
-              Explore Markets
-            </Link>
-          </div>
-        </nav>
-      </header>
+      
+      
 
       {/* Directory */}
       <section className="mx-auto max-w-6xl px-6 pb-28 pt-20">
         <div className="mb-8 flex items-center gap-4">
-          <span className="h-px w-12 bg-[#AD573B]" />
+          <span className="h-px w-12 bg-[#07472B]" />
           <p className="heritage-label">The Market Directory</p>
         </div>
 
         <h1 className="heritage-heading max-w-4xl text-5xl md:text-7xl">
           Find your next
           <br />
-          <span className="italic text-[#AD573B]">great market.</span>
+          <span className="italic text-[#07472B]">great market.</span>
         </h1>
 
         <p className="mt-8 max-w-2xl text-lg leading-relaxed text-[#55554E]">
@@ -120,7 +96,7 @@ export default function MarketsPage() {
         <div className="mt-14 border-y border-[#252521]/20 py-8">
           <label
             htmlFor="market-search"
-            className="mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-[#777C60]"
+            className="mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-[#626C57]"
           >
             Search the Directory
           </label>
@@ -131,7 +107,7 @@ export default function MarketsPage() {
             placeholder="Search markets, cities, or descriptions..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="w-full border border-[#252521]/30 bg-[#FFFDF8] px-5 py-4 text-[#252521] outline-none transition placeholder:text-[#777C60] focus:border-[#AD573B]"
+            className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-5 py-4 text-[#252521] outline-none transition placeholder:text-[#626C57] focus:border-[#07472B]"
           />
 
           <p
@@ -150,7 +126,7 @@ export default function MarketsPage() {
         </div>
 
         {/* Demo notice */}
-        <div className="mt-10 border-l-2 border-[#AD573B] bg-[#EAE3D5] px-5 py-4">
+        <div className="mt-10 border-l-2 border-[#07472B] bg-[#E9E7DA] px-5 py-4">
           <p className="text-sm leading-relaxed text-[#55554E]">
             <strong>Demonstration directory:</strong> Listings marked
             Demo are fictional examples used to test Behind the Booth.
@@ -172,7 +148,7 @@ export default function MarketsPage() {
               <div className="flex items-center justify-between gap-3">
                 <span className="heritage-label">Market / Event</span>
 
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#777C60]">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[#626C57]">
                   {market.is_sample ? "Demo" : "Listing"}
                 </span>
               </div>
@@ -183,7 +159,7 @@ export default function MarketsPage() {
                 {market.name}
               </h2>
 
-              <p className="mt-3 text-sm font-semibold uppercase tracking-wider text-[#777C60]">
+              <p className="mt-3 text-sm font-semibold uppercase tracking-wider text-[#626C57]">
                 {market.city},{" "}
                 {market.state === "NC" ? "North Carolina" : market.state}
               </p>
@@ -195,7 +171,7 @@ export default function MarketsPage() {
               <div className="mt-8 border-t border-[#252521]/20 pt-5">
                 <Link
                   href={`/markets/${market.slug}`}
-                  className="text-sm font-semibold text-[#AD573B] hover:underline"
+                  className="text-sm font-semibold text-[#07472B] hover:underline"
                 >
                   View market details →
                 </Link>
@@ -205,7 +181,7 @@ export default function MarketsPage() {
         </div>
 
         {!loading && !error && filteredMarkets.length === 0 && (
-          <div className="mt-10 border border-[#252521]/20 bg-[#EAE3D5] p-10 text-center">
+          <div className="mt-10 border border-[#252521]/20 bg-[#E9E7DA] p-10 text-center">
             <h2 className="font-serif text-2xl font-bold">
               No markets found.
             </h2>
@@ -218,23 +194,8 @@ export default function MarketsPage() {
         )}
       </section>
 
-      {/* Footer */}
-      <footer className="bg-[#252521] px-6 py-12 text-[#F4F0E6]">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6">
-          <div>
-            <p className="font-serif text-2xl font-bold">
-              Behind the Booth.
-            </p>
-            <p className="mt-2 text-sm text-[#C7C0B3]">
-              A better view from behind the booth.
-            </p>
-          </div>
-
-          <p className="text-sm text-[#C7C0B3]">
-            © 2026 Behind the Booth.
-          </p>
-        </div>
-      </footer>
+      
+      
     </main>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "../lib/supabase/client";
+import { getRatingColor } from "../lib/ratingColors";
 
 const ratingLabels = [
   "Poor",
@@ -283,11 +284,11 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
         <h3 className="font-serif text-3xl font-bold">Share Your Experience</h3>
         <div className="mt-5 leading-relaxed text-[#55554E]" role="status">
           {access === "loading" && <p>Checking your review access...</p>}
-          {access === "signin" && <><p>Sign in before sharing your vendor experience.</p><Link href="/login" className="mt-4 inline-block font-semibold text-[#AD573B] underline">Sign In / Create Account →</Link></>}
-          {access === "verify" && <><p>Your vendor account must be approved before submitting reviews.</p><Link href="/verify" className="mt-4 inline-block font-semibold text-[#AD573B] underline">Apply or Check Verification →</Link></>}
+          {access === "signin" && <><p>Sign in before sharing your vendor experience.</p><Link href="/login" className="mt-4 inline-block font-semibold text-[#07472B] underline">Sign In / Create Account →</Link></>}
+          {access === "verify" && <><p>Your vendor account must be approved before submitting reviews.</p><Link href="/verify" className="mt-4 inline-block font-semibold text-[#07472B] underline">Apply or Check Verification →</Link></>}
           {access === "exists" && <><h4 className="font-serif text-2xl font-bold">{submitted ? "Review received!" : "You have reviewed this market."}</h4><p className="mt-4">{reviewStatus === "pending" ? "Your review is pending moderation and is not public." : reviewStatus === "approved" ? "Your review has been approved. Public review display is being connected next." : "Your review was not approved for publication. Editing and resubmission are not available yet."}</p></>}
         </div>
-        {error && <p role="alert" className="mt-5 text-sm text-[#AD573B]">{error}</p>}
+        {error && <p role="alert" className="mt-5 text-sm text-[#07472B]">{error}</p>}
       </section>
     );
   }
@@ -295,8 +296,8 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
   return (
     <section className="mt-10 overflow-hidden border border-[#252521]/20 bg-[#F4F0E6] text-[#252521]">
       {/* Header */}
-      <div className="bg-[#252521] px-6 py-8 text-[#F4F0E6] sm:px-10">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D9C6A3]">
+      <div className="bg-[#07472B] px-6 py-8 text-[#F4F0E6] sm:px-10">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D6D4BF]">
           Behind the Booth / Vendor Field Notes
         </p>
 
@@ -304,7 +305,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
           Share Your Experience
         </h3>
 
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#D9C6A3]">
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#D6D4BF]">
           A thoughtful review of your market experience
           helps other vendors make informed decisions.
         </p>
@@ -314,7 +315,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
         <fieldset disabled={busy} className="min-w-0 border-0 p-0">
         <legend className="sr-only">Your market review</legend>
         {/* Demo notice */}
-        <div className="mb-8 border-l-2 border-[#AD573B] bg-[#EAE3D5] px-4 py-3">
+        <div className="mb-8 border-l-2 border-[#07472B] bg-[#E9E7DA] px-4 py-3">
           <p className="text-xs leading-relaxed text-[#55554E]">
             <strong>Private until approved:</strong> Submissions are saved for
             moderation before publication. Your account name and email will not
@@ -325,7 +326,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
 
         {/* Vendor categories */}
         <div className="mb-10">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#AD573B]">
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#07472B]">
             About Your Business
           </p>
 
@@ -334,7 +335,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
               What Do You Sell?
             </h4>
 
-            <span className="border border-[#D9C6A3] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#777C60]">
+            <span className="border border-[#D6D4BF] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#626C57]">
               Optional
             </span>
           </div>
@@ -356,8 +357,8 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                   key={category}
                   className={`flex cursor-pointer items-center gap-3 border px-4 py-3 text-sm transition ${
                     selected
-                      ? "border-[#AD573B] bg-[#EAE3D5]"
-                      : "border-[#D9C6A3] bg-[#FFFDF8] hover:border-[#AD573B]"
+                      ? "border-[#07472B] bg-[#E9E7DA]"
+                      : "border-[#D6D4BF] bg-[#FFFCF6] hover:border-[#07472B]"
                   }`}
                 >
                   <input
@@ -366,7 +367,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                     onChange={() =>
                       toggleVendorCategory(category)
                     }
-                    className="h-4 w-4 shrink-0 accent-[#AD573B]"
+                    className="h-4 w-4 shrink-0 accent-[#07472B]"
                   />
 
                   <span
@@ -390,7 +391,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                 className="block text-sm font-semibold"
               >
                 Please describe your category
-                <span className="ml-2 text-xs font-normal text-[#777C60]">
+                <span className="ml-2 text-xs font-normal text-[#626C57]">
                   (Optional)
                 </span>
               </label>
@@ -405,12 +406,12 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                   setShowPreview(false);
                 }}
                 placeholder="e.g., Books, vintage collectibles..."
-                className="mt-3 w-full border border-[#D9C6A3] bg-[#FFFDF8] px-4 py-3 text-sm outline-none focus:border-[#AD573B]"
+                className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 text-sm outline-none focus:border-[#07472B]"
               />
             </div>
           )}
 
-          <p className="mt-4 text-xs text-[#777C60]">
+          <p className="mt-4 text-xs text-[#626C57]">
             {selectedVendorCategories.length === 0
               ? "No categories selected. This section is optional."
               : `${selectedVendorCategories.length} ${
@@ -424,7 +425,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
         {/* Rating heading */}
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-t border-[#252521]/15 pt-8">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#AD573B]">
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#07472B]">
               Market Evaluation
             </p>
 
@@ -433,7 +434,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
             </h4>
           </div>
 
-          <p className="text-xs text-[#777C60]">
+          <p className="text-xs text-[#626C57]">
             1 = Poor · 5 = Exceptional
           </p>
         </div>
@@ -455,7 +456,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-center lg:gap-8">
                   {/* Category information */}
                   <div className="flex items-start gap-3">
-                    <span className="pt-1 text-xs font-bold text-[#AD573B]">
+                    <span className="pt-1 text-xs font-bold text-[#07472B]">
                       {String(index + 1).padStart(2, "0")}
                     </span>
 
@@ -468,7 +469,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                         {category.description}
                       </p>
 
-                      <p className="mt-2 max-w-sm text-xs leading-relaxed text-[#777C60]">
+                      <p className="mt-2 max-w-sm text-xs leading-relaxed text-[#626C57]">
                         {category.guidance}
                       </p>
 
@@ -482,13 +483,13 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                               className="block text-xs font-semibold text-[#252521]"
                             >
                               Booth Cost
-                              <span className="ml-2 font-normal text-[#777C60]">
+                              <span className="ml-2 font-normal text-[#626C57]">
                                 (Optional)
                               </span>
                             </label>
 
-                            <div className="mt-2 flex max-w-[190px] items-center border border-[#D9C6A3] bg-[#FFFDF8]">
-                              <span className="pl-3 text-sm text-[#777C60]">
+                            <div className="mt-2 flex max-w-[190px] items-center border border-[#D6D4BF] bg-[#FFFCF6]">
+                              <span className="pl-3 text-sm text-[#626C57]">
                                 $
                               </span>
 
@@ -508,7 +509,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                               />
                             </div>
 
-                            <p className="mt-2 max-w-xs text-xs leading-relaxed text-[#777C60]">
+                            <p className="mt-2 max-w-xs text-xs leading-relaxed text-[#626C57]">
                               Enter the total amount you paid
                               for your booth, if you&apos;d like
                               to share.
@@ -519,12 +520,12 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                           <div>
                             <p className="text-xs font-semibold text-[#252521]">
                               Booth Duration
-                              <span className="ml-2 font-normal text-[#777C60]">
+                              <span className="ml-2 font-normal text-[#626C57]">
                                 (Optional)
                               </span>
                             </p>
 
-                            <p className="mt-2 text-xs leading-relaxed text-[#777C60]">
+                            <p className="mt-2 text-xs leading-relaxed text-[#626C57]">
                               How many days did your booth
                               fee cover?
                             </p>
@@ -543,7 +544,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                                     setNumberOfDays("");
                                     setShowPreview(false);
                                   }}
-                                  className="h-4 w-4 accent-[#AD573B]"
+                                  className="h-4 w-4 accent-[#07472B]"
                                 />
 
                                 <span className="text-xs font-medium">
@@ -563,7 +564,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                                     setBoothDuration("multi");
                                     setShowPreview(false);
                                   }}
-                                  className="h-4 w-4 accent-[#AD573B]"
+                                  className="h-4 w-4 accent-[#07472B]"
                                 />
 
                                 <span className="text-xs font-medium">
@@ -580,7 +581,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                                   setNumberOfDays("");
                                   setShowPreview(false);
                                 }}
-                                className="mt-3 text-xs text-[#AD573B] underline underline-offset-2 hover:text-[#8F452F]"
+                                className="mt-3 text-xs text-[#07472B] underline underline-offset-2 hover:text-[#053820]"
                               >
                                 Clear duration selection
                               </button>
@@ -594,7 +595,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                                   className="block text-xs font-semibold text-[#252521]"
                                 >
                                   Number of Days
-                                  <span className="ml-2 font-normal text-[#777C60]">
+                                  <span className="ml-2 font-normal text-[#626C57]">
                                     (Optional)
                                   </span>
                                 </label>
@@ -613,7 +614,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                                     );
                                     setShowPreview(false);
                                   }}
-                                  className="mt-2 w-28 border border-[#D9C6A3] bg-[#FFFDF8] px-3 py-2 text-sm outline-none focus:border-[#AD573B]"
+                                  className="mt-2 w-28 border border-[#D6D4BF] bg-[#FFFCF6] px-3 py-2 text-sm outline-none focus:border-[#07472B]"
                                 />
                               </div>
                             )}
@@ -621,12 +622,12 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
 
                           {/* Daily cost calculation */}
                           {dailyBoothCost !== null && (
-                            <div className="max-w-sm border-l-2 border-[#AD573B] bg-[#EAE3D5] px-4 py-3">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-[#777C60]">
+                            <div className="max-w-sm border-l-2 border-[#07472B] bg-[#E9E7DA] px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-[#626C57]">
                                 Estimated Booth Cost Per Day
                               </p>
 
-                              <p className="mt-1 font-serif text-xl font-bold text-[#AD573B]">
+                              <p className="mt-1 font-serif text-xl font-bold text-[#07472B]">
                                 {currencyFormatter.format(
                                   dailyBoothCost
                                 )}
@@ -669,19 +670,25 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                             className="flex min-w-0 flex-col items-center gap-1.5"
                           >
                             <span
+                              style={{
+                                borderColor: getRatingColor(score),
+                                backgroundColor: selected ? getRatingColor(score) : "#FFFCF6",
+                                color: selected ? "#FFFFFF" : getRatingColor(score),
+                              }}
                               className={`flex h-9 w-full items-center justify-center border text-sm font-semibold transition sm:h-10 ${
                                 selected
-                                  ? "border-[#AD573B] bg-[#AD573B] text-white"
-                                  : "border-[#D9C6A3] bg-[#FFFDF8] text-[#252521] hover:border-[#AD573B]"
+                                  ? "border-[#07472B] bg-[#07472B] text-white"
+                                  : "border-[#D6D4BF] bg-[#FFFCF6] text-[#252521] hover:border-[#07472B]"
                               }`}
                             >
                               {score}
                             </span>
 
                             <span
+                              style={{ color: getRatingColor(score) }}
                               className={`min-h-7 text-center text-[10px] leading-tight sm:text-[11px] ${
                                 selected
-                                  ? "font-bold text-[#AD573B]"
+                                  ? "font-bold text-[#07472B]"
                                   : "text-[#55554E]"
                               }`}
                             >
@@ -694,8 +701,9 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
 
                     {selectedRating !== undefined && (
                       <p
-                        className="mt-2 text-right text-xs font-semibold text-[#AD573B]"
+                        className="mt-2 text-right text-xs font-semibold text-[#07472B]"
                         aria-live="polite"
+                        style={{ color: getRatingColor(selectedRating) }}
                       >
                         Selected: {selectedRating}/5 —{" "}
                         {ratingLabels[selectedRating - 1]}
@@ -710,7 +718,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
 
         {/* Written review */}
         <div className="mt-9">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#AD573B]">
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#07472B]">
             Your Field Notes
           </p>
 
@@ -736,10 +744,10 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
               setShowPreview(false);
             }}
             placeholder="Share your firsthand experience..."
-            className="mt-4 w-full border border-[#D9C6A3] bg-[#FFFDF8] p-4 text-sm leading-relaxed text-[#252521] outline-none transition focus:border-[#AD573B]"
+            className="mt-4 w-full border border-[#D6D4BF] bg-[#FFFCF6] p-4 text-sm leading-relaxed text-[#252521] outline-none transition focus:border-[#07472B]"
           />
 
-          <p className="mt-1 text-right text-xs text-[#777C60]">
+          <p className="mt-1 text-right text-xs text-[#626C57]">
             {experience.length} / 2000 characters
           </p>
         </div>
@@ -770,7 +778,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                     setWouldReturn(option);
                     setShowPreview(false);
                   }}
-                  className="h-4 w-4 accent-[#AD573B]"
+                  className="h-4 w-4 accent-[#07472B]"
                 />
 
                 <span className="text-sm font-semibold">
@@ -791,15 +799,15 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
             Preview My Review
           </button>
 
-          <p className="text-xs text-[#777C60]">
+          <p className="text-xs text-[#626C57]">
             Preview your answers first. Nothing is saved until you submit.
           </p>
         </div>
 
         {/* Review preview */}
         {showPreview && (
-          <div className="mt-10 border border-[#D9C6A3] bg-[#FFFDF8] p-5 sm:p-8">
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#AD573B]">
+          <div className="mt-10 border border-[#D6D4BF] bg-[#FFFCF6] p-5 sm:p-8">
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#07472B]">
               Review Preview — Not Submitted
             </p>
 
@@ -818,14 +826,14 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                   {displayVendorCategories.map((category) => (
                     <span
                       key={category}
-                      className="border border-[#D9C6A3] bg-[#EAE3D5] px-3 py-2 text-xs font-semibold text-[#55554E]"
+                      className="border border-[#D6D4BF] bg-[#E9E7DA] px-3 py-2 text-xs font-semibold text-[#55554E]"
                     >
                       {category}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="mt-2 text-sm italic text-[#777C60]">
+                <p className="mt-2 text-sm italic text-[#626C57]">
                   Not provided (optional).
                 </p>
               )}
@@ -859,7 +867,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                 )}
 
                 {dailyBoothCost !== null && (
-                  <p className="mt-2 text-sm font-semibold text-[#AD573B]">
+                  <p className="mt-2 text-sm font-semibold text-[#07472B]">
                     Estimated Cost Per Day:{" "}
                     {currencyFormatter.format(
                       dailyBoothCost
@@ -883,7 +891,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                       {category.label}
                     </span>
 
-                    <span className="text-sm font-bold text-[#AD573B]">
+                    <span className="text-sm font-bold" style={{ color: getRatingColor(score) }}>
                       {score}/5 ·{" "}
                       {score !== undefined
                         ? ratingLabels[score - 1]
@@ -910,7 +918,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
               </p>
             </div>
 
-            <p className="mt-6 border-t border-[#252521]/10 pt-5 text-xs italic text-[#AD573B]">
+            <p className="mt-6 border-t border-[#252521]/10 pt-5 text-xs italic text-[#07472B]">
               Nothing has been submitted yet. By submitting, you confirm this
               describes your firsthand vendor experience. Your review will be held
               for moderation. Editing after submission is not available yet.
@@ -927,7 +935,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
         )}
         </fieldset>
         {error && (
-          <p role="alert" className="mt-6 border-l-2 border-[#AD573B] bg-[#EAE3D5] p-4 text-sm text-[#AD573B]">
+          <p role="alert" className="mt-6 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm text-[#07472B]">
             {error}
           </p>
         )}

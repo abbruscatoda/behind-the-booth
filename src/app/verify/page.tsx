@@ -157,30 +157,10 @@ export default function VerifyPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F4F0E6] text-[#252521]">
-      <div className="bg-[#252521] px-5 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-[#F4F0E6]">
-        An independent resource for the vendor community
-      </div>
+    <main className="flex-1 bg-[#F4F0E6] text-[#252521]">
+      
 
-      <header className="border-b border-[#252521]/20">
-        <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-5 px-6 py-7">
-          <Link
-            href="/"
-            className="font-serif text-2xl font-black tracking-tight md:text-3xl"
-          >
-            Behind the Booth<span className="text-[#AD573B]">.</span>
-          </Link>
-
-          <div className="flex items-center gap-6 text-sm font-semibold">
-            <Link href="/markets" className="hover:text-[#AD573B]">
-              Explore Markets
-            </Link>
-            <Link href="/login" className="hover:text-[#AD573B]">
-              My Account
-            </Link>
-          </div>
-        </nav>
-      </header>
+      
 
       <section className="mx-auto max-w-2xl px-6 py-16 md:py-24">
         <p className="heritage-label">Trust Behind Every Review</p>
@@ -245,7 +225,7 @@ export default function VerifyPage() {
 
             <Link
               href="/markets"
-              className="mt-7 inline-block text-sm font-semibold text-[#AD573B] hover:underline"
+              className="mt-7 inline-block text-sm font-semibold text-[#07472B] hover:underline"
             >
               Explore Markets →
             </Link>
@@ -277,7 +257,7 @@ export default function VerifyPage() {
                   onChange={(event) =>
                     setBusinessName(event.target.value)
                   }
-                  className="mt-3 w-full border border-[#D9C6A3] bg-[#FFFDF8] px-4 py-3 outline-none focus:border-[#AD573B]"
+                  className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]"
                 />
               </div>
 
@@ -287,7 +267,7 @@ export default function VerifyPage() {
                   className="block text-sm font-semibold"
                 >
                   Website or Business Social Profile
-                  <span className="ml-2 text-xs font-normal text-[#777C60]">
+                  <span className="ml-2 text-xs font-normal text-[#626C57]">
                     Optional
                   </span>
                 </label>
@@ -300,7 +280,7 @@ export default function VerifyPage() {
                   onChange={(event) =>
                     setBusinessUrl(event.target.value)
                   }
-                  className="mt-3 w-full border border-[#D9C6A3] bg-[#FFFDF8] px-4 py-3 outline-none focus:border-[#AD573B]"
+                  className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]"
                 />
               </div>
 
@@ -323,14 +303,14 @@ export default function VerifyPage() {
                   maxLength={2000}
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
-                  className="mt-3 w-full border border-[#D9C6A3] bg-[#FFFDF8] px-4 py-3 outline-none focus:border-[#AD573B]"
+                  className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]"
                 />
-                <p className="mt-2 text-right text-xs text-[#777C60]">
+                <p className="mt-2 text-right text-xs text-[#626C57]">
                   {notes.length} / 2000 characters
                 </p>
               </div>
 
-              <div className="border-l-2 border-[#AD573B] bg-[#EAE3D5] p-4 text-sm leading-relaxed text-[#55554E]">
+              <div className="border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm leading-relaxed text-[#55554E]">
                 These details are for private verification. Do not
                 include passwords, payment information, government ID
                 numbers, or other sensitive documents.
@@ -349,7 +329,7 @@ export default function VerifyPage() {
         {error && (
           <div
             role="alert"
-            className="mt-6 border-l-2 border-[#AD573B] bg-[#EAE3D5] p-5 text-sm leading-relaxed text-[#AD573B]"
+            className="mt-6 border-l-2 border-[#07472B] bg-[#E9E7DA] p-5 text-sm leading-relaxed text-[#07472B]"
           >
             {error}
           </div>
