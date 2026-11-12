@@ -220,6 +220,7 @@ export default function LoginPage() {
               <label htmlFor="password" className="mt-6 block text-sm font-semibold">Password</label>
               <input id="password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 8 : undefined} required disabled={busy} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]" />
               {mode === "signup" && <p className="mt-2 text-xs text-[#626C57]">Use at least 8 characters. Membership is free.</p>}
+              {mode === "signin" && <Link href="/forgot-password" className="mt-4 inline-block text-sm font-semibold text-[#07472B] underline underline-offset-4">Forgot your password?</Link>}
               <button type="submit" disabled={busy} className="heritage-button mt-8 w-full disabled:cursor-wait disabled:opacity-50">{busy ? "Please wait..." : mode === "signup" ? "Create My Free Account" : "Sign In"}</button>
             </form>
           </div>
