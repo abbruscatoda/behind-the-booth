@@ -1,19 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import OrganizerField from "../../components/OrganizerField";
+import { cleanOrganizer } from "../../lib/marketOrganizers";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createClient } from "../../lib/supabase/client";
 
 type Suggestion = {
   id: string;
   name: string;
+  organizer: string | null;
   city: string;
   state: string;
   status: "pending" | "approved" | "rejected" | "duplicate";
   created_at: string;
 };
 
-const suggestionFields = "id, name, city, state, status, created_at";
+const suggestionFields = "id, name, city, state, status, created_at, organizer";
 const inputClass = "mt-2 w-full border border-[#252521]/25 bg-[#FFFCF6] px-4 py-3 text-sm outline-none focus:border-[#07472B] disabled:opacity-60";
 const statusDetails = {
   pending: { label: "Pending review", note: "Your suggestion is waiting for review before being added to the directory." },
@@ -27,6 +30,7 @@ export default function SuggestMarketPage() {
   const identity = useRef<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [name, setName] = useState("");
+  const [organizer, setOrganizer] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("NC");
   const [website, setWebsite] = useState("");
@@ -56,6 +60,7 @@ export default function SuggestMarketPage() {
         setMessage("");
         setError("");
         setName("");
+        setOrganizer("");
         setCity("");
         setWebsite("");
         setNotes("");
@@ -123,6 +128,11 @@ export default function SuggestMarketPage() {
     setMessage("");
 
     const marketName = name.trim();
+    const marketOrganizer = cleanOrganizer(organizer);
+    if (marketOrganizer.length > 120 || /[\u0000-\u001f\u007f]/.test(marketOrganizer)) {
+      setError("Use an organizer name of at most 120 characters, without control characters.");
+      return;
+    }
     const marketCity = city.trim();
     const marketState = state.trim().toUpperCase();
     const sourceUrl = website.trim();
@@ -159,6 +169,7 @@ export default function SuggestMarketPage() {
         state: marketState,
         website_url: sourceUrl,
         notes: notes.trim() || null,
+        organizer: marketOrganizer || null,
       });
       if (insertError) {
         if (insertError.code === "42501") throw new Error("You don't have permission to submit this suggestion. Please sign in and try again.");
@@ -167,6 +178,7 @@ export default function SuggestMarketPage() {
       if (identity.current === submittingUser) {
         setMessage(`Thanks! Your suggestion for ${marketName} was submitted for review. It will appear in the directory only after approval.`);
         setName("");
+        setOrganizer("");
         setCity("");
         setState("NC");
         setWebsite("");
@@ -210,6 +222,7 @@ export default function SuggestMarketPage() {
                   <label htmlFor="market-name" className="text-sm font-semibold">Market or Event Name <span className="font-normal text-[#626C57]">(required)</span></label>
                   <input id="market-name" type="text" required maxLength={150} value={name} onChange={(event) => setName(event.target.value)} placeholder="Use the name shown by the organizer" className={inputClass} />
                 </div>
+                <OrganizerField id="suggestion-organizer" value={organizer} onChange={setOrganizer} disabled={busy} hint="If you know who runs this market, choose an existing name or type a new one. Leave blank if you’re unsure. We’ll verify it before adding a public organizer tag." />
                 <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_120px]">
                   <div><label htmlFor="market-city" className="text-sm font-semibold">City <span className="font-normal text-[#626C57]">(required)</span></label><input id="market-city" type="text" required maxLength={100} value={city} onChange={(event) => setCity(event.target.value)} placeholder="e.g., Raleigh" className={inputClass} /></div>
                   <div><label htmlFor="market-state" className="text-sm font-semibold">State</label><input id="market-state" type="text" required minLength={2} maxLength={2} pattern="[A-Za-z]{2}" value={state} onChange={(event) => setState(event.target.value.toUpperCase())} className={inputClass} /></div>
@@ -221,7 +234,7 @@ export default function SuggestMarketPage() {
                 </div>
                 <div>
                   <label htmlFor="market-notes" className="text-sm font-semibold">Anything Else We Should Know? <span className="font-normal text-[#626C57]">(optional)</span></label>
-                  <p id="notes-help" className="mt-2 text-xs leading-relaxed text-[#626C57]">Include known dates, the venue, organizer, or why it is relevant to vendors. Leave unknown details out. Please do not include private contact information.</p>
+                  <p id="notes-help" className="mt-2 text-xs leading-relaxed text-[#626C57]">Include known dates, the venue, or why it is relevant to vendors. Leave unknown details out. Please do not include private contact information.</p>
                   <textarea id="market-notes" rows={4} maxLength={2000} value={notes} onChange={(event) => setNotes(event.target.value)} aria-describedby="notes-help" className={inputClass} />
                   <p className="mt-1 text-right text-xs text-[#626C57]">{notes.length} / 2000 characters</p>
                 </div>
@@ -243,6 +256,7 @@ export default function SuggestMarketPage() {
                   <li key={suggestion.id} className="border border-[#252521]/20 bg-[#FFFCF6] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-serif text-xl font-bold">{suggestion.name}</h3><span className="border border-[#07472B]/25 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#07472B]">{statusDetails[suggestion.status].label}</span></div>
                     <p className="mt-2 text-xs text-[#626C57]">{suggestion.city}, {suggestion.state}</p>
+                    {suggestion.organizer && <p className="mt-2 text-xs text-[#626C57]">Suggested organizer: {suggestion.organizer}</p>}
                     <p className="mt-3 text-sm leading-relaxed text-[#55554E]">{statusDetails[suggestion.status].note}</p>
                     {(suggestion.status === "approved" || suggestion.status === "duplicate") && <Link href="/markets" className="mt-3 inline-block text-xs font-semibold text-[#07472B] underline">Browse the Directory →</Link>}
                   </li>

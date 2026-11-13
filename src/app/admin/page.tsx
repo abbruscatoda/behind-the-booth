@@ -12,7 +12,7 @@ type Status = "pending" | "approved" | "rejected" | "duplicate";
 type Base = { id: string; status: Status; created_at: string };
 type Suggestion = Base & {
   name: string; city: string; state: string; website_url: string;
-  notes: string | null; linked_market_id: string | null; linked_slug: string | null;
+  organizer: string | null; notes: string | null; linked_market_id: string | null; linked_slug: string | null;
 };
 type Vendor = Base & {
   business_name: string; business_url: string | null; verification_notes: string;
@@ -60,7 +60,7 @@ function slugify(value: string) {
 }
 
 function SuggestionEditor({ row, disabled, onAction }: { row: Suggestion; disabled: boolean; onAction: (action: Action) => void }) {
-  const [listing, setListing] = useState<Listing>({ name: row.name, slug: slugify(row.name), city: row.city, state: row.state, description: "", website: row.website_url, organizer: "" });
+  const [listing, setListing] = useState<Listing>({ name: row.name, slug: slugify(row.name), city: row.city, state: row.state, description: "", website: row.website_url, organizer: row.organizer ?? "" });
   const [query, setQuery] = useState(row.name);
   const [matches, setMatches] = useState<Market[]>([]);
   const [searching, setSearching] = useState(false);
@@ -260,6 +260,7 @@ export default function AdminPage() {
         <div className="flex flex-wrap items-center justify-between gap-3"><p className="heritage-label">{row.status}</p><p className="text-xs text-[#626C57]">Submitted {new Date(row.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })}</p></div>
         {"name" in row ? <>
           <h2 className="mt-3 font-serif text-2xl font-bold">{row.name}</h2><p className="mt-1 text-sm text-[#626C57]">{row.city}, {row.state}</p><div className="mt-4"><Website value={row.website_url} /></div>
+          {row.organizer && <p className="mt-3 text-sm text-[#55554E]"><strong>Submitted organizer (unverified):</strong> {row.organizer}</p>}
           {row.notes && <div className="mt-4 bg-[#F4F0E6] p-4"><p className="text-xs font-bold uppercase tracking-wider text-[#626C57]">Private submission notes</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed">{row.notes}</p></div>}
           {row.linked_slug && <Link href={`/markets/${row.linked_slug}`} className="mt-4 inline-block text-sm font-semibold text-[#07472B] underline">View linked market →</Link>}
           {row.status === "pending" && <><div className="mt-5 flex flex-wrap gap-3"><button type="button" className={secondaryClass} disabled={busy || Boolean(action)} onClick={() => setEditor(editor === row.id ? null : row.id)}>{editor === row.id ? "Close listing editor" : "Prepare listing / check duplicate"}</button><button type="button" className={dangerClass} disabled={busy || Boolean(action)} onClick={() => decide(row, "rejected")}>Reject suggestion</button></div>{editor === row.id && <SuggestionEditor key={row.id} row={row} disabled={busy || Boolean(action)} onAction={next => { setError(""); setSuccess(""); setAction(next); }} />}</>}
