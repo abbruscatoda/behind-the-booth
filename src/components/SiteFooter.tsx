@@ -14,6 +14,7 @@ export default function SiteFooter() {
             <Link href="/markets">Explore Markets</Link>
             <Link href="/login">My Account</Link>
             <Link href="/verify">Vendor Verification</Link>
+            <Link href="/community-guidelines">Community Guidelines</Link>
           </nav>
           <p>© 2026 Behind the Booth. · Raleigh, North Carolina</p>
           <p className="brand-footer-note">Independent reviews. Shared experience.</p>
