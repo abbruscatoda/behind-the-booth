@@ -148,6 +148,16 @@ function MarketDirectory() {
           </p>
         </div>
 
+        <p className="mt-6 text-sm leading-relaxed text-[#55554E]">
+          Can’t find the market you’re looking for?{" "}
+          <Link
+            href="/suggest-market"
+            className="font-semibold text-[#07472B] underline underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#07472B]"
+          >
+            Suggest a market for us to add →
+          </Link>
+        </p>
+
         {/* Demo notice */}
         {markets.some(market => market.is_sample) && <div className="mt-10 border-l-2 border-[#07472B] bg-[#E9E7DA] px-5 py-4">
           <p className="text-sm leading-relaxed text-[#55554E]">
