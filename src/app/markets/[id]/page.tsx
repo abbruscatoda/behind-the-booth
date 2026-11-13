@@ -8,6 +8,8 @@ import { createClient } from "../../../lib/supabase/client";
 import ReviewForm from "../../../components/ReviewForm";
 import { getRatingColor } from "../../../lib/ratingColors";
 
+import { formatAttendanceDate } from "../../../lib/attendanceDate";
+
 type Market = {
   id: string;
   slug: string;
@@ -20,6 +22,7 @@ type Market = {
 };
 
 type PublicReview = {
+  attended_on: string | null;
   id: string;
   market_id: string;
   booth_value: number;
@@ -94,7 +97,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
         if (authError && authError.name !== "AuthSessionMissingError") throw authError;
         if (!auth.user) return;
 
-        const { data, error: reviewError } = await supabase.rpc("get_public_market_reviews", { p_market_id: marketId });
+        const { data, error: reviewError } = await supabase.rpc("btb_market_reviews_with_attendance", { p_market_id: marketId });
         if (reviewError) throw reviewError;
         if (isCurrent()) {
           setReviews((data ?? []) as PublicReview[]);
@@ -305,6 +308,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
             return (
               <article key={review.id} className="heritage-card">
                 <div className="flex flex-wrap items-center justify-between gap-4"><h3 className="font-serif text-2xl font-bold">Anonymous Vendor</h3><span className="text-sm font-bold" style={{ color: getRatingColor(review.overall) }}>Overall: {review.overall}/5 · {ratingLabels[review.overall - 1]}</span></div>
+                <p className="mt-4 text-sm font-semibold text-[#626C57]">{review.attended_on ? <>Attended: <time dateTime={review.attended_on}>{formatAttendanceDate(review.attended_on)}</time></> : "Attendance date not provided"}</p>
                 {review.vendor_categories.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{review.vendor_categories.map((category) => <span key={category} className="border border-[#D6D4BF] bg-[#E9E7DA] px-3 py-2 text-xs text-[#55554E]">{category === "Other" && review.other_category ? `Other: ${review.other_category}` : category}</span>)}</div>}
                 <dl className="mt-7 grid gap-4 border-y border-[#252521]/15 py-5 sm:grid-cols-2 lg:grid-cols-3">{ratingCategories.map(({ key, label }) => <div key={key}><dt className="text-xs font-semibold text-[#626C57]">{label}</dt><dd className="mt-1 text-sm font-bold" style={{ color: getRatingColor(review[key]) }}>{review[key]}/5 · {ratingLabels[review[key] - 1]}</dd></div>)}</dl>
                 <p className="mt-7 whitespace-pre-wrap break-words leading-relaxed text-[#55554E]">{review.experience}</p>

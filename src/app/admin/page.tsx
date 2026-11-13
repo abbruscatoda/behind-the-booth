@@ -9,6 +9,8 @@ import { getRatingColor } from "../../lib/ratingColors";
 
 type Kind = "suggestions" | "vendors" | "reviews";
 type Status = "pending" | "approved" | "rejected" | "duplicate";
+import { formatAttendanceDate } from "../../lib/attendanceDate";
+
 type Base = { id: string; status: Status; created_at: string };
 type Suggestion = Base & {
   name: string; city: string; state: string; website_url: string;
@@ -18,6 +20,7 @@ type Vendor = Base & {
   business_name: string; business_url: string | null; verification_notes: string;
 };
 type Review = Base & {
+  attended_on: string | null;
   market_name: string; market_slug: string; vendor_categories: string[];
   other_category: string | null; booth_value: number; foot_traffic: number;
   organization: number; promotion: number; overall: number;
@@ -190,7 +193,7 @@ export default function AdminPage() {
     setLoading(true); setError(""); setQueue(null);
     void (async () => {
       try {
-        const { data, error } = await createClient().rpc("btb_admin_queue", { p_kind: kind, p_status: status, p_offset: offset });
+        const { data, error } = await createClient().rpc("btb_admin_queue_with_attendance", { p_kind: kind, p_status: status, p_offset: offset });
         if (error) throw error;
         if (active && identity.current === userId) {
           const result = data as Queue;
@@ -270,6 +273,7 @@ export default function AdminPage() {
           <h2 className="mt-3 font-serif text-2xl font-bold">Review of {row.market_name}</h2><Link href={`/markets/${row.market_slug}`} className="mt-2 inline-block text-sm font-semibold text-[#07472B] underline">View market →</Link>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{([ ["Overall", row.overall], ["Booth value", row.booth_value], ["Foot traffic", row.foot_traffic], ["Organization", row.organization], ["Promotion", row.promotion] ] as [string, number][]).map(([label, score]) => <div key={label} className="bg-[#F4F0E6] px-3 py-2"><p className="text-xs text-[#626C57]">{label}</p><p className="mt-1 text-lg font-bold" style={{ color: getRatingColor(score) }}>{score.toFixed(1)} / 5</p></div>)}</div>
           <p className="mt-4 text-sm"><strong>Vendor categories:</strong> {row.vendor_categories.join(", ") || "Not supplied"}{row.other_category ? ` — ${row.other_category}` : ""}</p>
+          <p className="mt-3 text-sm font-semibold">{row.attended_on ? `Attended: ${formatAttendanceDate(row.attended_on)}` : "Attendance date not provided"}</p>
           <p className="mt-3 whitespace-pre-wrap break-words leading-relaxed">{row.experience}</p>
           <p className="mt-4 text-sm"><strong>Reported booth cost:</strong> {row.booth_cost === null ? "Not supplied" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(row.booth_cost)} · {row.booth_duration === "single" ? "Single day" : row.booth_duration === "multi" ? `Multiple days${row.number_of_days ? ` (${row.number_of_days})` : ""}` : "Duration not supplied"}</p><p className="mt-2 text-sm"><strong>Would return:</strong> {row.would_return}</p>{actions(row)}
         </>}

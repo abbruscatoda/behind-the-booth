@@ -5,6 +5,8 @@ import Link from "next/link";
 import { createClient } from "../lib/supabase/client";
 import { getRatingColor } from "../lib/ratingColors";
 
+import { marketToday, validAttendanceDate, formatAttendanceDate } from "../lib/attendanceDate";
+
 const ratingLabels = [
   "Poor",
   "Below Average",
@@ -135,6 +137,8 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
     useState<BoothDuration>("");
   const [numberOfDays, setNumberOfDays] = useState("");
 
+  const [attendedOn, setAttendedOn] = useState("");
+  const attendanceInput = useRef<HTMLInputElement>(null);
   const [experience, setExperience] = useState("");
   const [wouldReturn, setWouldReturn] = useState("");
   const [showPreview, setShowPreview] = useState(false);
@@ -187,6 +191,13 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
   }
 
   function handlePreview() {
+    if (!validAttendanceDate(attendedOn)) {
+      setError("Please enter the date you attended. It must be today or earlier.");
+      attendanceInput.current?.focus();
+      setShowPreview(false);
+      return;
+    }
+    setError("");
     if (!allRated || !experience.trim() || !wouldReturn) {
       alert(
         "Please complete all five ratings, your written experience, and the return question before previewing."
@@ -217,7 +228,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
 
   async function handleSubmit() {
     if (submitting.current || !showPreview || access !== "ready") return;
-    if (!allRated || !experience.trim() || !["Yes", "No", "Maybe"].includes(wouldReturn) ||
+    if (!validAttendanceDate(attendedOn) || !allRated || !experience.trim() || !["Yes", "No", "Maybe"].includes(wouldReturn) ||
       (hasBoothCost && !validBoothCost) ||
       (boothDuration === "multi" && numberOfDays.trim() !== "" && !validMultiDay)) {
       setError("Please check your answers and preview the review again.");
@@ -235,6 +246,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
         throw new Error("Please sign in again before submitting.");
       }
       const { error: insertError } = await supabase.from("reviews").insert({
+        attended_on: attendedOn,
         market_id: marketId,
         vendor_id: auth.user.id,
         vendor_categories: selectedVendorCategories,
@@ -322,6 +334,20 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
             appear publicly. Avoid including identifying details in your review
             if you want to remain anonymous.
           </p>
+        </div>
+
+        <div className="mb-10">
+          <label htmlFor="attended-on" className="block font-serif text-2xl font-bold">
+            Date You Attended <span className="font-sans text-sm font-normal text-[#626C57]">(required)</span>
+          </label>
+          <p id="attendance-help" className="mt-3 max-w-2xl text-sm leading-relaxed text-[#55554E]">
+            Choose the market date this review describes. For a multi-day visit, use the first day you attended.
+            This date will be visible with your approved review.
+          </p>
+          <input ref={attendanceInput} id="attended-on" type="date" required min="0001-01-01" max={marketToday()}
+            value={attendedOn} aria-describedby="attendance-help"
+            onChange={event => { setAttendedOn(event.target.value); setShowPreview(false); setError(""); }}
+            className="mt-4 w-full max-w-xs border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 text-sm outline-none focus:border-[#07472B]" />
         </div>
 
         {/* Vendor categories */}
@@ -814,6 +840,8 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
             <h4 className="mt-3 font-serif text-2xl font-bold">
               Your Vendor Field Report
             </h4>
+
+            <p className="mt-4 text-sm text-[#55554E]"><strong>Attended:</strong>{" "}<time dateTime={attendedOn}>{formatAttendanceDate(attendedOn)}</time></p>
 
             {/* Vendor category preview */}
             <div className="mt-6">
