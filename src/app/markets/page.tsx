@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { organizerHref, organizerKey, organizerOptions } from "../../lib/marketOrganizers";
 import { createClient } from "../../lib/supabase/client";
 
 type Market = {
@@ -12,9 +14,18 @@ type Market = {
   state: string;
   description: string;
   is_sample: boolean;
+  organizer: string | null;
 };
 
-export default function MarketsPage() {
+function MarketDirectory() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const organizer = params.get("organizer") ?? "";
+  function selectOrganizer(value: string) {
+    const next = new URLSearchParams(params.toString());
+    if (value) next.set("organizer", value); else next.delete("organizer");
+    router.replace(`/markets${next.size ? `?${next.toString()}` : ""}`, { scroll: false });
+  }
   const [search, setSearch] = useState("");
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +40,7 @@ export default function MarketsPage() {
 
         const { data, error } = await supabase
           .from("markets")
-          .select("id, slug, name, city, state, description, is_sample")
+          .select("id, slug, name, city, state, description, is_sample, organizer")
           .order("name");
 
         if (error) throw error;
@@ -59,10 +70,12 @@ export default function MarketsPage() {
     };
   }, []);
 
-  const filteredMarkets = markets.filter((market) =>
-    `${market.name} ${market.city} ${market.state} ${market.description}`
-      .toLowerCase()
-      .includes(search.trim().toLowerCase())
+  const organizers = organizerOptions(markets.map(market => market.organizer));
+  const selectedOrganizer = organizers.find(name => organizerKey(name) === organizerKey(organizer)) ?? organizer;
+  const filteredMarkets = markets.filter(market =>
+    (!organizer || organizerKey(market.organizer) === organizerKey(organizer)) &&
+    `${market.name} ${market.city} ${market.state} ${market.description} ${market.organizer ?? ""}`
+      .toLowerCase().includes(search.trim().toLowerCase())
   );
 
   return (
@@ -104,12 +117,22 @@ export default function MarketsPage() {
           <input
             id="market-search"
             type="search"
-            placeholder="Search markets, cities, or descriptions..."
+            placeholder="Search markets, cities, or organizers..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-5 py-4 text-[#252521] outline-none transition placeholder:text-[#626C57] focus:border-[#07472B]"
           />
 
+          <div className="mt-5 grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div><label htmlFor="organizer-filter" className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-[#626C57]">Filter by organizer</label>
+              <select id="organizer-filter" value={selectedOrganizer} disabled={loading || Boolean(error)} onChange={event => selectOrganizer(event.target.value)} className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]">
+                <option value="">All organizers</option>
+                {organizer && !organizers.some(name => organizerKey(name) === organizerKey(organizer)) && <option value={organizer}>{organizer}</option>}
+                {organizers.map(name => <option key={organizerKey(name)} value={name}>{name}</option>)}
+              </select>
+            </div>
+            {(search || organizer) && <button type="button" onClick={() => { setSearch(""); selectOrganizer(""); }} className="px-3 py-3 text-sm font-semibold text-[#07472B] underline underline-offset-4">Clear filters</button>}
+          </div>
           <p
             className="mt-4 text-sm text-[#55554E]"
             role="status"
@@ -126,14 +149,13 @@ export default function MarketsPage() {
         </div>
 
         {/* Demo notice */}
-        <div className="mt-10 border-l-2 border-[#07472B] bg-[#E9E7DA] px-5 py-4">
+        {markets.some(market => market.is_sample) && <div className="mt-10 border-l-2 border-[#07472B] bg-[#E9E7DA] px-5 py-4">
           <p className="text-sm leading-relaxed text-[#55554E]">
             <strong>Demonstration directory:</strong> Listings marked
             Demo are fictional examples used to test Behind the Booth.
-            Real listings and verified vendor reviews will be added
-            later.
+            These are separate from real market listings.
           </p>
-        </div>
+        </div>}
 
         {/* Market cards */}
         <div
@@ -164,6 +186,8 @@ export default function MarketsPage() {
                 {market.state === "NC" ? "North Carolina" : market.state}
               </p>
 
+              {market.organizer && <Link href={organizerHref(market.organizer)} className="mt-4 self-start rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-3 py-2 text-xs font-semibold text-[#07472B] hover:underline">Organizer: {market.organizer}</Link>}
+
               <p className="mt-6 flex-1 leading-relaxed text-[#55554E]">
                 {market.description}
               </p>
@@ -188,7 +212,7 @@ export default function MarketsPage() {
             <p className="mt-3 text-[#55554E]">
               {markets.length === 0
                 ? "There are no market listings yet. Check back soon."
-                : "Try searching for a different market, city, or description."}
+                : "Try a different search or clear the organizer filter."}
             </p>
           </div>
         )}
@@ -198,4 +222,8 @@ export default function MarketsPage() {
       
     </main>
   );
+}
+
+export default function MarketsPage() {
+  return <Suspense fallback={<main className="mx-auto max-w-6xl px-6 py-20"><p role="status">Loading market directory…</p></main>}><MarketDirectory /></Suspense>;
 }

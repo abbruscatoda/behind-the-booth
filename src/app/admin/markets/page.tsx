@@ -1,19 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import OrganizerField from "../../../components/OrganizerField";
+import { cleanOrganizer } from "../../../lib/marketOrganizers";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createClient } from "../../../lib/supabase/client";
 
 type Market = {
   id: string; slug: string; name: string; city: string; state: string;
-  description: string; website_url: string | null; is_sample: boolean; revision: string;
+  description: string; website_url: string | null; is_sample: boolean; revision: string; organizer: string | null;
 };
-type Draft = { name: string; city: string; state: string; description: string; website: string };
+type Draft = { name: string; city: string; state: string; description: string; website: string; organizer: string };
 type Results = { items: Market[]; total: number };
 const inputStyle = "mt-2 w-full rounded-sm border border-[#252521]/25 bg-[#FFFCF6] px-3 py-2.5 text-sm outline-none focus:border-[#07472B] disabled:opacity-60";
 const buttonStyle = "inline-flex items-center justify-center rounded-sm border border-[#07472B]/40 px-4 py-2.5 text-sm font-semibold text-[#07472B] hover:bg-[#E9E7DA] disabled:cursor-not-allowed disabled:opacity-50";
-function draftOf(market: Market): Draft { return { name: market.name, city: market.city, state: market.state, description: market.description, website: market.website_url ?? "" }; }
-function clean(draft: Draft): Draft { return { name: draft.name.trim(), city: draft.city.trim(), state: draft.state.trim().toUpperCase(), description: draft.description.trim(), website: draft.website.trim() }; }
+function draftOf(market: Market): Draft { return { name: market.name, city: market.city, state: market.state, description: market.description, website: market.website_url ?? "", organizer: market.organizer ?? "" }; }
+function clean(draft: Draft): Draft { return { name: draft.name.trim(), city: draft.city.trim(), state: draft.state.trim().toUpperCase(), description: draft.description.trim(), website: draft.website.trim(), organizer: cleanOrganizer(draft.organizer) }; }
 function errorMessage(value: unknown) {
   if (typeof value === "object" && value !== null && "message" in value && typeof value.message === "string") return value.message;
   return "Something went wrong. Please try again.";
@@ -29,7 +31,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) { re
 const fields: { label: string; key: keyof Draft }[] = [
   { label: "Market name", key: "name" }, { label: "City", key: "city" },
   { label: "State", key: "state" }, { label: "Website", key: "website" },
-  { label: "Description", key: "description" },
+  { label: "Description", key: "description" }, { label: "Organizer", key: "organizer" },
 ];
 
 export default function ManageMarketsPage() {
@@ -155,10 +157,10 @@ export default function ManageMarketsPage() {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError) throw authError;
       if (authData.user?.id !== actor || identity.current !== actor) throw new Error("Your signed-in account changed. Reload before saving.");
-      const { data, error } = await supabase.rpc("btb_admin_update_market", {
+      const { data, error } = await supabase.rpc("btb_admin_update_market_with_organizer", {
         p_id: market.id, p_revision: market.revision, p_name: next.name,
         p_city: next.city, p_state: next.state, p_description: next.description,
-        p_website_url: next.website || null,
+        p_website_url: next.website || null, p_organizer: next.organizer || null,
       });
       if (error) throw error;
       if (identity.current !== actor) return;
@@ -183,7 +185,7 @@ export default function ManageMarketsPage() {
       : !allowed ? <section className="heritage-card mt-8"><h2 className="font-serif text-2xl font-bold">{accessError ? "Unable to check access" : "Admin access required"}</h2><p className="mt-3 break-words text-[#55554E]">{accessError || "This account cannot edit market listings."}</p><div className="mt-5 flex flex-wrap gap-3"><Link href="/login" className={buttonStyle}>My Account / switch account</Link><button type="button" className={buttonStyle} onClick={() => setRefresh(n => n + 1)}>Try again</button></div></section>
       : <>
         <form onSubmit={runSearch} className="mt-8 flex flex-wrap items-end gap-3">
-          <div className="min-w-0 flex-1 basis-64"><Field label="Search market name, city, or state"><input type="search" value={searchInput} maxLength={150} onChange={e => setSearchInput(e.target.value)} disabled={busy || Boolean(preview)} className={inputStyle} placeholder="Try Cary, Raleigh, or a market name" /></Field></div>
+          <div className="min-w-0 flex-1 basis-64"><Field label="Search market name, city, state, or organizer"><input type="search" value={searchInput} maxLength={150} onChange={e => setSearchInput(e.target.value)} disabled={busy || Boolean(preview)} className={inputStyle} placeholder="Try Cary, Raleigh, or a market name" /></Field></div>
           <button type="submit" className={buttonStyle} disabled={locked || loading}>Search</button>
           <button type="button" className={buttonStyle} disabled={locked || loading} onClick={reloadDirectory}>Refresh</button>
         </form>
@@ -197,7 +199,7 @@ export default function ManageMarketsPage() {
             {results && results.total > 20 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#252521]/15 p-4 text-xs"><span>{offset + 1}–{Math.min(offset + 20, results.total)} of {results.total}</span><div className="flex gap-2"><button type="button" className={buttonStyle} disabled={locked || !offset} onClick={() => { setSelected(null); setDraft(null); setOffset(n => Math.max(0, n - 20)); }}>Previous</button><button type="button" className={buttonStyle} disabled={locked || offset + 20 >= results.total} onClick={() => { setSelected(null); setDraft(null); setOffset(n => n + 20); }}>Next</button></div></div>}
           </section>
           <section aria-label="Market editor" className="min-w-0 rounded-sm border border-[#252521]/20 bg-[#FFFCF6] p-5 md:p-7">
-            {!selected || !draft ? <div className="py-8"><p className="heritage-label">Keep the details current</p><h2 className="mt-4 font-serif text-2xl font-bold">Choose a market to edit.</h2><p className="mt-3 text-sm leading-relaxed text-[#55554E]">Select a listing from the directory. You can update its name, location, description, and website.</p></div> : <>
+            {!selected || !draft ? <div className="py-8"><p className="heritage-label">Keep the details current</p><h2 className="mt-4 font-serif text-2xl font-bold">Choose a market to edit.</h2><p className="mt-3 text-sm leading-relaxed text-[#55554E]">Select a listing from the directory. You can update its name, location, organizer, description, and website.</p></div> : <>
               <h2 className="break-words font-serif text-2xl font-bold">{selected.name}</h2>
               <p className="mt-2 break-all text-xs text-[#626C57]">Permanent URL: /markets/{selected.slug}</p>
               <Link href={`/markets/${selected.slug}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#07472B] underline underline-offset-4">View current public listing ↗</Link>
@@ -205,11 +207,12 @@ export default function ManageMarketsPage() {
               {saveError && <div role="alert" className="mt-5 break-words border-l-2 border-[#9B3E35] bg-[#F0E3DA] p-4 text-sm text-[#9B3E35]">{saveError}<p className="mt-2">If the listing changed elsewhere or the connection was interrupted, reload the latest listing before retrying. Reloading discards this draft.</p><button type="button" disabled={busy} className={`${buttonStyle} mt-3`} onClick={reloadDirectory}>Discard draft & reload directory</button></div>}
               {preview ? <div className="mt-6">
                 <p className="heritage-label">Review before saving</p><h3 className="mt-3 font-serif text-2xl font-bold">Confirm your changes.</h3><p className="mt-2 text-sm leading-relaxed text-[#55554E]">Only the fields below will change. The market URL and its reviews stay connected.</p>
-                <dl className="mt-5 divide-y divide-[#252521]/15">{fields.filter(field => draftOf(selected)[field.key] !== preview[field.key]).map(field => <div key={field.key} className="py-4"><dt className="text-xs font-bold uppercase tracking-wider text-[#07472B]">{field.label}</dt><dd className="mt-2 grid min-w-0 gap-3 sm:grid-cols-2"><div className="min-w-0 bg-[#F4F0E6] p-3"><p className="text-xs font-semibold text-[#626C57]">Current</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{draftOf(selected)[field.key] || "No website supplied"}</p></div><div className="min-w-0 border-l-2 border-[#07472B] bg-[#E9E7DA] p-3"><p className="text-xs font-semibold text-[#07472B]">After saving</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{preview[field.key] || "No website supplied"}</p></div></dd></div>)}</dl>
+                <dl className="mt-5 divide-y divide-[#252521]/15">{fields.filter(field => draftOf(selected)[field.key] !== preview[field.key]).map(field => <div key={field.key} className="py-4"><dt className="text-xs font-bold uppercase tracking-wider text-[#07472B]">{field.label}</dt><dd className="mt-2 grid min-w-0 gap-3 sm:grid-cols-2"><div className="min-w-0 bg-[#F4F0E6] p-3"><p className="text-xs font-semibold text-[#626C57]">Current</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{draftOf(selected)[field.key] || "Not supplied"}</p></div><div className="min-w-0 border-l-2 border-[#07472B] bg-[#E9E7DA] p-3"><p className="text-xs font-semibold text-[#07472B]">After saving</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{preview[field.key] || "Not supplied"}</p></div></dd></div>)}</dl>
                 <div className="mt-5 flex flex-wrap gap-3"><button type="button" disabled={busy} onClick={() => void save()} className="heritage-button disabled:opacity-50">{busy ? "Saving…" : "Confirm & save changes"}</button><button type="button" disabled={busy} className={buttonStyle} onClick={() => { setPreview(null); setSaveError(""); }}>Back to editing</button></div>
               </div> : <form onSubmit={reviewChanges} className="mt-6">
                 <fieldset disabled={busy} className="grid min-w-0 gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2"><Field label="Market name"><input value={draft.name} maxLength={150} required className={inputStyle} onChange={e => update("name", e.target.value)} /></Field></div>
+                  <div className="sm:col-span-2"><OrganizerField id="edit-organizer" value={draft.organizer} onChange={value => update("organizer", value)} disabled={busy} /></div>
                   <Field label="City"><input value={draft.city} maxLength={100} required className={inputStyle} onChange={e => update("city", e.target.value)} /></Field>
                   <Field label="State"><input value={draft.state} maxLength={2} required className={inputStyle} onChange={e => update("state", e.target.value.toUpperCase())} /></Field>
                   <div className="sm:col-span-2"><Field label="Official website / event link (optional)"><input type="url" value={draft.website} maxLength={1000} className={inputStyle} onChange={e => update("website", e.target.value)} placeholder="https://" /></Field><p className="mt-1 text-xs text-[#626C57]">Leave blank if no official link is available.</p></div>

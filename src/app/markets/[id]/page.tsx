@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { organizerHref } from "../../../lib/marketOrganizers";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
@@ -15,6 +16,7 @@ type Market = {
   state: string;
   description: string;
   is_sample: boolean;
+  organizer: string | null;
 };
 
 type PublicReview = {
@@ -331,7 +333,7 @@ function MarketProfileContent() {
       setMarket(null);
       try {
         const supabase = createClient();
-        const { data, error } = await supabase.from("markets").select("id, slug, name, city, state, description, is_sample").eq("slug", id).maybeSingle();
+        const { data, error } = await supabase.from("markets").select("id, slug, name, city, state, description, is_sample, organizer").eq("slug", id).maybeSingle();
         if (error) throw error;
         if (active) setMarket(data);
       } catch (cause) {
@@ -354,7 +356,7 @@ function MarketProfileContent() {
         {loading && <p className="mt-14 text-lg text-[#55554E]" role="status">Loading market profile...</p>}
         {!loading && error && <div className="mt-14 border border-[#252521]/20 bg-[#E9E7DA] p-8" role="alert"><h1 className="font-serif text-3xl font-bold">Unable to load market</h1><p className="mt-4 text-[#55554E]">{error}</p></div>}
         {!loading && !error && !market && <div className="mt-14 border border-[#252521]/20 bg-[#E9E7DA] p-8"><h1 className="font-serif text-3xl font-bold">Market not found</h1><p className="mt-4 text-[#55554E]">We couldn&apos;t find a market at this address. Return to the directory to explore available listings.</p></div>}
-        {!loading && !error && market && <><div className="mt-14 flex items-center gap-4"><span className="h-px w-12 bg-[#07472B]" /><p className="heritage-label">Market Field Report</p></div><h1 className="heritage-heading mt-7 max-w-5xl text-5xl md:text-7xl">{market.name}</h1><p className="mt-6 text-sm font-bold uppercase tracking-[0.16em] text-[#626C57]">{market.city}, {market.state === "NC" ? "North Carolina" : market.state}{" · "}Market / Event</p><p className="mt-8 max-w-3xl text-lg leading-relaxed text-[#55554E]">{market.description}</p>{market.is_sample && <div className="mt-12 border-l-2 border-[#07472B] bg-[#E9E7DA] px-6 py-5"><p className="text-sm leading-relaxed text-[#55554E]"><strong>Demonstration profile:</strong> This is a fictional event created to test Behind the Booth. It is not a real market. Reviews on this sample listing are test submissions.</p></div>}<MarketReviews key={`reviews-${market.id}`} marketId={market.id} /><ReviewForm key={`form-${market.id}`} marketId={market.id} /></>}
+        {!loading && !error && market && <><div className="mt-14 flex items-center gap-4"><span className="h-px w-12 bg-[#07472B]" /><p className="heritage-label">Market Field Report</p></div><h1 className="heritage-heading mt-7 max-w-5xl text-5xl md:text-7xl">{market.name}</h1><p className="mt-6 text-sm font-bold uppercase tracking-[0.16em] text-[#626C57]">{market.city}, {market.state === "NC" ? "North Carolina" : market.state}{" · "}Market / Event</p>{market.organizer && <Link href={organizerHref(market.organizer)} className="mt-5 inline-block rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-4 py-2 text-sm font-semibold text-[#07472B] hover:underline">Organized by {market.organizer} →</Link>}<p className="mt-8 max-w-3xl text-lg leading-relaxed text-[#55554E]">{market.description}</p>{market.is_sample && <div className="mt-12 border-l-2 border-[#07472B] bg-[#E9E7DA] px-6 py-5"><p className="text-sm leading-relaxed text-[#55554E]"><strong>Demonstration profile:</strong> This is a fictional event created to test Behind the Booth. It is not a real market. Reviews on this sample listing are test submissions.</p></div>}<MarketReviews key={`reviews-${market.id}`} marketId={market.id} /><ReviewForm key={`form-${market.id}`} marketId={market.id} /></>}
       </section>
       
     </main>

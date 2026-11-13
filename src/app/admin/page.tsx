@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import OrganizerField from "../../components/OrganizerField";
+import { cleanOrganizer } from "../../lib/marketOrganizers";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createClient } from "../../lib/supabase/client";
 import { getRatingColor } from "../../lib/ratingColors";
@@ -25,7 +27,7 @@ type Review = Base & {
 type Row = Suggestion | Vendor | Review;
 type Queue = { items: Row[]; total: number; pending: Record<Kind, number> };
 type Market = { id: string; name: string; city: string; state: string; slug: string };
-type Listing = { name: string; slug: string; city: string; state: string; description: string; website: string };
+type Listing = { name: string; slug: string; city: string; state: string; description: string; website: string; organizer: string };
 type Action =
   | { type: "decide"; kind: Kind; row: Row; status: Status; linkedId?: string }
   | { type: "publish"; row: Suggestion; listing: Listing };
@@ -58,7 +60,7 @@ function slugify(value: string) {
 }
 
 function SuggestionEditor({ row, disabled, onAction }: { row: Suggestion; disabled: boolean; onAction: (action: Action) => void }) {
-  const [listing, setListing] = useState<Listing>({ name: row.name, slug: slugify(row.name), city: row.city, state: row.state, description: "", website: row.website_url });
+  const [listing, setListing] = useState<Listing>({ name: row.name, slug: slugify(row.name), city: row.city, state: row.state, description: "", website: row.website_url, organizer: "" });
   const [query, setQuery] = useState(row.name);
   const [matches, setMatches] = useState<Market[]>([]);
   const [searching, setSearching] = useState(false);
@@ -86,7 +88,7 @@ function SuggestionEditor({ row, disabled, onAction }: { row: Suggestion; disabl
   function update(key: keyof Listing, value: string) { setListing(current => ({ ...current, [key]: value })); }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
-    const clean = { ...listing, name: listing.name.trim(), city: listing.city.trim(), state: listing.state.trim().toUpperCase(), description: listing.description.trim(), slug: listing.slug.trim(), website: listing.website.trim() };
+    const clean = { ...listing, name: listing.name.trim(), city: listing.city.trim(), state: listing.state.trim().toUpperCase(), description: listing.description.trim(), slug: listing.slug.trim(), website: listing.website.trim(), organizer: cleanOrganizer(listing.organizer) };
     if (!clean.name || !clean.city || !clean.description || !/^[A-Z]{2}$/.test(clean.state) || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(clean.slug) || !safeUrl(clean.website)) {
       setError("Complete every listing field. Use a lowercase URL slug with hyphens, a two-letter state, and a full http:// or https:// website."); return;
     }
@@ -102,6 +104,7 @@ function SuggestionEditor({ row, disabled, onAction }: { row: Suggestion; disabl
         <Field label="City"><input className={inputClass} value={listing.city} onChange={e => update("city", e.target.value)} maxLength={100} required /></Field>
         <Field label="State"><input className={inputClass} value={listing.state} onChange={e => update("state", e.target.value.toUpperCase())} maxLength={2} required /></Field>
         <div className="md:col-span-2"><Field label="Official website / event link"><input type="url" className={inputClass} value={listing.website} onChange={e => update("website", e.target.value)} maxLength={1000} required /></Field></div>
+        <div className="md:col-span-2"><OrganizerField id={`publish-organizer-${row.id}`} value={listing.organizer} onChange={value => update("organizer", value)} disabled={disabled} /></div>
         <div className="md:col-span-2"><Field label="Public description"><textarea className={inputClass} rows={4} value={listing.description} onChange={e => update("description", e.target.value)} maxLength={2000} required placeholder="Where it takes place and what kind of market it is. Avoid unverified fees, schedules, or promotional claims." /></Field></div>
         <div className="md:col-span-2"><button type="submit" className="heritage-button disabled:opacity-50">Review & publish →</button></div>
       </fieldset>
@@ -214,7 +217,7 @@ export default function AdminPage() {
       if (authData.user?.id !== actor || identity.current !== actor) throw new Error("Your signed-in account changed. Refresh before moderating.");
       if (submitted.type === "publish") {
         const l = submitted.listing;
-        const { error } = await supabase.rpc("btb_admin_publish_market", { p_suggestion_id: submitted.row.id, p_name: l.name, p_slug: l.slug, p_city: l.city, p_state: l.state, p_description: l.description, p_website_url: l.website });
+        const { error } = await supabase.rpc("btb_admin_publish_market_with_organizer", { p_suggestion_id: submitted.row.id, p_name: l.name, p_slug: l.slug, p_city: l.city, p_state: l.state, p_description: l.description, p_website_url: l.website, p_organizer: l.organizer || null });
         if (error) throw error;
       } else {
         const { error } = await supabase.rpc("btb_admin_decide", { p_kind: submitted.kind, p_id: submitted.row.id, p_expected_status: submitted.row.status, p_status: submitted.status, p_linked_market_id: submitted.linkedId ?? null });
@@ -250,7 +253,7 @@ export default function AdminPage() {
       {error && <div role="alert" className="mb-5 break-words border-l-2 border-[#9B3E35] bg-[#F0E3DA] p-4 text-sm text-[#9B3E35]">{error} {success ? "The decision was saved, but the queue could not refresh." : "Refresh the queue before retrying if the connection was interrupted."}</div>}
       {action && <section aria-label="Confirm moderation decision" className="mb-6 border-2 border-[#07472B] bg-[#E9E7DA] p-5 md:p-6">
         <h2 className="font-serif text-2xl font-bold">{action.type === "publish" ? "Publish this market?" : `Change status to ${action.status}?`}</h2>
-        {action.type === "publish" ? <div className="mt-3 space-y-2 text-sm"><p className="font-semibold">{action.listing.name} — {action.listing.city}, {action.listing.state}</p><p className="break-all">/markets/{action.listing.slug}</p><p className="whitespace-pre-wrap">{action.listing.description}</p><p className="break-all">{action.listing.website}</p><p>The listing will become public and its suggestion will be approved.</p></div> : <p className="mt-3 text-sm">{"business_name" in action.row ? action.row.business_name : "name" in action.row ? action.row.name : `Review of ${action.row.market_name}`} — {action.row.status} → {action.status}. {action.kind === "reviews" ? "Only approved reviews appear in member reports and rating averages." : action.kind === "vendors" ? "Approved vendors can submit reviews. Existing review statuses are managed separately." : action.status === "duplicate" ? "This suggestion will link to the market you selected." : "This suggestion will not create a public listing."}</p>}
+        {action.type === "publish" ? <div className="mt-3 space-y-2 text-sm"><p className="font-semibold">{action.listing.name} — {action.listing.city}, {action.listing.state}</p><p className="break-all">/markets/{action.listing.slug}</p><p className="whitespace-pre-wrap">{action.listing.description}</p><p className="break-all">{action.listing.website}</p><p>Organizer: {action.listing.organizer || "Not assigned"}</p><p>The listing will become public and its suggestion will be approved.</p></div> : <p className="mt-3 text-sm">{"business_name" in action.row ? action.row.business_name : "name" in action.row ? action.row.name : `Review of ${action.row.market_name}`} — {action.row.status} → {action.status}. {action.kind === "reviews" ? "Only approved reviews appear in member reports and rating averages." : action.kind === "vendors" ? "Approved vendors can submit reviews. Existing review statuses are managed separately." : action.status === "duplicate" ? "This suggestion will link to the market you selected." : "This suggestion will not create a public listing."}</p>}
         <div className="mt-5 flex flex-wrap gap-3"><button type="button" className="heritage-button disabled:opacity-50" disabled={busy} onClick={() => void confirm()}>{busy ? "Saving…" : action.type === "publish" ? "Confirm publication" : "Confirm decision"}</button><button type="button" className={secondaryClass} disabled={busy} onClick={() => setAction(null)}>Cancel</button></div>
       </section>}
       {loading ? <p role="status" className="py-8">Loading {labels[kind].toLowerCase()}…</p> : queue && !queue.items.length ? <div className="heritage-card py-10 text-center"><h2 className="font-serif text-2xl font-bold">No {status} {labels[kind].toLowerCase()}.</h2><p className="mt-3 text-sm text-[#626C57]">You&apos;re up to date for this queue.</p></div> : <div className="space-y-5">{queue?.items.map(row => <article key={row.id} className="rounded-sm border border-[#252521]/20 bg-[#FFFCF6] p-5 md:p-7">
