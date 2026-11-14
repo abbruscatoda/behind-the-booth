@@ -10,6 +10,8 @@ import { getRatingColor } from "../../../lib/ratingColors";
 
 import { formatAttendanceDate } from "../../../lib/attendanceDate";
 
+import { selectReviews, reviewRangeError, type ReviewSort } from "../../../lib/reviewFilters";
+
 type Market = {
   id: string;
   slug: string;
@@ -23,6 +25,7 @@ type Market = {
 
 type PublicReview = {
   attended_on: string | null;
+  created_at?: string;
   id: string;
   market_id: string;
   booth_value: number;
@@ -66,6 +69,14 @@ function range(values: number[]) {
 
 function MarketReviews({ marketId }: { marketId: string }) {
   const [reviews, setReviews] = useState<PublicReview[]>([]);
+  const [reviewSort, setReviewSort] = useState<ReviewSort>("attended-newest");
+  const [attendedFrom, setAttendedFrom] = useState("");
+  const [attendedTo, setAttendedTo] = useState("");
+  const dateRangeError = reviewRangeError(attendedFrom, attendedTo);
+  const visibleReviews = selectReviews(reviews, reviewSort, attendedFrom, attendedTo);
+  function resetReviewFilters() {
+    setReviewSort("attended-newest"); setAttendedFrom(""); setAttendedTo("");
+  }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [member, setMember] = useState(false);
@@ -298,11 +309,43 @@ function MarketReviews({ marketId }: { marketId: string }) {
         <p className="heritage-label">From Behind the Booth</p>
         <h2 className="heritage-heading mt-4 text-4xl">Vendor Reviews</h2>
         <p className="mt-5 max-w-3xl text-sm leading-relaxed text-[#55554E]">Reviews are moderated before publication. Account names, emails, and private verification details are not displayed. Ratings reflect individual vendor experiences.</p>
+        {hasData && count > 0 && <div className="mt-8 border border-[#252521]/20 bg-[#FFFCF6] p-5 sm:p-6">
+          <div className="grid gap-5 md:grid-cols-3">
+            <div className="min-w-0">
+              <label htmlFor="review-sort" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#626C57]">Sort reviews</label>
+              <select id="review-sort" value={reviewSort} onChange={event => setReviewSort(event.target.value as ReviewSort)} className="w-full min-w-0 border border-[#252521]/30 bg-[#FFFCF6] px-3 py-3 text-sm focus:outline-2 focus:outline-[#07472B]">
+                <option value="attended-newest">Attendance date: newest first</option>
+                <option value="attended-oldest">Attendance date: oldest first</option>
+                <option value="rating-highest">Overall rating: highest first</option>
+                <option value="rating-lowest">Overall rating: lowest first</option>
+              </select>
+            </div>
+            <div className="min-w-0">
+              <label htmlFor="reviews-from" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#626C57]">Attended from</label>
+              <input id="reviews-from" type="date" min="0001-01-01" value={attendedFrom} onChange={event => setAttendedFrom(event.target.value)} aria-describedby="review-filter-help review-filter-status" aria-invalid={Boolean(dateRangeError)} className="w-full min-w-0 border border-[#252521]/30 bg-[#FFFCF6] px-3 py-3 text-sm focus:outline-2 focus:outline-[#07472B]" />
+            </div>
+            <div className="min-w-0">
+              <label htmlFor="reviews-to" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#626C57]">Attended through</label>
+              <input id="reviews-to" type="date" min="0001-01-01" value={attendedTo} onChange={event => setAttendedTo(event.target.value)} aria-describedby="review-filter-help review-filter-status" aria-invalid={Boolean(dateRangeError)} className="w-full min-w-0 border border-[#252521]/30 bg-[#FFFCF6] px-3 py-3 text-sm focus:outline-2 focus:outline-[#07472B]" />
+            </div>
+          </div>
+          <p id="review-filter-help" className="mt-4 text-xs leading-relaxed text-[#626C57]">Filter by the date vendors attended, including both end dates. To see one market day, use the same date in both fields. Older reviews without an attendance date appear only when no date filter is set.</p>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p id="review-filter-status" role="status" aria-live="polite" className="text-sm text-[#55554E]">{dateRangeError || `Showing ${visibleReviews.length} of ${count} approved ${count === 1 ? "review" : "reviews"}.`}</p>
+            {(attendedFrom || attendedTo || reviewSort !== "attended-newest") && <button type="button" onClick={resetReviewFilters} className="min-h-11 px-2 text-sm font-semibold text-[#07472B] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">Reset review filters</button>}
+          </div>
+          <p className="mt-3 text-xs text-[#626C57]">Market scores and report summaries above use all approved reviews.</p>
+        </div>}
+        {hasData && count > 0 && !dateRangeError && visibleReviews.length === 0 && <div className="mt-8 border border-[#252521]/20 bg-[#E9E7DA] p-8 text-center">
+          <h3 className="font-serif text-2xl font-bold">No reviews for these dates.</h3>
+          <p className="mt-3 text-sm text-[#55554E]">Try a wider attendance-date range or reset the filters.</p>
+          <button type="button" onClick={resetReviewFilters} className="mt-4 min-h-11 px-3 font-semibold text-[#07472B] underline underline-offset-4">Show all reviews</button>
+        </div>}
         {loading && <p className="mt-8 text-[#55554E]" role="status">Loading approved reviews...</p>}
         {error && <p className="mt-8 text-sm text-[#07472B]">Reviews are unavailable. Please refresh to try again.</p>}
         {hasData && !count && <div className="mt-10 border border-[#252521]/20 bg-[#E9E7DA] px-8 py-14 text-center"><h3 className="font-serif text-3xl font-bold">Every vendor has a story.</h3><p className="mx-auto mt-5 max-w-xl leading-relaxed text-[#55554E]">No approved reviews have been published for this market yet. Pending submissions remain private.</p></div>}
         <div className="mt-10 space-y-6">
-          {reviews.map((review) => {
+          {visibleReviews.map((review) => {
             const days = review.booth_duration === "single" ? 1 : review.booth_duration === "multi" ? review.number_of_days : null;
             const dailyCost = review.booth_cost !== null && days !== null && days > 0 ? Number(review.booth_cost) / days : null;
             return (
