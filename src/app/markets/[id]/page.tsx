@@ -305,7 +305,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
         )}
       </section>
 
-      <section className="mt-20 border-t border-[#252521]/25 pt-14">
+      <section id="vendor-reviews" className="mt-20 scroll-mt-8 border-t border-[#252521]/25 pt-14">
         <p className="heritage-label">From Behind the Booth</p>
         <h2 className="heritage-heading mt-4 text-4xl">Vendor Reviews</h2>
         <p className="mt-5 max-w-3xl text-sm leading-relaxed text-[#55554E]">Reviews are moderated before publication. Account names, emails, and private verification details are not displayed. Ratings reflect individual vendor experiences.</p>

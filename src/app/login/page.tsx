@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createClient } from "../../lib/supabase/client";
 
+import MyReviews from "../../components/MyReviews";
+
 type Mode = "signin" | "signup";
 type VendorProfile = {
   business_name: string;
@@ -206,6 +208,7 @@ export default function LoginPage() {
               )}
               <p className="mt-5 border-t border-[#252521]/15 pt-4 text-xs leading-relaxed text-[#626C57]">Business information submitted for verification stays private. Email confirmation verifies your email address; vendor approval is a separate review.</p>
             </section>
+            <MyReviews key={userId} />
             <button type="button" onClick={handleSignOut} disabled={busy} className="mt-3 text-sm font-semibold text-[#07472B] underline underline-offset-4 disabled:opacity-50">{busy ? "Please wait..." : "Sign Out"}</button>
           </div>
         ) : (
