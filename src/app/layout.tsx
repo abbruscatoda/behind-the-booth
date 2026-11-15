@@ -3,11 +3,15 @@ import { Geist, Geist_Mono } from "next/font/google";
 import SiteHeader from "../components/SiteHeader";
 import SiteFooter from "../components/SiteFooter";
 import "./globals.css";
+import { SITE_URL, SITE_DESCRIPTION, pageMetadata } from "../lib/siteMetadata";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  openGraph: pageMetadata("Know the market before you book", SITE_DESCRIPTION, "/").openGraph,
+  twitter: pageMetadata("Know the market before you book", SITE_DESCRIPTION, "/").twitter,
   title: { default: "Behind the Booth | Know the market before you book", template: "%s | Behind the Booth" },
   description: "Discover markets around Raleigh and the Triangle. Read anonymous reviews from verified vendors about booth value, foot traffic, organization, and more.",
   applicationName: "Behind the Booth",

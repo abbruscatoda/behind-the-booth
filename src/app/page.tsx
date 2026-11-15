@@ -1,3 +1,5 @@
+import { pageMetadata, SITE_DESCRIPTION } from "../lib/siteMetadata";
+export const metadata = pageMetadata("Know the market before you book", SITE_DESCRIPTION, "/");
 import Link from "next/link";
 import Image from "next/image";
 import greenIcon from "../assets/brand/icon-green.png";
