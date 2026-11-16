@@ -4,6 +4,7 @@ import Link from "next/link";
 import { organizerHref } from "../../../lib/marketOrganizers";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
+import OpportunityBoard from "../../../components/OpportunityBoard";
 import ReviewForm from "../../../components/ReviewForm";
 import { getRatingColor } from "../../../lib/ratingColors";
 
@@ -68,6 +69,7 @@ function range(values: number[]) {
 
 function MarketReviews({ marketId }: { marketId: string }) {
   const [reviews, setReviews] = useState<PublicReview[]>([]);
+  const [reviewerCount,setReviewerCount]=useState<number|null>(null);
   const [reviewSort, setReviewSort] = useState<ReviewSort>("attended-newest");
   const [attendedFrom, setAttendedFrom] = useState("");
   const [attendedTo, setAttendedTo] = useState("");
@@ -100,6 +102,9 @@ function MarketReviews({ marketId }: { marketId: string }) {
         const row = summaryData?.[0];
         if (!row) throw new Error("Market summary was not returned.");
         if (!isCurrent()) return;
+        const history=await supabase.rpc("btb_market_history_stats",{p_market_id:marketId});
+        if (!isCurrent()) return;
+        if(!history.error)setReviewerCount(history.data.reviewer_count);
         setSummary({ count: Number(row.review_count), overall: row.overall_rating === null ? null : Number(row.overall_rating) });
 
         const { data: auth, error: authError } = await supabase.auth.getUser();
@@ -340,6 +345,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
           <p className="mt-3 text-sm text-[#55554E]">Try a wider attendance-date range or reset the filters.</p>
           <button type="button" onClick={resetReviewFilters} className="mt-4 min-h-11 px-3 font-semibold text-[#07472B] underline underline-offset-4">Show all reviews</button>
         </div>}
+        {reviewerCount!==null&&<p className="mt-4 text-xs text-[#626C57]">{summary.count} approved reviews from {reviewerCount} vendors. Vendors may review distinct event dates; scores average all approved reviews.</p>}
         {loading && <p className="mt-8 text-[#55554E]" role="status">Loading approved reviews...</p>}
         {error && <p className="mt-8 text-sm text-[#07472B]">Reviews are unavailable. Please refresh to try again.</p>}
         {hasData && !count && <div className="mt-10 border border-[#252521]/20 bg-[#E9E7DA] px-8 py-14 text-center"><h3 className="font-serif text-3xl font-bold">Every vendor has a story.</h3><p className="mx-auto mt-5 max-w-xl leading-relaxed text-[#55554E]">No approved reviews have been published for this market yet. Pending submissions remain private.</p></div>}
@@ -378,7 +384,7 @@ function MarketProfileContent({ market }: { market: Market }) {
         {loading && <p className="mt-14 text-lg text-[#55554E]" role="status">Loading market profile...</p>}
         {!loading && error && <div className="mt-14 border border-[#252521]/20 bg-[#E9E7DA] p-8" role="alert"><h1 className="font-serif text-3xl font-bold">Unable to load market</h1><p className="mt-4 text-[#55554E]">{error}</p></div>}
         {!loading && !error && !market && <div className="mt-14 border border-[#252521]/20 bg-[#E9E7DA] p-8"><h1 className="font-serif text-3xl font-bold">Market not found</h1><p className="mt-4 text-[#55554E]">We couldn&apos;t find a market at this address. Return to the directory to explore available listings.</p></div>}
-        {!loading && !error && market && <><div className="mt-14 flex items-center gap-4"><span className="h-px w-12 bg-[#07472B]" /><p className="heritage-label">Market Field Report</p></div><h1 className="heritage-heading mt-7 max-w-5xl text-5xl md:text-7xl">{market.name}</h1><p className="mt-6 text-sm font-bold uppercase tracking-[0.16em] text-[#626C57]">{market.city}, {market.state === "NC" ? "North Carolina" : market.state}{" · "}Market / Event</p>{market.organizer && <Link href={organizerHref(market.organizer)} className="mt-5 inline-block rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-4 py-2 text-sm font-semibold text-[#07472B] hover:underline">Organized by {market.organizer} →</Link>}<p className="mt-8 max-w-3xl text-lg leading-relaxed text-[#55554E]">{market.description}</p>{market.is_sample && <div className="mt-12 border-l-2 border-[#07472B] bg-[#E9E7DA] px-6 py-5"><p className="text-sm leading-relaxed text-[#55554E]"><strong>Demonstration profile:</strong> This is a fictional event created to test Behind the Booth. It is not a real market. Reviews on this sample listing are test submissions.</p></div>}<MarketReviews key={`reviews-${market.id}`} marketId={market.id} /><ReviewForm key={`form-${market.id}`} marketId={market.id} /></>}
+        {!loading && !error && market && <><div className="mt-14 flex items-center gap-4"><span className="h-px w-12 bg-[#07472B]" /><p className="heritage-label">Market Field Report</p></div><h1 className="heritage-heading mt-7 max-w-5xl text-5xl md:text-7xl">{market.name}</h1><p className="mt-6 text-sm font-bold uppercase tracking-[0.16em] text-[#626C57]">{market.city}, {market.state === "NC" ? "North Carolina" : market.state}{" · "}Market / Event</p>{market.organizer && <Link href={organizerHref(market.organizer)} className="mt-5 inline-block rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-4 py-2 text-sm font-semibold text-[#07472B] hover:underline">Organized by {market.organizer} →</Link>}<p className="mt-8 max-w-3xl text-lg leading-relaxed text-[#55554E]">{market.description}</p>{market.is_sample && <div className="mt-12 border-l-2 border-[#07472B] bg-[#E9E7DA] px-6 py-5"><p className="text-sm leading-relaxed text-[#55554E]"><strong>Demonstration profile:</strong> This is a fictional event created to test Behind the Booth. It is not a real market. Reviews on this sample listing are test submissions.</p></div>}<section className="mt-14 border-t border-[#252521]/20 pt-10"><p className="heritage-label">Upcoming opportunities</p><h2 className="mt-4 font-serif text-3xl font-bold">Apply to a future market date.</h2><OpportunityBoard marketId={market.id} compact/><Link href="/opportunities" className="mt-6 inline-block font-semibold text-[#07472B] underline">Explore all vendor applications →</Link></section><MarketReviews key={`reviews-${market.id}`} marketId={market.id} /><ReviewForm key={`form-${market.id}`} marketId={market.id} /></>}
       </section>
       
     </main>

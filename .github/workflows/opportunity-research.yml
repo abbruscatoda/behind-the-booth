@@ -1,0 +1,40 @@
+name: Verify vendor opportunities
+on:
+  schedule:
+    - cron: '17 13 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview decisions without changing the database'
+        required: true
+        default: true
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: vendor-opportunity-research
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.event_name == 'workflow_dispatch' || vars.BTB_RESEARCH_SCHEDULE == 'enabled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check verifier rules
+        run: python3 -m unittest discover -s scripts/opportunity-research -p 'test_*.py'
+      - name: Verify official sources
+        env:
+          BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
+          BTB_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.BTB_SUPABASE_PUBLISHABLE_KEY }}
+          BTB_RESEARCH_SECRET: ${{ secrets.BTB_RESEARCH_SECRET }}
+          BTB_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        shell: bash
+        run: |
+          if [ "$BTB_DRY_RUN" = "true" ]; then
+            python3 scripts/opportunity-research/run.py --dry-run
+          else
+            python3 scripts/opportunity-research/run.py
+          fi

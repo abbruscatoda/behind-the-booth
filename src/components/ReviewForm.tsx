@@ -7,6 +7,8 @@ import { getRatingColor } from "../lib/ratingColors";
 
 import { marketToday, validAttendanceDate, formatAttendanceDate } from "../lib/attendanceDate";
 
+import { occurrenceReviewError, type Occurrence, type OwnDatedReview } from "../lib/reviewOccurrences";
+
 const ratingLabels = [
   "Poor",
   "Below Average",
@@ -83,6 +85,9 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const submitting = useRef(false);
+  const [occurrences,setOccurrences]=useState<Occurrence[]>([]);
+  const [myReviews,setMyReviews]=useState<OwnDatedReview[]>([]);
+  const [occurrenceId,setOccurrenceId]=useState("");
 
   useEffect(() => {
     let active = true;
@@ -98,13 +103,15 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
           if (active) setAccess("signin");
           return;
         }
-        const { data: review, error: reviewError } = await supabase
-          .from("reviews").select("status")
-          .eq("market_id", marketId).eq("vendor_id", auth.user.id).maybeSingle();
-        if (reviewError) throw reviewError;
-        if (review) {
-          if (active) { setReviewStatus(review.status); setAccess("exists"); }
-          return;
+        const [{data: prior,error: priorError},{data: dates,error: datesError}] = await Promise.all([
+          supabase.rpc("btb_my_market_review_dates",{p_market_id:marketId}),
+          supabase.rpc("btb_market_occurrences",{p_market_id:marketId}),
+        ]);
+        if(priorError || datesError) throw priorError || datesError;
+        if(active){setMyReviews(prior??[]);setOccurrences(dates??[]);
+          const linked=new URLSearchParams(window.location.search).get("occurrence");
+          const match=(dates??[]).find((item:Occurrence)=>item.id===linked);
+          if(match){setOccurrenceId(match.id);if(match.starts_on<=marketToday())setAttendedOn(match.starts_on);}
         }
         const { data: profile, error: profileError } = await supabase
           .from("vendor_profiles").select("verification_status")
@@ -197,6 +204,8 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
       setShowPreview(false);
       return;
     }
+    const conflict=occurrenceReviewError(attendedOn,occurrenceId,occurrences,myReviews);
+    if(conflict){setError(conflict);setShowPreview(false);return;}
     setError("");
     if (!allRated || !experience.trim() || !wouldReturn) {
       alert(
@@ -235,6 +244,8 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
       setShowPreview(false);
       return;
     }
+    const conflict=occurrenceReviewError(attendedOn,occurrenceId,occurrences,myReviews);
+    if(conflict){setError(conflict);setShowPreview(false);return;}
     submitting.current = true;
     setBusy(true);
     setError("");
@@ -246,6 +257,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
         throw new Error("Please sign in again before submitting.");
       }
       const { error: insertError } = await supabase.from("reviews").insert({
+        occurrence_id: occurrenceId || null,
         attended_on: attendedOn,
         market_id: marketId,
         vendor_id: auth.user.id,
@@ -263,7 +275,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
         would_return: wouldReturn,
       });
       if (insertError) {
-        if (insertError.code === "23505") throw new Error("You already have a review for this market. Refresh to see its status.");
+        if (insertError.code === "23505") throw new Error("You already submitted a review for this market date or event occurrence. Check My Account for its status.");
         if (insertError.code === "42501") throw new Error("You don't currently have permission to submit. Refresh and check your vendor verification status.");
         throw insertError;
       }
@@ -292,13 +304,13 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
 
   if (access !== "ready") {
     return (
-      <section className="mt-10 border border-[#252521]/20 bg-[#F4F0E6] p-6 text-[#252521] sm:p-10">
+      <section id="write-review" className="mt-10 border border-[#252521]/20 bg-[#F4F0E6] p-6 text-[#252521] sm:p-10">
         <h3 className="font-serif text-3xl font-bold">Share Your Experience</h3>
         <div className="mt-5 leading-relaxed text-[#55554E]" role="status">
           {access === "loading" && <p>Checking your review access...</p>}
           {access === "signin" && <><p>Sign in before sharing your vendor experience.</p><Link href="/login" className="mt-4 inline-block font-semibold text-[#07472B] underline">Sign In / Create Account →</Link></>}
           {access === "verify" && <><p>Your vendor account must be approved before submitting reviews.</p><Link href="/verify" className="mt-4 inline-block font-semibold text-[#07472B] underline">Apply or Check Verification →</Link></>}
-          {access === "exists" && <><h4 className="font-serif text-2xl font-bold">{submitted ? "Review received!" : "You have reviewed this market."}</h4><p className="mt-4">{reviewStatus === "pending" ? "Your review is pending moderation and is not public." : reviewStatus === "approved" ? "Your review has been approved. Public review display is being connected next." : "Your review was not approved for publication. Editing and resubmission are not available yet."}</p></>}
+          {access === "exists" && <><h4 className="font-serif text-2xl font-bold">{submitted ? "Review received!" : "Review saved for this event date."}</h4><p className="mt-4">{reviewStatus === "pending" ? "Your review is pending moderation and is not public. Refresh this page if you want to review a different event date." : reviewStatus === "approved" ? "Your review has been approved and appears in the market report." : "Your review was not approved for publication. Editing and resubmission are not available yet."}</p></>}
         </div>
         {error && <p role="alert" className="mt-5 text-sm text-[#07472B]">{error}</p>}
       </section>
@@ -306,7 +318,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
   }
 
   return (
-    <section className="mt-10 overflow-hidden border border-[#252521]/20 bg-[#F4F0E6] text-[#252521]">
+    <section id="write-review" className="mt-10 overflow-hidden border border-[#252521]/20 bg-[#F4F0E6] text-[#252521]">
       {/* Header */}
       <div className="bg-[#07472B] px-6 py-8 text-[#F4F0E6] sm:px-10">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D6D4BF]">
@@ -350,6 +362,8 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
             className="mt-4 w-full max-w-xs border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 text-sm outline-none focus:border-[#07472B]" />
         </div>
 
+        {occurrences.length>0&&<div className="mb-8"><label htmlFor="review-occurrence" className="block text-sm font-semibold">Which dated event did you attend? (optional if your date identifies it)</label><select id="review-occurrence" value={occurrenceId} onChange={event=>{setOccurrenceId(event.target.value);setShowPreview(false);setError("");}} className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 text-sm"><option value="">Identify from my attendance date / another date</option>{occurrences.filter(item=>item.starts_on<=marketToday()).map(item=><option key={item.id} value={item.id}>{item.title} — {formatAttendanceDate(item.starts_on)}{item.ends_on!==item.starts_on?` – ${formatAttendanceDate(item.ends_on)}`:""}</option>)}</select><p className="mt-3 text-xs text-[#626C57]">One review per vendor per dated event. For multi-day events, review the visit together and enter the first day you attended. If your visit isn't listed, your attendance date still identifies the experience.</p></div>}
+        {myReviews.length>0&&<p className="mb-8 text-sm text-[#626C57]">You have {myReviews.length} prior submission(s) for this market. You may review another event date. <Link href="/login" className="font-semibold underline">View My Reviews →</Link></p>}
         {/* Vendor categories */}
         <div className="mb-10">
           <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#07472B]">
