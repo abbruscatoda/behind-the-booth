@@ -1,7 +1,7 @@
 name: Verify vendor opportunities
 on:
   schedule:
-    - cron: '17 13 * * *'
+   - cron: '17 13,16 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
