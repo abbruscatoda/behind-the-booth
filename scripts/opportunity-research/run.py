@@ -5,7 +5,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler
-from verifier import Fetcher, discover, verify, canonical_event, canonical_application, application_key, norm, Uncertain
+from verifier import Fetcher, discover, verify, canonical_event, canonical_application, application_key, norm, Uncertain, verify_artspace
 
 class NoRedirect(HTTPRedirectHandler):
  def redirect_request(self,*args,**kwargs):raise ValueError("Database redirects are not allowed")
@@ -31,7 +31,7 @@ class Database:
 def existing_result(item,found,fetcher,now):
  key=(canonical_application(item['application_url']),item['starts_on'])
  if key in found:return found[key]
- if not application_key(item['application_url']):raise Uncertain('This application provider is outside the initial MAKRS/Eventeny policy. Review manually.')
+ if not application_key(item['application_url']):return verify_artspace(item,fetcher,now)
  sources=[]
  if canonical_event(item['source_url']):sources.append(canonical_event(item['source_url']))
  app,_=fetcher.get(canonical_application(item['application_url']))

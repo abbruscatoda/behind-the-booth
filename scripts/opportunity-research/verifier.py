@@ -8,7 +8,7 @@ from urllib.parse import urljoin, urlparse, parse_qs, urlencode
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 import hashlib, json, re, time
 
-POLICY = 'makrs-eventeny-v1'
+POLICY = 'makrs-eventeny-v2'
 ROOTS = ['https://makrs.com/market-applications','https://makrs.com/makrs-holiday-fest', 'https://makrs.com/moore-square-winterfaire']
 # Exact series identity; a familiar organizer alone never borrows another market's reviews.
 SERIES = {
@@ -22,12 +22,14 @@ SERIES = {
  'raleightwilightmarket':('raleigh-twilight-market','Raleigh Twilight Market'),
 }
 CITIES={'raleigh','durham','cary','apex','wendell','rolesville','wake forest','chapel hill','carrboro','holly springs','fuquay-varina','morrisville','garner','clayton','pittsboro','hillsborough'}
-HOSTS={'makrs.com','www.makrs.com','eventeny.com','www.eventeny.com'}
+HOSTS={'makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com'}
 VOID={'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
 def norm(value):return re.sub(r'[^a-z0-9]','',value.lower())
 def clean(value):return ' '.join(unescape(value).split())
 def valid_url(url):
  p=urlparse(url)
+ if p.hostname=='artspacenc.org' and p.path.rstrip('/')!='/calls-for-art':return False
+ if p.hostname=='form.jotform.com' and (p.path!='/252944311617153' or p.query):return False
  return p.scheme=='https' and p.hostname in HOSTS and not p.username and not p.password and p.port in (None,443) and not p.fragment
 
 def application_key(url):
@@ -132,10 +134,9 @@ def verify(source_url,application_url,fetcher,now=None):
  cards=[n for n in doc.root.walk() if 'app-card' in n.attrs.get('class','').split() and any(application_key(u)==application_key(application_url) for u in n.links(source_url))]
  if len(cards)!=1:raise Uncertain('This application is not uniquely linked from the dated event')
  card=cards[0];card_text=card.text()
- buttons=[n for n in card.walk() if n.tag in {'a','button-element'} and application_key(urljoin(source_url,n.attrs.get('href','')))==application_key(application_url) and n.text().lower() in {'apply now','join waitlist','apply to waitlist'}]
+ buttons=[n for n in enabled_nodes(card) if n.tag in {'a','button-element'} and application_key(urljoin(source_url,n.attrs.get('href','')))==application_key(application_url) and n.text().lower() in {'apply now','join waitlist','apply to waitlist'}]
  closed=not buttons and bool(re.search(r'\b(applications? (?:are |is )?closed|application closed|no longer accepting applications)\b',card_text,re.I))
  if not buttons and not closed:raise Uncertain('No active application action for this event/date')
- if not closed and not re.search(r'\b\d+\s+active applications\b',doc.root.text(),re.I):raise Uncertain('Dated page does not label its applications active')
  # Do not merge food truck applications into the artist/vendor opportunity.
  heading=' '.join(n.text() for n in card.walk() if n.tag=='a' and application_key(urljoin(source_url,n.attrs.get('href','')))==application_key(application_url))
  if re.search(r'food trucks?',heading,re.I):raise Uncertain('Food-truck application requires a separate category-specific listing')
@@ -143,12 +144,13 @@ def verify(source_url,application_url,fetcher,now=None):
  app_events=list(app.events())
  if not app_events or any(norm(e.get('organizer',{}).get('name',''))!='themakrssociety' for e in app_events):raise Uncertain('Application organizer could not be verified')
  if any(norm(e.get('name',''))!=norm(event.get('name','')) for e in app_events):raise Uncertain('Application and dated event identities disagree')
- if not closed and not re.search(r'\bStart Application\b',text,re.I):raise Uncertain('Application is not accepting starts')
+ if re.search(r'\b(applications? (?:are |is )?closed|application closed|no longer accepting applications|not accepting applications|fully booked)\b',card_text+' '+text,re.I):closed=True
  try:deadline=deadline_from(text)
  except Uncertain:
   if not closed:raise
   deadline=None
  if deadline and deadline<=now:closed=True
+ if not closed and not has_start_action(app):raise Uncertain('Application has no enabled start action')
  status='closed' if closed else 'open'
  if closed:pass
  elif re.search(r'\b(waitlist only|join (?:the )?waitlist|apply to waitlist)\b',card_text+' '+text,re.I):status='waitlist'
@@ -220,3 +222,89 @@ def discover(fetcher,now=None):
     grouped[key]={'decision':'review','reason':'Official pages disagree about this application/date. Confirm the current details.','candidate':candidate}
   else:grouped[key]=result
  return list(grouped.values()),problems
+
+# Positive UI evidence is required; an old page merely remaining online is insufficient.
+def enabled_nodes(root):
+ def visit(node,blocked=False):
+  style=node.attrs.get('style','').replace(' ','').lower()
+  blocked=blocked or 'disabled' in node.attrs or 'hidden' in node.attrs or node.attrs.get('aria-disabled')=='true' or node.attrs.get('aria-hidden')=='true' or 'display:none' in style or 'visibility:hidden' in style
+  if not blocked:yield node
+  for child in node.children:
+   if isinstance(child,Node):yield from visit(child,blocked)
+ yield from visit(root)
+
+def has_start_action(doc):
+ return any(n.tag in {'a','button','button-element'} and n.text().lower() in {'start application','join waitlist','apply to waitlist'} for n in enabled_nodes(doc.root))
+
+ARTSPACE_SOURCE='https://artspacenc.org/calls-for-art/'
+ARTSPACE_APP='https://form.jotform.com/252944311617153'
+ARTSPACE_TITLE='The Mini Mall at Artspace, Holiday Edition'
+ARTSPACE_NAMES={norm(ARTSPACE_TITLE),norm('Artspace Holiday Mini Mall'),norm('Artspace Holiday Mini Mall Vendors'),norm('Holiday Mini Mall'),norm('The Mini Mall at Artspace'),norm('Mini Mall at Artspace')}
+
+def artspace_section(doc):
+ nodes=[];collect=False
+ for node in doc.root.walk():
+  if node.tag in {'h1','h2'}:
+   if collect:break
+   collect=node.tag=='h2' and 'callforholidayminimallvendors' in norm(node.text())
+  if collect:nodes.append(node)
+ if not nodes:raise Uncertain('Current Artspace vendor-call section could not be identified')
+ text=clean(' '.join(n.text() for n in nodes if n.tag in {'h2','h3','p','a','button'}))
+ links=[urljoin(ARTSPACE_SOURCE,n.attrs['href']) for n in nodes if n.attrs.get('href')]
+ if ARTSPACE_APP not in links:raise Uncertain('Artspace does not link this exact application in its current call')
+ return text
+
+def verify_artspace(item,fetcher,now):
+ """Read only the organizer-linked form. Never submit a test application."""
+ from zoneinfo import ZoneInfo
+ if item.get('source_url','').rstrip('/')!=ARTSPACE_SOURCE.rstrip('/') or item.get('application_url')!=ARTSPACE_APP:
+  raise Uncertain('Official source/form pair is not yet supported; verify the event-specific form manually')
+ if norm(item.get('title','')) not in ARTSPACE_NAMES or item.get('starts_on')!=item.get('ends_on'):
+  raise Uncertain('Artspace event title or occurrence identity needs confirmation')
+ source,source_hash=fetcher.get(ARTSPACE_SOURCE);section=artspace_section(source)
+ app,app_hash=fetcher.get(ARTSPACE_APP);text=app.root.text()
+ if norm(ARTSPACE_TITLE) not in norm(text) or 'artspacenc.org' not in text:
+  raise Uncertain('Artspace application identity could not be confirmed')
+ # Exact calendar date must occur in the current call AND the form, not just its URL.
+ try:
+  event_date=datetime.fromisoformat(item['starts_on']).date()
+ except (ValueError,KeyError):raise Uncertain('Invalid occurrence date')
+ date_pattern=r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+20\d{2}\b'
+ def dates(value):return {datetime.strptime(x,'%B %d, %Y').date() for x in re.findall(date_pattern,value)}
+ if event_date not in dates(section) or event_date not in dates(text):raise Uncertain('Form and official call do not confirm this exact event date')
+ today=now.astimezone(ZoneInfo('America/New_York')).date()
+ if event_date<today or event_date>today+timedelta(days=183):raise Uncertain('Event is outside the upcoming six-month window')
+ # Parse the deadline from the application itself; retain exact published cutoff internally.
+ match=re.search(r'Application Deadline:\s*(?:[A-Za-z]+,\s*)?([A-Za-z]+\s+\d{1,2},\s+20\d{2}),?\s+(\d{1,2}:\d{2})\s*(AM|PM)',text,re.I)
+ if not match:raise Uncertain('Artspace application deadline could not be confirmed')
+ deadline=datetime.strptime(' '.join(match.groups()),'%B %d, %Y %I:%M %p').replace(tzinfo=ZoneInfo('America/New_York'))
+ # The linked application is authoritative if its deadline differs from the overview.
+ # Record that discrepancy rather than silently picking a later overview deadline.
+ overview=re.search(r'Call closes:\s*(?:[A-Za-z]+,\s*)?([A-Za-z]+)\s+(\d{1,2})',section,re.I)
+ note=''
+ if overview:
+  overview_date=datetime.strptime(f'{overview[1]} {overview[2]} {event_date.year}','%B %d %Y').date()
+  if overview_date!=deadline.date():note='Organizer overview lists a different deadline; the earlier, application-form deadline is used. Confirm on the official application.'
+  if overview_date<deadline.date():raise Uncertain('Organizer overview gives an earlier deadline than the form; confirm the conflict')
+ combined=section+' '+text
+ closed=bool(re.search(r'\b(applications? (?:are |is )?closed|no longer accepting applications|not accepting applications|fully booked|form (?:is )?(?:closed|disabled)|not accepting submissions)\b',combined,re.I)) or deadline<=now
+ if closed:status='closed'
+ elif re.search(r'\b(waitlist only|join (?:the )?waitlist|apply to waitlist)\b',combined,re.I):status='waitlist'
+ elif re.search(r'\b(limited (?:vendor )?(?:spaces|booths|availability)|only \d+ (?:spaces|booths) (?:remain|left))\b',combined,re.I):status='limited'
+ elif re.search(r'\b(sold out|waitlist|wait list)\b',combined,re.I):raise Uncertain('Category-specific closure or waitlist wording requires review')
+ else:status='open'
+ if not closed:
+  forms=[n for n in enabled_nodes(app.root) if n.tag=='form' and n.attrs.get('action')=='https://submit.jotform.com/submit/252944311617153' and n.attrs.get('method','').lower()=='post']
+  def live_form(form):
+   nodes=list(enabled_nodes(form))
+   return any(n.tag=='button' and n.attrs.get('type')=='submit' and n.text().lower()=='submit' for n in nodes) and any(n.tag=='input' and n.attrs.get('type')=='email' for n in nodes)
+  if not any(live_form(form) for form in forms):raise Uncertain('Artspace form has no enabled submission controls; verify manually')
+ slug=item.get('market_slug')
+ linked=bool(item.get('market_id') and slug and norm(item.get('market_name','')) in ARTSPACE_NAMES and norm(item.get('market_organizer',''))=='artspace' and item.get('market_city','').lower()=='raleigh' and item.get('market_state')=='NC')
+ return {'policy':'artspace-jotform-v1','decision':('closed' if closed else 'publish') if linked else 'review','reason':'' if linked else 'Confirm and link the Artspace market profile once before automatic updates.',
+ 'checked_at':now.isoformat(),'source_hash':source_hash,'application_hash':app_hash,'evidence':clean(text)[:600],
+ 'candidate':{'title':ARTSPACE_TITLE,'market_slug':slug,'organizer':'Artspace','city':'Raleigh','state':'NC','venue':'Artspace, 201 E Davie Street',
+ 'starts_on':event_date.isoformat(),'ends_on':event_date.isoformat(),'deadline':deadline.isoformat(),'application_url':ARTSPACE_APP,'source_url':ARTSPACE_SOURCE,'availability':status,
+ 'booth_fee':None,'application_fee':0,'deposit':None,'categories':[],
+ 'fee_notes':'See the official application for current half-table and full-table pricing. '+note,
+ 'eligibility':'The official organizer links a dated vendor form with enabled submission controls. Acceptance is juried; a working form does not guarantee acceptance or category availability. '+note}}

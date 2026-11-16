@@ -91,4 +91,70 @@ class VerificationTests(unittest.TestCase):
    def rpc(self,*args):return {'enabled':False,'items':[]}
   with patch.object(worker,'Database',FakeDB),patch.object(worker,'discover') as research,contextlib.redirect_stdout(io.StringIO()):worker.run(False)
   research.assert_not_called()
+
+
+class ActiveApplicationTests(unittest.TestCase):
+ def check_result(self,**changes):return verifier.verify(SOURCE,APP,FakeFetcher(*fixtures(**changes)),NOW)
+ def test_no_active_count_label_required(self):
+  source,app=fixtures();source=source.replace('<p>2 active applications</p>','')
+  self.assertEqual(verifier.verify(SOURCE,APP,FakeFetcher(source,app),NOW)['candidate']['availability'],'open')
+ def test_missing_start_action_is_not_open(self):
+  with self.assertRaises(verifier.Uncertain):self.check_result(app_text='<p>Deadline: Nov 29, 2026 11:59 pm (GMT-05:00) Eastern Time</p><p>Start Application</p>')
+ def test_disabled_start_is_not_open(self):
+  with self.assertRaises(verifier.Uncertain):self.check_result(app_text='<p>Deadline: Nov 29, 2026 11:59 pm (GMT-05:00) Eastern Time</p><button disabled>Start Application</button>')
+ def test_hidden_start_is_not_open(self):
+  with self.assertRaises(verifier.Uncertain):self.check_result(app_text='<p>Deadline: Nov 29, 2026 11:59 pm (GMT-05:00) Eastern Time</p><div hidden><button>Start Application</button></div>')
+ def test_app_closure_overrides_stale_button(self):
+  result=self.check_result(app_text='<p>Applications are closed</p><button>Start Application</button>')
+  self.assertEqual(result['candidate']['availability'],'closed')
+ def test_disabled_dated_action_is_not_open(self):
+  with self.assertRaises(verifier.Uncertain):self.check_result(card=f'<div class="app-card"><button-element disabled href="{APP}">Apply now</button-element></div>')
+
+class ArtspaceTests(unittest.TestCase):
+ def item(self):return {'title':verifier.ARTSPACE_TITLE,'source_url':verifier.ARTSPACE_SOURCE,'application_url':verifier.ARTSPACE_APP,'starts_on':'2026-12-13','ends_on':'2026-12-13','market_id':'known','market_slug':'artspace-holiday-mini-mall','market_name':verifier.ARTSPACE_TITLE,'market_organizer':'Artspace','market_city':'Raleigh','market_state':'NC'}
+ def pages(self,extra='',form_extra='',submit=''):
+  source=f'<h2>Call for Holiday Mini Mall Vendors</h2><p>Event: The Mini Mall at Artspace, Holiday Edition. December 13, 2026.</p><p>Call closes: Wednesday, November 26, 11:59pm</p><a href="{verifier.ARTSPACE_APP}">Apply</a><p>{extra}</p><h2>Holiday Mini Mall Vendors (closed)</h2><p>Applications are closed. December 14, 2025.</p>'
+  app=f'<h1>{verifier.ARTSPACE_TITLE}</h1><p>December 13, 2026. Contact info@artspacenc.org</p><p>Application Deadline: Wednesday, November 25, 2026, 11:59 PM</p><p>{form_extra}</p><form method="post" action="https://submit.jotform.com/submit/252944311617153"><input type="email"><button type="submit" {submit}>Submit</button></form>'
+  class Pages:
+   def get(self,url):return verifier.Document(source if url==verifier.ARTSPACE_SOURCE else app),'a'*64
+  return Pages()
+ def test_linked_active_form_is_open_without_open_label(self):
+  r=verifier.verify_artspace(self.item(),self.pages(),NOW);self.assertEqual(r['decision'],'publish');self.assertEqual(r['candidate']['availability'],'open')
+ def test_old_closed_listing_does_not_close_current_call(self):
+  self.assertEqual(verifier.verify_artspace(self.item(),self.pages(),NOW)['candidate']['availability'],'open')
+ def test_earlier_form_deadline_retained_and_disclosed(self):
+  r=verifier.verify_artspace(self.item(),self.pages(),NOW);self.assertEqual(r['candidate']['deadline'],'2026-11-25T23:59:00-05:00');self.assertIn('different deadline',r['candidate']['fee_notes'])
+ def test_missing_profile_requires_one_time_link(self):
+  item=self.item();item['market_id']=None
+  self.assertEqual(verifier.verify_artspace(item,self.pages(),NOW)['decision'],'review')
+ def test_disabled_form_does_not_publish(self):
+  with self.assertRaises(verifier.Uncertain):verifier.verify_artspace(self.item(),self.pages(submit='disabled'),NOW)
+ def test_wrong_date_does_not_publish(self):
+  item=self.item();item['starts_on']=item['ends_on']='2026-12-14'
+  with self.assertRaises(verifier.Uncertain):verifier.verify_artspace(item,self.pages(),NOW)
+ def test_waitlist_overrides_active_submit(self):
+  self.assertEqual(verifier.verify_artspace(self.item(),self.pages(form_extra='Join the waitlist'),NOW)['candidate']['availability'],'waitlist')
+ def test_explicit_closure_overrides_active_submit(self):
+  self.assertEqual(verifier.verify_artspace(self.item(),self.pages(form_extra='Applications are closed'),NOW)['candidate']['availability'],'closed')
+ def test_expired_deadline_closes(self):
+  self.assertEqual(verifier.verify_artspace(self.item(),self.pages(),datetime(2026,11,26,12,tzinfo=timezone.utc))['candidate']['availability'],'closed')
+ def test_generic_limited_space_jury_does_not_mean_limited_openings(self):
+  self.assertEqual(verifier.verify_artspace(self.item(),self.pages(form_extra='Due to limited space, submissions are juried.'),NOW)['candidate']['availability'],'open')
+ def test_actual_limited_spaces(self):
+  self.assertEqual(verifier.verify_artspace(self.item(),self.pages(form_extra='Limited vendor spaces'),NOW)['candidate']['availability'],'limited')
+ def test_other_forms_remain_uncertain(self):
+  item=self.item();item['application_url']='https://form.jotform.com/999'
+  with self.assertRaises(verifier.Uncertain):verifier.verify_artspace(item,self.pages(),NOW)
+ def test_other_provider_paths_are_not_fetchable(self):
+  for url in ['https://form.jotform.com/999','https://artspacenc.org/other-call/']:self.assertFalse(verifier.valid_url(url))
+
+
+
+class WorkerRoutingTests(unittest.TestCase):
+ item=ArtspaceTests.item
+ pages=ArtspaceTests.pages
+ def test_worker_routes_artspace_to_official_form_reader(self):
+  r=worker.existing_result(self.item(),{},self.pages(),NOW)
+  self.assertEqual(r['policy'],'artspace-jotform-v1');self.assertEqual(r['decision'],'publish')
+
 if __name__=='__main__':unittest.main()
