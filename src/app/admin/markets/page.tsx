@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import MarketVendorApplicationEditor from "../../../components/MarketVendorApplicationEditor";
 import OrganizerField from "../../../components/OrganizerField";
 import { cleanOrganizer } from "../../../lib/marketOrganizers";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
@@ -57,7 +58,8 @@ export default function ManageMarketsPage() {
   const saving = useRef(false);
   const allowed = Boolean(userId && allowedOwner === userId);
   const dirty = Boolean(selected && draft && JSON.stringify(clean(draft)) !== JSON.stringify(draftOf(selected)));
-  const locked = busy || dirty || Boolean(preview);
+  const [resourceDirty,setResourceDirty] = useState(false);
+  const locked = busy || dirty || Boolean(preview) || resourceDirty;
 
   useEffect(() => {
     let active = true;
@@ -189,7 +191,7 @@ export default function ManageMarketsPage() {
           <button type="submit" className={buttonStyle} disabled={locked || loading}>Search</button>
           <button type="button" className={buttonStyle} disabled={locked || loading} onClick={reloadDirectory}>Refresh</button>
         </form>
-        {dirty && <p role="status" className="mt-3 text-sm text-[#80621A]">You have unsaved changes. Save or discard them before choosing another listing or searching.</p>}
+        {(dirty||resourceDirty) && <p role="status" className="mt-3 text-sm text-[#80621A]">You have unsaved changes. Save or discard them before choosing another listing or searching.</p>}
         {success && <div role="status" className="mt-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{success} {selected && <Link href={`/markets/${selected.slug}`} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">View updated listing ↗</Link>}</div>}
         {listError && <div role="alert" className="mt-5 break-words border-l-2 border-[#9B3E35] bg-[#F0E3DA] p-4 text-sm text-[#9B3E35]">Could not load the directory: {listError}</div>}
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
@@ -220,6 +222,7 @@ export default function ManageMarketsPage() {
                   <div className="flex flex-wrap gap-3 sm:col-span-2"><button type="submit" disabled={!dirty} className="heritage-button disabled:opacity-50">Review changes →</button><button type="button" disabled={!dirty} className={buttonStyle} onClick={() => { setDraft(draftOf(selected)); setSaveError(""); }}>Discard changes</button></div>
                 </fieldset>
               </form>}
+              <MarketVendorApplicationEditor key={selected.id} marketId={selected.id} onDirtyChange={setResourceDirty}/>
             </>}
           </section>
         </div>

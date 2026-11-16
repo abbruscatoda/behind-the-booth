@@ -4,7 +4,7 @@ import Link from "next/link";
 import { organizerHref } from "../../../lib/marketOrganizers";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
-import OpportunityBoard from "../../../components/OpportunityBoard";
+import MarketParticipationPanel from "../../../components/MarketParticipationPanel";
 import ReviewForm from "../../../components/ReviewForm";
 import { getRatingColor } from "../../../lib/ratingColors";
 
@@ -189,7 +189,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
 
   if (hasData && !member) {
     return (
-      <section className="mt-16" aria-labelledby="public-verdict-heading">
+      <section className="mt-8 sm:mt-10" aria-labelledby="public-verdict-heading">
         <p className="heritage-label">At a Glance</p>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-5">
           <h2 id="public-verdict-heading" className="heritage-heading text-3xl md:text-4xl">The Vendor Verdict</h2>
@@ -213,7 +213,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
         <div className="rating-color-legend" aria-label="Rating scale from 1, poor, to 5, exceptional">
           <span>1 · Poor</span><span className="rating-color-ramp" aria-hidden="true" /><span>5 · Exceptional</span>
         </div>
-        <div className="mt-4 border border-[#252521]/20 bg-[#E9E7DA] p-6 sm:p-8">
+        <div id="vendor-reviews" className="mt-4 scroll-mt-8 border border-[#252521]/20 bg-[#E9E7DA] p-6 sm:p-8">
           <p className="heritage-label">Free Member Access</p>
           <h3 className="mt-3 font-serif text-2xl font-bold sm:text-3xl">See the full vendor report.</h3>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#55554E]">Create a free account to read approved vendor reviews, explore all five rating breakdowns, see reported booth costs, and find out whether vendors would return.</p>
@@ -230,7 +230,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
 
   return (
     <>
-      <section className="mt-16" aria-labelledby="market-summary-heading">
+      <section className="mt-8 sm:mt-10" aria-labelledby="market-summary-heading">
         <p className="heritage-label">At a Glance</p>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-5">
           <h2 id="market-summary-heading" className="heritage-heading text-3xl md:text-4xl">The Vendor Verdict</h2>
@@ -384,7 +384,7 @@ function MarketProfileContent({ market }: { market: Market }) {
         {loading && <p className="mt-14 text-lg text-[#55554E]" role="status">Loading market profile...</p>}
         {!loading && error && <div className="mt-14 border border-[#252521]/20 bg-[#E9E7DA] p-8" role="alert"><h1 className="font-serif text-3xl font-bold">Unable to load market</h1><p className="mt-4 text-[#55554E]">{error}</p></div>}
         {!loading && !error && !market && <div className="mt-14 border border-[#252521]/20 bg-[#E9E7DA] p-8"><h1 className="font-serif text-3xl font-bold">Market not found</h1><p className="mt-4 text-[#55554E]">We couldn&apos;t find a market at this address. Return to the directory to explore available listings.</p></div>}
-        {!loading && !error && market && <><div className="mt-14 flex items-center gap-4"><span className="h-px w-12 bg-[#07472B]" /><p className="heritage-label">Market Field Report</p></div><h1 className="heritage-heading mt-7 max-w-5xl text-5xl md:text-7xl">{market.name}</h1><p className="mt-6 text-sm font-bold uppercase tracking-[0.16em] text-[#626C57]">{market.city}, {market.state === "NC" ? "North Carolina" : market.state}{" · "}Market / Event</p>{market.organizer && <Link href={organizerHref(market.organizer)} className="mt-5 inline-block rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-4 py-2 text-sm font-semibold text-[#07472B] hover:underline">Organized by {market.organizer} →</Link>}<p className="mt-8 max-w-3xl text-lg leading-relaxed text-[#55554E]">{market.description}</p>{market.is_sample && <div className="mt-12 border-l-2 border-[#07472B] bg-[#E9E7DA] px-6 py-5"><p className="text-sm leading-relaxed text-[#55554E]"><strong>Demonstration profile:</strong> This is a fictional event created to test Behind the Booth. It is not a real market. Reviews on this sample listing are test submissions.</p></div>}<section className="mt-14 border-t border-[#252521]/20 pt-10"><p className="heritage-label">Upcoming opportunities</p><h2 className="mt-4 font-serif text-3xl font-bold">Apply to a future market date.</h2><OpportunityBoard marketId={market.id} compact/><Link href="/opportunities" className="mt-6 inline-block font-semibold text-[#07472B] underline">Find Vendor Opportunities →</Link></section><MarketReviews key={`reviews-${market.id}`} marketId={market.id} /><ReviewForm key={`form-${market.id}`} marketId={market.id} /></>}
+        {!loading && !error && market && <><div className="mt-14 flex items-center gap-4"><span className="h-px w-12 bg-[#07472B]" /><p className="heritage-label">Market Field Report</p></div><h1 className="heritage-heading mt-7 max-w-5xl text-5xl md:text-7xl">{market.name}</h1><p className="mt-6 text-sm font-bold uppercase tracking-[0.16em] text-[#626C57]">{market.city}, {market.state === "NC" ? "North Carolina" : market.state}{" · "}Market / Event</p>{market.organizer && <Link href={organizerHref(market.organizer)} className="mt-5 inline-block rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-4 py-2 text-sm font-semibold text-[#07472B] hover:underline">Organized by {market.organizer} →</Link>}<p className="mt-8 max-w-3xl text-lg leading-relaxed text-[#55554E]">{market.description}</p>{!market.is_sample&&<MarketParticipationPanel key={market.id} marketId={market.id} marketName={market.name} slug={market.slug}/>}{market.is_sample && <div className="mt-12 border-l-2 border-[#07472B] bg-[#E9E7DA] px-6 py-5"><p className="text-sm leading-relaxed text-[#55554E]"><strong>Demonstration profile:</strong> This is a fictional event created to test Behind the Booth. It is not a real market. Reviews on this sample listing are test submissions.</p></div>}<MarketReviews key={`reviews-${market.id}`} marketId={market.id} /><ReviewForm key={`form-${market.id}`} marketId={market.id} /></>}
       </section>
       
     </main>
