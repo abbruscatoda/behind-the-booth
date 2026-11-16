@@ -157,4 +157,36 @@ class WorkerRoutingTests(unittest.TestCase):
   r=worker.existing_result(self.item(),{},self.pages(),NOW)
   self.assertEqual(r['policy'],'artspace-jotform-v1');self.assertEqual(r['decision'],'publish')
 
+
+
+class SourceSizeTests(unittest.TestCase):
+ def fetch_bytes(self,raw):
+  class Response:
+   url='https://makrs.com/moore-square-winterfaire'
+   headers={'Content-Type':'text/html;charset=utf-8'}
+   def __enter__(self):return self
+   def __exit__(self,*args):pass
+   def read(self,limit):return raw[:limit]
+  class Opener:
+   def open(self,*args,**kwargs):return Response()
+  fetcher=verifier.Fetcher();fetcher.opener=Opener()
+  with patch.object(verifier.time,'sleep'):return fetcher.get(Response.url)
+ def test_legitimate_page_over_old_limit_is_read(self):
+  raw=b'<html><body>'+b' ' * 2_400_000+b'<a href="https://www.eventeny.com/events/vendor/?id=46460">Vendor Application</a></body></html>'
+  doc,checksum=self.fetch_bytes(raw)
+  self.assertIn('https://www.eventeny.com/events/vendor/?id=46460',doc.root.links('https://makrs.com/moore-square-winterfaire'))
+  self.assertEqual(len(checksum),64)
+ def test_oversize_still_rejected(self):
+  with self.assertRaisesRegex(ValueError,'4 MB limit'):self.fetch_bytes(b' '*(verifier.MAX_SOURCE_BYTES+1))
+ def test_limit_is_inclusive(self):
+  self.fetch_bytes(b' '*verifier.MAX_SOURCE_BYTES)
+ def test_errors_are_categorized_without_arbitrary_exception_text(self):
+  self.assertEqual(verifier.source_error(ValueError('HTML source exceeds the 4 MB limit')),'HTML source exceeds the 4 MB limit')
+  self.assertEqual(verifier.source_error(RuntimeError('private diagnostic detail')),'Request or page parsing failed')
+ def test_discovery_keeps_real_source_failure_visible(self):
+  class Broken:
+   def get(self,url):raise ValueError('HTML source exceeds the 4 MB limit')
+  with patch.object(verifier,'ROOTS',['https://makrs.com/moore-square-winterfaire']):results,problems=verifier.discover(Broken(),NOW)
+  self.assertEqual(results,[]);self.assertTrue(any('4 MB limit' in p for p in problems))
+
 if __name__=='__main__':unittest.main()

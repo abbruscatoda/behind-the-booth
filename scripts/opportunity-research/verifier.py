@@ -6,6 +6,7 @@ from html import unescape
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode
 from urllib.request import Request, build_opener, HTTPRedirectHandler
+from urllib.error import HTTPError, URLError
 import hashlib, json, re, time
 
 POLICY = 'makrs-eventeny-v2'
@@ -23,6 +24,7 @@ SERIES = {
 }
 CITIES={'raleigh','durham','cary','apex','wendell','rolesville','wake forest','chapel hill','carrboro','holly springs','fuquay-varina','morrisville','garner','clayton','pittsboro','hillsborough'}
 HOSTS={'makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com'}
+MAX_SOURCE_BYTES=4_000_000
 VOID={'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
 def norm(value):return re.sub(r'[^a-z0-9]','',value.lower())
 def clean(value):return ' '.join(unescape(value).split())
@@ -90,9 +92,16 @@ class Fetcher:
   with self.opener.open(Request(url,headers={'User-Agent':'BehindTheBoothVerifier/1.0 (+https://www.behindtheboothhq.com/contact)'}),timeout=20) as response:
    if not valid_url(response.url):raise ValueError('Untrusted destination')
    if 'text/html' not in response.headers.get('Content-Type',''):raise ValueError('Expected an HTML source')
-   raw=response.read(2_000_001)
-   if len(raw)>2_000_000:raise ValueError('Source too large')
+   raw=response.read(MAX_SOURCE_BYTES+1)
+   if len(raw)>MAX_SOURCE_BYTES:raise ValueError('HTML source exceeds the 4 MB limit')
   html=raw.decode('utf-8',errors='replace');result=(Document(html),hashlib.sha256(raw).hexdigest());self.cache[url]=result;return result
+
+def source_error(error):
+ # Emit diagnostic categories, never raw response bodies or arbitrary exception text.
+ if isinstance(error,HTTPError):return f'HTTP {error.code}'
+ if isinstance(error,(TimeoutError,URLError)):return 'Network request failed or timed out'
+ if isinstance(error,ValueError) and str(error) in {'HTML source exceeds the 4 MB limit','Expected an HTML source','Source request budget reached','Untrusted URL','Untrusted destination','Redirect left trusted source hosts'}:return str(error)
+ return 'Request or page parsing failed'
 
 class Uncertain(ValueError):pass
 
@@ -178,7 +187,7 @@ def discover(fetcher,now=None):
    for link in doc.root.links(root):
     if canonical_application(link):applications.add(canonical_application(link))
     if canonical_event(link):events.add(canonical_event(link))
-  except Exception:problems.append('Official source could not be read: '+root)
+  except Exception as error:problems.append('Official source could not be read: '+root+' ('+source_error(error)+')')
  if not applications and not events:problems.append('Official discovery pages contained no recognized application links. Check for a source layout change.')
  for url in sorted(applications)[:25]:
   try:
@@ -187,14 +196,14 @@ def discover(fetcher,now=None):
     if canonical_event(event.get('url','')):events.add(canonical_event(event['url']))
    for link in doc.root.links(url):
     if canonical_event(link):events.add(canonical_event(link))
-  except Exception:problems.append('Application could not be read: '+url)
+  except Exception as error:problems.append('Application could not be read: '+url+' ('+source_error(error)+')')
  # Follow one series-date layer to get each occurrence instead of using a series date range.
  for url in sorted(events)[:25]:
   try:
    doc,_=fetcher.get(url)
    for link in doc.root.links(url):
     if canonical_event(link):events.add(canonical_event(link))
-  except Exception:problems.append('Dated source could not be read: '+url)
+  except Exception as error:problems.append('Dated source could not be read: '+url+' ('+source_error(error)+')')
  results=[];seen=set()
  for url in sorted(events)[:45]:
   try:
