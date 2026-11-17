@@ -72,21 +72,17 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
      <p className="mt-1 text-sm text-[#55554E]">{item.venue} · {item.city}, {item.state}</p>
      <p className="mt-3 text-sm"><strong>{deadline.label}:</strong> {deadline.value}</p>
      <p className="mt-2 text-sm"><strong>Listed categories:</strong> {categoryText}</p>
-     <p className="mt-1 text-xs text-[#626C57]">This list may be incomplete; other categories may be considered.</p>
+     <p className="mt-1 text-xs text-[#626C57]">Other categories may be considered.</p>
      {selected?.note&&!highlights.some(([category])=>category===filters.category)&&<p className="mt-2 text-xs leading-relaxed text-[#626C57]">{selected.note}</p>}
-     <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 border-y border-[#252521]/15 py-3 text-sm">
-       <div className="col-span-2 min-w-0 sm:col-span-1"><dt className="text-xs text-[#626C57]">{booth.label}</dt><dd>{booth.value}</dd></div>
-       <div><dt className="text-xs text-[#626C57]">Application fee</dt><dd>{fee(item.application_fee)}</dd></div>
-       <div><dt className="text-xs text-[#626C57]">Deposit</dt><dd>{fee(item.deposit)}</dd></div>
+     <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-3 border-y border-[#252521]/15 py-3 text-sm">
+       <div className="min-w-0"><dt className="text-xs text-[#626C57]">{booth.label}</dt><dd className="font-semibold">{booth.value}</dd></div>
+       {item.application_fee!==null&&<div><dt className="text-xs text-[#626C57]">Application fee</dt><dd>{fee(item.application_fee)}</dd></div>}
+       {item.deposit!==null&&<div><dt className="text-xs text-[#626C57]">Deposit</dt><dd>{fee(item.deposit)}</dd></div>}
      </dl>
      {booth.note&&<p className="mt-1 text-xs font-semibold text-[#07472B]">{booth.note}</p>}
-     <p className="mt-1 text-xs text-[#626C57]">Other booth options, add-ons, and processing fees may differ. See fee details below.</p>
-     <div className="mt-3 text-sm"><Link href={`/markets/${item.market_slug}#vendor-reviews`} className="font-semibold text-[#07472B] underline">{item.history.review_count?"Read vendor reviews →":"View market & add a review →"}</Link>
-       <p className="mt-1 text-xs text-[#626C57]">{item.history.review_count?`${item.history.overall}/5 · ${item.history.review_count} reviews from ${item.history.reviewer_count} vendors`:"No approved reviews yet"}</p>
-     </div>
      {highlights.length>0&&<ul className="mt-3 space-y-2 border-l-2 border-[#AD573B] pl-3 text-xs leading-relaxed">{highlights.map(([category,entry])=><li key={category}>
        <span className="font-semibold">{category}: {categoryEvidenceLabel(entry)}.</span> {entry.note}
-       {entry.application_deadline&&Number.isFinite(Date.parse(entry.application_deadline))&&<span> Separate deadline: {new Date(entry.application_deadline).toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"})} Eastern.</span>}
+       {entry.application_deadline&&Number.isFinite(Date.parse(entry.application_deadline))&&<span> Separate deadline: {new Date(entry.application_deadline).toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"})}.</span>}
        {entry.application_state&&safeExternalUrl(entry.source_url)&&<> <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#07472B] underline">View separate application <ExternalLinkIcon /></a></>}
      </li>)}</ul>}
      <div className="mt-4 flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
@@ -99,7 +95,17 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
        <summary className="min-h-11 cursor-pointer py-3 font-semibold text-[#07472B]">More details<span className="sr-only"> for {item.title}, {formatAttendanceDate(item.starts_on)}</span></summary>
        <div className="space-y-4 pb-2 leading-relaxed text-[#55554E]">
          {deadlineNotes.length>0&&<div><h3 className="font-semibold text-[#252521]">Deadline notes</h3><ul className="mt-2 list-disc space-y-2 pl-5">{deadlineNotes.map(note=><li key={note}>{note}</li>)}</ul></div>}
-         <div><h3 className="font-semibold text-[#252521]">Fee details</h3>{detail.fees.length>0?<ul className="mt-2 list-disc space-y-2 pl-5">{detail.fees.map(note=><li key={note}>{note}</li>)}</ul>:<p className="mt-1 text-xs">Additional fee details are unconfirmed. Check the official application.</p>}</div>
+         <div><h3 className="font-semibold text-[#252521]">Fee details</h3>
+           <dl className="mt-2 space-y-1 text-xs">
+             {item.application_fee===null&&<div><dt className="inline font-semibold">Application fee: </dt><dd className="inline">Not published</dd></div>}
+             {item.deposit===null&&<div><dt className="inline font-semibold">Deposit: </dt><dd className="inline">Not published</dd></div>}
+           </dl>
+           {detail.fees.length>0&&<ul className="mt-2 list-disc space-y-2 pl-5">{detail.fees.map(note=><li key={note}>{note}</li>)}</ul>}
+           <p className="mt-2 text-xs">{item.booth_fee===null||item.application_fee===null||item.deposit===null?"Some costs aren’t published. Confirm the total with the organizer.":"Confirm the total with the organizer, including required add-ons and processing fees."}</p>
+         </div>
+         <div className="text-sm"><Link href={`/markets/${item.market_slug}#vendor-reviews`} className="font-semibold text-[#07472B] underline">{item.history.review_count?"Read vendor reviews →":"View market & add a review →"}</Link>
+           <p className="mt-1 text-xs text-[#626C57]">{item.history.review_count?`${item.history.overall}/5 · ${item.history.review_count} reviews from ${item.history.reviewer_count} vendors`:"No approved reviews yet"}</p>
+         </div>
          <div><h3 className="font-semibold text-[#252521]">Vendor requirements</h3>{detail.requirements.length>0?<ul className="mt-2 list-disc space-y-2 pl-5">{detail.requirements.map(note=><li key={note}>{note}</li>)}</ul>:<p className="mt-1 text-xs">Specific requirements are unconfirmed. Check with the organizer.</p>}</div>
          {(listed.length>0||Object.keys(evidence).length>0||coverage.length>0)&&<details className="border-t border-[#252521]/15 pt-1">
            <summary className="min-h-11 cursor-pointer py-3 font-semibold text-[#07472B]">Category evidence & source checks<span className="sr-only"> for {item.title}, {formatAttendanceDate(item.starts_on)}</span></summary>

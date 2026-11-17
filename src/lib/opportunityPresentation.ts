@@ -5,20 +5,20 @@ type DeadlineDetails = { starts_on: string; deadline: string | null; fee_notes?:
 export function opportunityDeadline(item: DeadlineDetails) {
   const timestamp = item.deadline ? Date.parse(item.deadline) : NaN;
   if (!Number.isFinite(timestamp)) return {
-    label: "Event-date deadline", value: "Not published", note: "Confirm the cutoff for this date with the organizer.", sortAt: Infinity,
+    label: "Application deadline", value: "Confirm with organizer", note: "Confirm the cutoff for this date with the organizer.", sortAt: Infinity,
   };
   const formatted = new Date(timestamp).toLocaleString("en-US", {
     timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short",
-  }) + " Eastern";
+  });
   const seriesDeadline = /\bseries\b[^.!?]*\bdeadline\b/i.test(item.fee_notes ?? "");
   const afterEventStarts = deadlineForInput(item.deadline!) > item.starts_on;
   if (seriesDeadline || afterEventStarts) return {
-    label: "Event-date deadline", value: "Confirm with organizer",
+    label: "Application deadline", value: "Confirm with organizer",
     note: `${seriesDeadline ? "Series application deadline" : "Organizer-listed deadline"}: ${formatted}. This does not confirm the application cutoff for this event date.`,
     sortAt: Infinity,
   };
   return {
-    label: "Apply by", value: formatted,
+    label: "Application deadline", value: formatted,
     note: deadlineForInput(item.deadline!) === item.starts_on ? "The listed deadline falls on the event date. Confirm applications are accepted before the event begins." : "",
     sortAt: timestamp,
   };
