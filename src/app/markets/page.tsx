@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { organizerHref, organizerKey, organizerOptions } from "../../lib/marketOrganizers";
+import { getRatingColor } from "../../lib/ratingColors";
 import { createClient } from "../../lib/supabase/client";
 
 type Market = {
@@ -26,6 +27,8 @@ function MarketDirectory() {
     if (value) next.set("organizer", value); else next.delete("organizer");
     router.replace(`/markets${next.size ? `?${next.toString()}` : ""}`, { scroll: false });
   }
+  const [hasReviewsOnly, setHasReviewsOnly] = useState(false);
+  const [activity, setActivity] = useState<Record<string, { count: number; overall: number | null }> | null>(null);
   const [search, setSearch] = useState("");
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,11 +41,20 @@ function MarketDirectory() {
       try {
         const supabase = createClient();
 
-        const { data, error } = await supabase
-          .from("markets")
-          .select("id, slug, name, city, state, description, is_sample, organizer")
-          .eq("is_hidden", false)
-          .order("name");
+        const [marketResponse, activityResponse] = await Promise.all([
+          supabase.from("markets")
+            .select("id, slug, name, city, state, description, is_sample, organizer")
+            .eq("is_hidden", false).order("name"),
+          Promise.resolve(supabase.rpc("btb_public_market_review_activity"))
+            .catch(() => ({ data: null, error: { message: "Review activity unavailable" } })),
+        ]);
+        const { data, error } = marketResponse;
+        if (active && !activityResponse.error && Array.isArray(activityResponse.data)) {
+          const rows = activityResponse.data as {market_id: string; review_count: number; overall_rating: number | null}[];
+          setActivity(Object.fromEntries(rows.map(row => [row.market_id, {
+            count: Number(row.review_count), overall: row.overall_rating === null ? null : Number(row.overall_rating),
+          }])));
+        }
 
         if (error) throw error;
 
@@ -74,6 +86,7 @@ function MarketDirectory() {
   const organizers = organizerOptions(markets.map(market => market.organizer));
   const selectedOrganizer = organizers.find(name => organizerKey(name) === organizerKey(organizer)) ?? organizer;
   const filteredMarkets = markets.filter(market =>
+    (!hasReviewsOnly || (activity?.[market.id]?.count ?? 0) > 0) &&
     (!organizer || organizerKey(market.organizer) === organizerKey(organizer)) &&
     `${market.name} ${market.city} ${market.state} ${market.description} ${market.organizer ?? ""}`
       .toLowerCase().includes(search.trim().toLowerCase())
@@ -88,29 +101,28 @@ function MarketDirectory() {
       
 
       {/* Directory */}
-      <section className="mx-auto max-w-6xl px-6 pb-28 pt-20">
-        <div className="mb-8 flex items-center gap-4">
+      <section className="mx-auto max-w-6xl px-6 pb-16 pt-8 md:pt-10">
+        <div className="mb-4 flex items-center gap-4">
           <span className="h-px w-12 bg-[#07472B]" />
           <p className="heritage-label">The Market Directory</p>
         </div>
 
-        <h1 className="heritage-heading max-w-4xl text-5xl md:text-7xl">
+        <h1 className="heritage-heading max-w-4xl text-4xl md:text-5xl">
           Find your next
-          <br />
+          {" "}
           <span className="italic text-[#07472B]">great market.</span>
         </h1>
 
-        <p className="mt-8 max-w-2xl text-lg leading-relaxed text-[#55554E]">
+        <p className="mt-3 max-w-3xl text-base leading-relaxed text-[#55554E]">
           Explore markets, festivals, and pop-up events around Raleigh
-          and the Triangle. Every opportunity starts with better
-          information.
+          and the Triangle. Read vendor feedback before booking your booth.
         </p>
 
         {/* Search */}
-        <div className="mt-14 border-y border-[#252521]/20 py-8">
+        <div className="mt-6 border-y border-[#252521]/20 py-4">
           <label
             htmlFor="market-search"
-            className="mb-4 block text-xs font-bold uppercase tracking-[0.2em] text-[#626C57]"
+            className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-[#626C57]"
           >
             Search the Directory
           </label>
@@ -121,10 +133,10 @@ function MarketDirectory() {
             placeholder="Search markets, cities, or organizers..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-5 py-4 text-[#252521] outline-none transition placeholder:text-[#626C57] focus:border-[#07472B]"
+            className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-4 py-3 text-[#252521] outline-none transition placeholder:text-[#626C57] focus:border-[#07472B]"
           />
 
-          <div className="mt-5 grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="mt-5 grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <div><label htmlFor="organizer-filter" className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-[#626C57]">Filter by organizer</label>
               <select id="organizer-filter" value={selectedOrganizer} disabled={loading || Boolean(error)} onChange={event => selectOrganizer(event.target.value)} className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]">
                 <option value="">All organizers</option>
@@ -132,7 +144,8 @@ function MarketDirectory() {
                 {organizers.map(name => <option key={organizerKey(name)} value={name}>{name}</option>)}
               </select>
             </div>
-            {(search || organizer) && <button type="button" onClick={() => { setSearch(""); selectOrganizer(""); }} className="px-3 py-3 text-sm font-semibold text-[#07472B] underline underline-offset-4">Clear filters</button>}
+            <label className="flex min-h-11 items-center gap-3 text-sm font-semibold text-[#07472B]"><input type="checkbox" checked={hasReviewsOnly} disabled={loading || activity === null} onChange={event => setHasReviewsOnly(event.target.checked)} />Has reviews</label>
+            {(search || organizer || hasReviewsOnly) && <button type="button" onClick={() => { setSearch(""); selectOrganizer(""); setHasReviewsOnly(false); }} className="px-3 py-3 text-sm font-semibold text-[#07472B] underline underline-offset-4">Clear filters</button>}
           </div>
           <p
             className="mt-4 text-sm text-[#55554E]"
@@ -149,7 +162,8 @@ function MarketDirectory() {
           </p>
         </div>
 
-        <p className="mt-6 text-sm leading-relaxed text-[#55554E]">
+        {!loading && !error && activity === null && <p role="status" className="mt-3 text-xs text-[#626C57]">Review counts are temporarily unavailable. You can still browse markets and open their profiles.</p>}
+        <p className="mt-4 text-sm leading-relaxed text-[#55554E]">
           Can’t find the market you’re looking for?{" "}
           <Link
             href="/suggest-market"
@@ -170,7 +184,7 @@ function MarketDirectory() {
 
         {/* Market cards */}
         <div
-          className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+          className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-3"
           aria-busy={loading}
         >
           {filteredMarkets.map((market) => (
@@ -186,7 +200,7 @@ function MarketDirectory() {
                 </span>
               </div>
 
-              <div className="my-7 h-px bg-[#252521]/20" />
+              <div className="my-4 h-px bg-[#252521]/20" />
 
               <h2 className="font-serif text-3xl font-bold leading-tight">
                 {market.name}
@@ -199,11 +213,17 @@ function MarketDirectory() {
 
               {market.organizer && <Link href={organizerHref(market.organizer)} className="mt-4 self-start rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-3 py-2 text-xs font-semibold text-[#07472B] hover:underline">Organizer: {market.organizer}</Link>}
 
-              <p className="mt-6 flex-1 leading-relaxed text-[#55554E]">
+              <p className="mt-4 text-sm font-semibold" style={{color: activity?.[market.id]?.overall == null ? "#626C57" : getRatingColor(activity[market.id].overall!)}}>
+                {activity?.[market.id] ? activity[market.id].count > 0
+                  ? `${activity[market.id].overall?.toFixed(1) ?? "—"}/5 · ${activity[market.id].count} ${activity[market.id].count === 1 ? "review" : "reviews"}`
+                  : "No reviews yet"
+                  : loading ? "Loading review activity…" : "Review activity unavailable"}
+              </p>
+              <p className="mt-3 flex-1 leading-relaxed text-[#55554E]">
                 {market.description}
               </p>
 
-              <div className="mt-8 border-t border-[#252521]/20 pt-5">
+              <div className="mt-5 border-t border-[#252521]/20 pt-5">
                 <Link
                   href={`/markets/${market.slug}`}
                   className="text-sm font-semibold text-[#07472B] hover:underline"
@@ -223,7 +243,7 @@ function MarketDirectory() {
             <p className="mt-3 text-[#55554E]">
               {markets.length === 0
                 ? "There are no market listings yet. Check back soon."
-                : "Try a different search or clear the organizer filter."}
+                : "Try a different search or clear your filters, including Has reviews."}
             </p>
           </div>
         )}

@@ -70,7 +70,9 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            <p className="mt-5 text-sm font-semibold text-[#07472B]">Verified vendors. Publicly anonymous reviews.</p>
+
+            <div className="mt-6 flex flex-wrap items-center gap-4">
               <Link href="/markets" className="heritage-button">
                 Explore Markets <span aria-hidden="true">→</span>
               </Link>

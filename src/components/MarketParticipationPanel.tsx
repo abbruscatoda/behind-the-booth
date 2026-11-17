@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import { formatAttendanceDate, marketToday } from "../lib/attendanceDate";
+import { opportunityDeadline } from "../lib/opportunityPresentation";
 import { safeExternalUrl, statusLabel, type Opportunity } from "../lib/opportunities";
 
 type Resource = { application_url: string; public_note: string; checked_on: string };
@@ -14,9 +15,7 @@ type Result = { marketId: string; resource: Resource | null; items: Opportunity[
 function eventDate(item: Opportunity) {
   return formatAttendanceDate(item.starts_on) + (item.ends_on !== item.starts_on ? ` – ${formatAttendanceDate(item.ends_on)}` : "");
 }
-function shortDeadline(value: string) {
-  return new Date(value).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
-}
+
 
 export default function MarketParticipationPanel({ marketId, marketName, slug }: { marketId: string; marketName: string; slug: string }) {
   const [result, setResult] = useState<Result | null>(null);
@@ -82,14 +81,15 @@ export default function MarketParticipationPanel({ marketId, marketName, slug }:
         {!current ? <p role="status" className="mt-2 text-sm text-[#55554E]">Checking upcoming dates…</p> : current.opportunitiesError ? <p className="mt-2 text-sm text-[#55554E]">Upcoming dates are temporarily unavailable.</p> : opportunities.length ? <>
           <p className="mt-2 text-sm font-semibold text-[#07472B]">{opportunities.length} upcoming {opportunities.length === 1 ? "date" : "dates"} · {opportunities.length === 1 ? statusLabel(opportunities[0].effective_status) : "Open or limited"}</p>
           <div className="mt-3 text-sm">
-            <ul id={`market-dates-${marketId}`} className="mt-2 divide-y divide-[#252521]/15">{(showAll ? opportunities : opportunities.slice(0,3)).map(item => <li key={item.id} className="py-3 first:pt-1">
+            <ul id={`market-dates-${marketId}`} className="mt-2 divide-y divide-[#252521]/15">{(showAll ? opportunities : opportunities.slice(0,3)).map(item => {const deadline=opportunityDeadline(item);return <li key={item.id} className="py-3 first:pt-1">
               <p className="text-sm font-semibold">{eventDate(item)}</p>
-              <p className="mt-1 text-xs text-[#626C57]">{statusLabel(item.effective_status)}{item.deadline ? ` · Apply by ${shortDeadline(item.deadline)} Eastern` : " · Confirm deadline with organizer"}</p>
+              <p className="mt-1 text-xs text-[#626C57]">{statusLabel(item.effective_status)} · {deadline.label}: {deadline.value}</p>
+              {deadline.note&&<p className="mt-1 text-xs leading-relaxed text-[#626C57]">{deadline.note}</p>}
               <div className="mt-1 flex flex-wrap items-center gap-x-5">
                 {safeExternalUrl(item.application_url) && <a href={safeExternalUrl(item.application_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline">Official application ↗</a>}
                 <Link href={`/opportunities#${item.id}`} className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline">Details & save →</Link>
               </div>
-            </li>)}</ul>
+            </li>;})}</ul>
             <p className="mt-2 text-xs leading-relaxed text-[#626C57]">Acceptance and category availability are subject to organizer approval. Full fees, eligibility, sources, and saving are on the opportunity listing.</p>
             {opportunities.length > 3 && <button type="button" aria-expanded={showAll} aria-controls={`market-dates-${marketId}`} onClick={() => setExpandedMarket(showAll ? null : marketId)} className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline underline-offset-4">{showAll ? "Show fewer dates" : `Show more (${opportunities.length - 3} additional ${opportunities.length - 3 === 1 ? "date" : "dates"})`}</button>}
           </div>

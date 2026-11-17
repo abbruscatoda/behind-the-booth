@@ -11,9 +11,9 @@ export const statusLabel = (value: string) => ({ open: "Applications open", limi
 export function safeExternalUrl(value: string): string | null {
  try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password ? url.href : null; } catch { return null; }
 }
-export function filterOpportunities(items: Opportunity[], filters: { search: string; city: string; month: string; category: string; status: string }) {
+export function filterOpportunities(items: Opportunity[], filters: { search: string; city: string; month: string; category: string; status: string; includeUnconfirmed?: boolean }) {
  return items.filter(item => (!filters.search || `${item.title} ${item.organizer} ${item.city}`.toLowerCase().includes(filters.search.toLowerCase().trim()))
   && (!filters.city || item.city === filters.city) && (!filters.month || (item.starts_on <= `${filters.month}-31` && item.ends_on >= `${filters.month}-01`))
-  && (!filters.category || item.categories.includes(filters.category)) && (filters.status === "all" || (filters.status === "active" ? ["open", "limited"].includes(item.effective_status) : filters.status === item.effective_status)));
+  && (!filters.category || (item.categories.includes(filters.category) || (filters.includeUnconfirmed === true && item.categories.length === 0))) && (filters.status === "all" || (filters.status === "active" ? ["open", "limited"].includes(item.effective_status) : filters.status === item.effective_status)));
 }
 export const fee = (amount: number | null) => amount === null ? "Not published" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(amount));

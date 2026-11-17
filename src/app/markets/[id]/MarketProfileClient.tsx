@@ -187,6 +187,16 @@ function MarketReviews({ marketId }: { marketId: string }) {
   const categoryEntries = [...categoryCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   const categorizedReviews = reviews.filter((review) => review.vendor_categories.length > 0).length;
 
+  if (hasData && summary.count === 0) {
+    return <section id="vendor-reviews" className="mt-8 scroll-mt-8 border border-[#252521]/20 bg-[#E9E7DA] p-6 sm:p-8" aria-labelledby="first-review-heading">
+      <p className="heritage-label">No approved reviews yet</p>
+      <h2 id="first-review-heading" className="mt-3 font-serif text-2xl font-bold sm:text-3xl">Be the first vendor to review this market.</h2>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#55554E]">Have you sold here? Share your firsthand experience to help other vendors decide whether it is right for them. There is no vendor report to read until an approved review is published.</p>
+      <a href="#write-review" className="heritage-button mt-5">{member ? "Write a review" : "Get started with a review"} →</a>
+      <p className="mt-4 text-xs leading-relaxed text-[#626C57]">A free account and vendor verification are required to submit a review. Public reviews do not display account names or email addresses. Pending submissions stay private.</p>
+    </section>;
+  }
+
   if (hasData && !member) {
     return (
       <section className="mt-8 sm:mt-10" aria-labelledby="public-verdict-heading">
@@ -217,7 +227,6 @@ function MarketReviews({ marketId }: { marketId: string }) {
           <p className="heritage-label">Free Member Access</p>
           <h3 className="mt-3 font-serif text-2xl font-bold sm:text-3xl">See the full vendor report.</h3>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#55554E]">Create a free account to read approved vendor reviews, explore all five rating breakdowns, see reported booth costs, and find out whether vendors would return.</p>
-          {summary.count === 0 && <p className="mt-3 text-sm text-[#55554E]">This market has no approved reviews yet. Detailed feedback will appear as reviews are published.</p>}
           <div className="mt-5 flex flex-wrap items-center gap-4">
             <Link href="/login" className="heritage-button">Sign In / Create Free Account →</Link>
             <span className="text-xs text-[#626C57]">Free to join · No review required to read</span>
