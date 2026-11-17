@@ -9,10 +9,12 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.error import HTTPError, URLError
 import hashlib, json, re, time
 
-POLICY = 'makrs-eventeny-v2'
+POLICY = 'makrs-eventeny-v3-categories'
 ROOTS = ['https://makrs.com/market-applications','https://makrs.com/makrs-holiday-fest', 'https://makrs.com/moore-square-winterfaire']
 # Exact series identity; a familiar organizer alone never borrows another market's reviews.
 SERIES = {
+ 'makrsholidayfest':('makrs-holiday-fest','MAKRS Holiday Fest'),
+ 'mooresquarewinterfaire':('moore-square-winterfaire','Moore Square Winterfaire'),
  'durhamundergroundmarket':('durham-underground-market','Durham Underground Market'),
  'rtpundergroundmarket':('rtp-underground-market','RTP Underground Market'),
  'caryundergroundmarket':('cary-underground-market','Cary Underground Market'),
@@ -134,6 +136,27 @@ def validate_event(doc,now):
  if addr.get('addressRegion') not in {'NC','North Carolina'} or addr.get('addressLocality','').lower() not in CITIES:raise Uncertain('Event location is outside the Triangle source policy')
  return event,start,end,addr
 
+
+def category_research(doc,app,source_url,application_url,fetcher,now,source_hash,app_hash,series=None):
+ from category_rules import research_categories, nodes_with_parents, visible_text
+ supplements=[]
+ # Exact known market pages, tied to the same application. No search-engine
+ # snippets, unrelated vendors, photos, or event names are category evidence.
+ if series:
+  festival=series[0] in {'makrs-holiday-fest','moore-square-winterfaire'}
+  urls=[('https://makrs.com/'+series[0],'organizer_event'),('https://makrs.com/'+('festival-applications' if festival else 'market-applications'),'organizer_criteria')]
+  failures=getattr(fetcher,'category_failures',set())
+  for url,kind in urls:
+   if url in failures:continue
+   try:
+    extra,digest=fetcher.get(url)
+    if not any(application_key(link)==application_key(application_url) for link in extra.root.links(url)):continue
+    if kind=='organizer_event' and not any(n.tag in {'h1','h2','h3'} and norm(series[1]) in norm(visible_text(n)) for n,_ in nodes_with_parents(extra.root)):continue
+    supplements.append((extra,url,digest,kind))
+   except Exception:failures.add(url)
+  fetcher.category_failures=failures
+ return research_categories(doc,app,source_url,application_url,now,source_hash,app_hash,supplements)
+
 def verify(source_url,application_url,fetcher,now=None):
  """Returns verified facts or raises Uncertain. No content supplied by an AI is trusted."""
  now=now or datetime.now(timezone.utc)
@@ -169,13 +192,18 @@ def verify(source_url,application_url,fetcher,now=None):
  amounts=set(re.findall(r'\$([\d,]+(?:\.\d{1,2})?)\s+(?:vendor|booth) fee\b',card_text,re.I))
  fee=float(next(iter(amounts)).replace(',','')) if len(amounts)==1 else None
  series=exact_series(event['name'])
- return {'policy':POLICY,'decision':('closed' if status=='closed' else 'publish') if series else 'review','reason':'' if series else 'New or unmatched market profile: confirm identity and create/link a profile.',
+ category_evidence,category_conflicts=category_research(doc,app,source_url,application_url,fetcher,now,source_hash,app_hash,series)
+ result = {'policy':POLICY,'decision':('closed' if status=='closed' else 'publish') if series else 'review','reason':'' if series else 'New or unmatched market profile: confirm identity and create/link a profile.',
   'checked_at':now.isoformat(),'source_hash':source_hash,'application_hash':app_hash,'evidence':card_text[:600],
   'candidate':{'title':series[1] if series else event['name'][:160], 'market_slug':series[0] if series else None,'organizer':'The MAKRS Society', 'city':addr['addressLocality'],'state':'NC',
    'venue':', '.join(filter(None,[event['location'].get('name'),addr.get('streetAddress')])), 'starts_on':start.date().isoformat(),'ends_on':end.date().isoformat(), 'deadline':deadline.isoformat() if deadline else None,
-   'application_url':application_url,'source_url':source_url,'availability':status,'booth_fee':fee,'application_fee':None,'deposit':None,'categories':[],
+   'application_url':application_url,'source_url':source_url,'availability':status,'booth_fee':fee,'application_fee':None,'deposit':None,'categories':sorted(c for c,e in category_evidence['categories'].items() if e['status']=='eligible'),
    'fee_notes':'Processing fees may be additional. Other booth types have separate pricing. Confirm totals with the organizer.',
    'eligibility':'The official event page lists an active application for this date. Acceptance and category availability are subject to organizer approval; remaining booth spaces are not published.'+(' No MLM businesses.' if re.search(r'no\s+mlm',text,re.I) else '')}}
+ result['category_evidence']=category_evidence
+ if category_conflicts and result['decision']=='publish':
+  result['decision']='review';result['reason']='Conflicting category statements require review: '+', '.join(category_conflicts);result['category_conflicts']=category_conflicts
+ return result
 
 
 def discover(fetcher,now=None):
@@ -310,10 +338,16 @@ def verify_artspace(item,fetcher,now):
   if not any(live_form(form) for form in forms):raise Uncertain('Artspace form has no enabled submission controls; verify manually')
  slug=item.get('market_slug')
  linked=bool(item.get('market_id') and slug and norm(item.get('market_name','')) in ARTSPACE_NAMES and norm(item.get('market_organizer',''))=='artspace' and item.get('market_city','').lower()=='raleigh' and item.get('market_state')=='NC')
- return {'policy':'artspace-jotform-v1','decision':('closed' if closed else 'publish') if linked else 'review','reason':'' if linked else 'Confirm and link the Artspace market profile once before automatic updates.',
+ category_evidence,category_conflicts=category_research(source,app,ARTSPACE_SOURCE,ARTSPACE_APP,fetcher,now,source_hash,app_hash)
+ result = {'policy':'artspace-jotform-v2-categories','decision':('closed' if closed else 'publish') if linked else 'review','reason':'' if linked else 'Confirm and link the Artspace market profile once before automatic updates.',
  'checked_at':now.isoformat(),'source_hash':source_hash,'application_hash':app_hash,'evidence':clean(text)[:600],
  'candidate':{'title':ARTSPACE_TITLE,'market_slug':slug,'organizer':'Artspace','city':'Raleigh','state':'NC','venue':'Artspace, 201 E Davie Street',
  'starts_on':event_date.isoformat(),'ends_on':event_date.isoformat(),'deadline':deadline.isoformat(),'application_url':ARTSPACE_APP,'source_url':ARTSPACE_SOURCE,'availability':status,
- 'booth_fee':None,'application_fee':0,'deposit':None,'categories':[],
+ 'booth_fee':None,'application_fee':0,'deposit':None,'categories':sorted(c for c,e in category_evidence['categories'].items() if e['status']=='eligible'),
  'fee_notes':'See the official application for current half-table and full-table pricing. '+note,
  'eligibility':'The official organizer links a dated vendor form with enabled submission controls. Acceptance is juried; a working form does not guarantee acceptance or category availability. '+note}}
+
+ result['category_evidence']=category_evidence
+ if category_conflicts and result['decision']=='publish':
+  result['decision']='review';result['reason']='Conflicting category statements require review: '+', '.join(category_conflicts);result['category_conflicts']=category_conflicts
+ return result

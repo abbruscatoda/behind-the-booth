@@ -26,10 +26,9 @@ export function opportunityCategoryStatus(item: Opportunity, category: string, n
   const evidence = activeCategoryEvidence(item, now);
   if (evidence[category]) return evidence[category].status;
   if (item.categories.includes(category)) return "eligible";
-  // A researched subset is not a complete list: all remaining categories stay
-  // unknown. Preserve the older explicit-list behavior for legacy records.
-  if (Object.keys(evidence).length || item.categories.length === 0) return "unknown";
-  return "excluded";
+  // All lists are partial. Only an explicit, fresh category fact can exclude a
+  // type; absence from either a manual list or researched subset is unknown.
+  return "unknown";
 }
 
 export function listedOpportunityCategories(item: Opportunity, now = Date.now()) {

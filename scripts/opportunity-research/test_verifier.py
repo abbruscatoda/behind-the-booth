@@ -155,7 +155,7 @@ class WorkerRoutingTests(unittest.TestCase):
  pages=ArtspaceTests.pages
  def test_worker_routes_artspace_to_official_form_reader(self):
   r=worker.existing_result(self.item(),{},self.pages(),NOW)
-  self.assertEqual(r['policy'],'artspace-jotform-v1');self.assertEqual(r['decision'],'publish')
+  self.assertEqual(r['policy'],'artspace-jotform-v2-categories');self.assertEqual(r['decision'],'publish')
 
 
 

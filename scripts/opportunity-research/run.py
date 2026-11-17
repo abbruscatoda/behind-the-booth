@@ -64,7 +64,7 @@ def run(dry_run=False):
   def apply(item,result):
    if dry_run:
     counts['proposed_'+result['decision']]+=1
-    print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url')},ensure_ascii=False));return
+    print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()}},ensure_ascii=False));return
    response=db.rpc('btb_research_apply',{'p_id':item['id'] if item else None,'p_result':result,'p_expected_updated_at':item['updated_at'] if item else None})
    counts[response['action']]+=1
   for item in context['items']:

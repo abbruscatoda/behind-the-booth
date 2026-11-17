@@ -64,7 +64,8 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
      <p className="mt-3 text-base font-semibold">{formatAttendanceDate(item.starts_on)}{item.ends_on!==item.starts_on?` – ${formatAttendanceDate(item.ends_on)}`:""}</p>
      <p className="mt-1 text-sm text-[#55554E]">{item.venue} · {item.city}, {item.state}</p>
      <p className="mt-3 text-sm"><strong>{deadline.label}:</strong> {deadline.value}</p>
-     <p className="mt-2 text-sm"><strong>Categories:</strong> {categoryText}</p>
+     <p className="mt-2 text-sm"><strong>Listed categories:</strong> {categoryText}</p>
+     <p className="mt-1 text-xs text-[#626C57]">This list may be incomplete; other categories may be considered.</p>
      {selected?.note&&<p className="mt-2 text-xs leading-relaxed text-[#626C57]">{selected.note}</p>}
      <dl className="mt-3 grid grid-cols-3 gap-3 border-y border-[#252521]/15 py-3 text-sm">
        <div><dt className="text-xs text-[#626C57]">Booth / table</dt><dd>{fee(item.booth_fee)}</dd></div>
