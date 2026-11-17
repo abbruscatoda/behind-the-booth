@@ -32,3 +32,17 @@ export function publicOpportunityCopy(value: string): string {
     .replace(/Verify remaining options; do not label generally open\./gi, "Confirm remaining availability with the organizer before applying.")
     .replace(/\bdo not label generally open\.?/gi, "Confirm which booth types are still available.");
 }
+
+// The worker publishes both option prices together. Only show a range when its
+// minimum agrees with the saved fee; manual edits cannot leave a stale range.
+export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes: string}) {
+  const options = /Table options: half table \$([\d,]+(?:\.\d{1,2})?); full table \$([\d,]+(?:\.\d{1,2})?)\./i.exec(item.fee_notes);
+  const money = (value: number) => new Intl.NumberFormat("en-US", {style:"currency", currency:"USD"}).format(value);
+  if (options) {
+    const half = Number(options[1].replaceAll(",", "")), full = Number(options[2].replaceAll(",", ""));
+    if (Number.isFinite(half) && Number.isFinite(full) && half > 0 && full >= half && item.booth_fee !== null && Number(item.booth_fee) === half) {
+      return {label:"Table options",value:half === full ? money(half) : `${money(half)}–${money(full)}`,note:`Half table ${money(half)} · Full table ${money(full)}`};
+    }
+  }
+  return {label:"Standard booth / table",value:item.booth_fee === null ? "Not published" : money(Number(item.booth_fee)),note:""};
+}

@@ -74,7 +74,7 @@ export default function MarketParticipationPanel({ marketId, marketName, slug }:
               <a href={report} className="inline-flex min-h-9 items-center font-semibold text-[#07472B] underline">Report an outdated link</a>
             </div>
           </details>
-        </> : <p className="mt-2 text-sm text-[#55554E]">{current.resourceError ? "Application information is temporarily unavailable." : "No verified general application link yet."}</p>}
+        </> : <p className="mt-2 text-sm text-[#55554E]">{current.resourceError ? "The general application guide is temporarily unavailable. Dated opportunities are shown separately." : opportunities.length ? "Use the dated application links under Upcoming opportunities. No separate general or seasonal guide is listed." : "No general or seasonal application guide is listed. Check with the organizer for future dates."}</p>}
       </div>
       <div className="min-w-0 border-t border-[#252521]/15 pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0">
         <p className="text-xs font-bold uppercase tracking-wider text-[#626C57]">Upcoming opportunities</p>

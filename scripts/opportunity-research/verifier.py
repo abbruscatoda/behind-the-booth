@@ -356,14 +356,17 @@ def verify_artspace(item,fetcher,now):
   if not any(live_form(form) for form in forms):raise Uncertain('Artspace form has no enabled submission controls; verify manually')
  slug=item.get('market_slug')
  linked=bool(item.get('market_id') and slug and norm(item.get('market_name','')) in ARTSPACE_NAMES and norm(item.get('market_organizer',''))=='artspace' and item.get('market_city','').lower()=='raleigh' and item.get('market_state')=='NC')
+ from artspace_details import form_details,ConflictingTablePrices
+ try:details=form_details(app)
+ except ConflictingTablePrices as error:raise Uncertain(str(error))
  category_evidence,category_conflicts=category_research(source,app,ARTSPACE_SOURCE,ARTSPACE_APP,fetcher,now,source_hash,app_hash)
  result = {'policy':'artspace-jotform-v3-details','decision':('closed' if closed else 'publish') if linked else 'review','reason':'' if linked else 'Confirm and link the Artspace market profile once before automatic updates.',
  'checked_at':now.isoformat(),'source_hash':source_hash,'application_hash':app_hash,'evidence':clean(text)[:600],
  'candidate':{'title':ARTSPACE_TITLE,'market_slug':slug,'organizer':'Artspace','city':'Raleigh','state':'NC','venue':'Artspace, 201 E Davie Street',
  'starts_on':event_date.isoformat(),'ends_on':event_date.isoformat(),'deadline':deadline.isoformat(),'application_url':ARTSPACE_APP,'source_url':ARTSPACE_SOURCE,'availability':status,
- 'booth_fee':None,'application_fee':0,'deposit':None,'categories':sorted(c for c,e in category_evidence['categories'].items() if e['status']=='eligible'),
- 'fee_notes':'See the official application for current half-table and full-table pricing. '+note,
- 'eligibility':'The official organizer links a dated vendor form with enabled submission controls. Acceptance is juried; a working form does not guarantee acceptance or category availability. '+note}}
+ 'booth_fee':details['booth_fee'],'application_fee':0,'deposit':None,'categories':sorted(c for c,e in category_evidence['categories'].items() if e['status']=='eligible'),
+ 'fee_notes':(details['fee_notes'] or 'Table prices are unconfirmed; check the official application.')+' '+note,
+ 'eligibility':(details['requirements']+' ' if details['requirements'] else '')+'The official organizer links a dated vendor form with enabled submission controls. Acceptance is juried; a working form does not guarantee acceptance or category availability. '+note}}
 
  result['category_evidence']=category_evidence
  result['category_warnings']=category_evidence.get('warnings',[])

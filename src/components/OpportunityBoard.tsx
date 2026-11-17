@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import { activeCategoryEvidence, categoryEvidenceLabel, categoryHighlights, listedOpportunityCategories, opportunityCategoryStatus } from "../lib/opportunityCategories";
-import { opportunityDeadline, publicOpportunityCopy } from "../lib/opportunityPresentation";
+import { opportunityDeadline, opportunityBoothPrice, publicOpportunityCopy } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
 import { filterOpportunities, fee, safeExternalUrl, statusLabel, VENDOR_CATEGORIES, type Opportunity } from "../lib/opportunities";
 
@@ -48,6 +48,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  {error?<div role="alert" className="mt-6"><p>{error}</p><button onClick={()=>setRefresh(value=>value+1)} className="mt-3 font-semibold underline">Refresh opportunities</button></div>:loading?<p role="status" className="mt-6">Loading opportunities…</p>:visible.length===0?<p className="mt-6 text-[#55554E]">{compact?"No recently verified open applications are listed for this market right now.":"No opportunities match these filters. Try another location or month, include unconfirmed categories, or show all statuses."}</p>:<div className={`mt-5 grid gap-5 ${compact?"":"lg:grid-cols-2"}`}>
  {(compact?visible.slice(0,3):visible).map(item=>{
    const deadline=opportunityDeadline(item);
+   const booth=opportunityBoothPrice(item);
    const evidence=activeCategoryEvidence(item);
    const listed=listedOpportunityCategories(item);
    const highlights=categoryHighlights(item);
@@ -74,10 +75,11 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
      </li>)}</ul>}
      {selected?.note&&!highlights.some(([category])=>category===filters.category)&&<p className="mt-2 text-xs leading-relaxed text-[#626C57]">{selected.note}</p>}
      <dl className="mt-3 grid grid-cols-3 gap-3 border-y border-[#252521]/15 py-3 text-sm">
-       <div><dt className="text-xs text-[#626C57]">Standard booth / table</dt><dd>{fee(item.booth_fee)}</dd></div>
+       <div><dt className="text-xs text-[#626C57]">{booth.label}</dt><dd>{booth.value}</dd></div>
        <div><dt className="text-xs text-[#626C57]">Application fee</dt><dd>{fee(item.application_fee)}</dd></div>
        <div><dt className="text-xs text-[#626C57]">Deposit</dt><dd>{fee(item.deposit)}</dd></div>
      </dl>
+     {booth.note&&<p className="mt-1 text-xs font-semibold text-[#07472B]">{booth.note}</p>}
      <p className="mt-1 text-xs text-[#626C57]">Other booth options, add-ons, and processing fees may differ. See fee details below.</p>
      <div className="mt-3 text-sm"><Link href={`/markets/${item.market_slug}#vendor-reviews`} className="font-semibold text-[#07472B] underline">{item.history.review_count?"Read vendor reviews →":"View market & add a review →"}</Link>
        <p className="mt-1 text-xs text-[#626C57]">{item.history.review_count?`${item.history.overall}/5 · ${item.history.review_count} reviews from ${item.history.reviewer_count} vendors`:"No approved reviews yet"}</p>
