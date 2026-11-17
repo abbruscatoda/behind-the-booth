@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import { activeCategoryEvidence, categoryEvidenceLabel, categoryHighlights, listedOpportunityCategories, opportunityCategoryStatus } from "../lib/opportunityCategories";
+import { currentCoverage, coverageLabels, coverageStatus } from "../lib/researchCoverage";
 import { opportunityDeadline, opportunityBoothPrice, publicOpportunityCopy } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
 import { filterOpportunities, fee, safeExternalUrl, statusLabel, VENDOR_CATEGORIES, type Opportunity } from "../lib/opportunities";
@@ -52,6 +53,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
    const evidence=activeCategoryEvidence(item);
    const listed=listedOpportunityCategories(item);
    const highlights=categoryHighlights(item);
+   const coverage=currentCoverage(item.research_coverage);
    const selected=filters.category ? evidence[filters.category] : undefined;
    const categoryText=filters.category
      ? opportunityCategoryStatus(item,filters.category)==="eligible" ? `${filters.category} — listed by organizer` : `${filters.category} — unconfirmed`
@@ -104,6 +106,14 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
              <p className="mt-1 text-xs text-[#626C57]">Category checked {new Date(entry.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(entry.source_url)&&<> · <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="underline">Category source ↗</a></>}</p>
            </li>)}</ul>}
          </div>
+         {coverage.length>0&&<div><h3 className="font-semibold text-[#252521]">What the sources confirm</h3>
+           <p className="mt-1 text-xs">These checks describe what the official pages support. They do not guarantee acceptance, space, or that all requirements have been captured.</p>
+           <ul className="mt-3 grid gap-3 sm:grid-cols-2">{coverage.map(([key,fact])=><li key={key} className="border border-[#252521]/15 p-3">
+             <p className="font-semibold">{coverageLabels[key]}: {coverageStatus[fact.status]}</p>
+             <p className="mt-1 text-xs leading-relaxed">{fact.summary}</p>
+             <p className="mt-2 text-xs">Checked {new Date(fact.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(fact.source_url)&&<> · <a href={safeExternalUrl(fact.source_url)!} target="_blank" rel="noopener noreferrer" className="text-[#07472B] underline">Official source ↗</a></>}</p>
+           </li>)}</ul>
+         </div>}
          <p className="text-xs">Review scores reflect past market experiences, not this upcoming date. Confirm current fees, requirements, and availability before applying.</p>
          {safeExternalUrl(item.source_url)&&<a href={safeExternalUrl(item.source_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">Official source ↗</a>}
        </div>

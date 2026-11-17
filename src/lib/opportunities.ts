@@ -1,9 +1,11 @@
+import type { ResearchCoverage } from "./researchCoverage";
 import { opportunityCategoryStatus, type CategoryEvidence } from "./opportunityCategories";
 
 export const VENDOR_CATEGORIES = ["Food & Beverages", "Food Trucks", "Art & Photography", "Handmade Crafts", "Jewelry & Accessories", "Clothing & Vintage", "Bath, Body & Beauty", "Plants & Farm Products", "Pet Products", "Services", "Other"];
 export type Opportunity = {
  id: string; title: string; organizer: string; city: string; state: string; venue: string;
  starts_on: string; ends_on: string; deadline: string | null; application_url: string; source_url: string;
+ research_coverage?: ResearchCoverage;
  category_evidence?: Record<string, CategoryEvidence>;
  categories: string[]; booth_fee: number | null; application_fee: number | null; deposit: number | null;
  fee_notes: string; eligibility: string; verified_at: string | null; effective_status: string;

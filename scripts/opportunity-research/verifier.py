@@ -9,7 +9,7 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.error import HTTPError, URLError
 import hashlib, json, re, time
 
-POLICY = 'makrs-eventeny-v4-details'
+POLICY = 'makrs-eventeny-v5-quality'
 ROOTS = ['https://makrs.com/market-applications','https://makrs.com/makrs-holiday-fest', 'https://makrs.com/moore-square-winterfaire']
 # Exact series identity; a familiar organizer alone never borrows another market's reviews.
 SERIES = {
@@ -217,7 +217,9 @@ def verify(source_url,application_url,fetcher,now=None):
    'eligibility':(details['requirements']+' ' if details['requirements'] else '')+'The official event page lists an active application for this date. Acceptance and category availability are subject to organizer approval; remaining booth spaces are not published.'}}
  if fee_conflict and result['decision']=='publish':
   result['decision']='review';result['reason']='Published booth prices disagree between event and application; confirm the applicable fee.'
+ from research_quality import build_quality
  result['category_evidence']=category_evidence
+ result['research_quality']=build_quality(result,app,details['requirements'])
  result['category_warnings']=category_evidence.get('warnings',[])
  if category_conflicts and result['decision']=='publish':
   result['decision']='review';result['reason']='Conflicting category statements require review: '+', '.join(category_conflicts);result['category_conflicts']=category_conflicts
@@ -360,15 +362,17 @@ def verify_artspace(item,fetcher,now):
  try:details=form_details(app)
  except ConflictingTablePrices as error:raise Uncertain(str(error))
  category_evidence,category_conflicts=category_research(source,app,ARTSPACE_SOURCE,ARTSPACE_APP,fetcher,now,source_hash,app_hash)
- result = {'policy':'artspace-jotform-v3-details','decision':('closed' if closed else 'publish') if linked else 'review','reason':'' if linked else 'Confirm and link the Artspace market profile once before automatic updates.',
+ result = {'policy':'artspace-jotform-v4-quality','decision':('closed' if closed else 'publish') if linked else 'review','reason':'' if linked else 'Confirm and link the Artspace market profile once before automatic updates.',
  'checked_at':now.isoformat(),'source_hash':source_hash,'application_hash':app_hash,'evidence':clean(text)[:600],
  'candidate':{'title':ARTSPACE_TITLE,'market_slug':slug,'organizer':'Artspace','city':'Raleigh','state':'NC','venue':'Artspace, 201 E Davie Street',
  'starts_on':event_date.isoformat(),'ends_on':event_date.isoformat(),'deadline':deadline.isoformat(),'application_url':ARTSPACE_APP,'source_url':ARTSPACE_SOURCE,'availability':status,
- 'booth_fee':details['booth_fee'],'application_fee':0,'deposit':None,'categories':sorted(c for c,e in category_evidence['categories'].items() if e['status']=='eligible'),
+ 'booth_fee':details['booth_fee'],'application_fee':0 if re.search(r'no application fee|free to apply',combined,re.I) else None,'deposit':None,'categories':sorted(c for c,e in category_evidence['categories'].items() if e['status']=='eligible'),
  'fee_notes':(details['fee_notes'] or 'Table prices are unconfirmed; check the official application.')+' '+note,
  'eligibility':(details['requirements']+' ' if details['requirements'] else '')+'The official organizer links a dated vendor form with enabled submission controls. Acceptance is juried; a working form does not guarantee acceptance or category availability. '+note}}
 
+ from research_quality import build_quality
  result['category_evidence']=category_evidence
+ result['research_quality']=build_quality(result,app,details['requirements'])
  result['category_warnings']=category_evidence.get('warnings',[])
  if category_conflicts and result['decision']=='publish':
   result['decision']='review';result['reason']='Conflicting category statements require review: '+', '.join(category_conflicts);result['category_conflicts']=category_conflicts

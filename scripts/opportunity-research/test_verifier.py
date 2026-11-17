@@ -114,7 +114,7 @@ class ArtspaceTests(unittest.TestCase):
  def item(self):return {'title':verifier.ARTSPACE_TITLE,'source_url':verifier.ARTSPACE_SOURCE,'application_url':verifier.ARTSPACE_APP,'starts_on':'2026-12-13','ends_on':'2026-12-13','market_id':'known','market_slug':'artspace-holiday-mini-mall','market_name':verifier.ARTSPACE_TITLE,'market_organizer':'Artspace','market_city':'Raleigh','market_state':'NC'}
  def pages(self,extra='',form_extra='',submit=''):
   source=f'<h2>Call for Holiday Mini Mall Vendors</h2><p>Event: The Mini Mall at Artspace, Holiday Edition. December 13, 2026.</p><p>Call closes: Wednesday, November 26, 11:59pm</p><a href="{verifier.ARTSPACE_APP}">Apply</a><p>{extra}</p><h2>Holiday Mini Mall Vendors (closed)</h2><p>Applications are closed. December 14, 2025.</p>'
-  app=f'<h1>{verifier.ARTSPACE_TITLE}</h1><p>December 13, 2026. Contact info@artspacenc.org</p><p>Application Deadline: Wednesday, November 25, 2026, 11:59 PM</p><p>{form_extra}</p><form method="post" action="https://submit.jotform.com/submit/252944311617153"><input type="email"><button type="submit" {submit}>Submit</button></form>'
+  app=f'<h1>{verifier.ARTSPACE_TITLE}</h1><p>December 13, 2026. Contact info@artspacenc.org. No application fee.</p><p>Application Deadline: Wednesday, November 25, 2026, 11:59 PM</p><p>{form_extra}</p><form method="post" action="https://submit.jotform.com/submit/252944311617153"><input type="email"><button type="submit" {submit}>Submit</button></form>'
   class Pages:
    def get(self,url):return verifier.Document(source if url==verifier.ARTSPACE_SOURCE else app),'a'*64
   return Pages()
@@ -155,7 +155,7 @@ class WorkerRoutingTests(unittest.TestCase):
  pages=ArtspaceTests.pages
  def test_worker_routes_artspace_to_official_form_reader(self):
   r=worker.existing_result(self.item(),{},self.pages(),NOW)
-  self.assertEqual(r['policy'],'artspace-jotform-v3-details');self.assertEqual(r['decision'],'publish')
+  self.assertEqual(r['policy'],'artspace-jotform-v4-quality');self.assertEqual(r['decision'],'publish')
 
 
 

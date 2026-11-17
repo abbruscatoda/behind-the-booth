@@ -5,6 +5,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler
+from research_quality import apply_quality_gate
 from verifier import Fetcher, discover, verify, canonical_event, canonical_application, application_key, norm, Uncertain, verify_artspace
 
 class NoRedirect(HTTPRedirectHandler):
@@ -62,9 +63,10 @@ def run(dry_run=False):
   found={(r['candidate']['application_url'],r['candidate']['starts_on']):r for r in results}
   known={(canonical_application(i['application_url']),i['starts_on']) for i in context['items']}
   def apply(item,result):
+   result=apply_quality_gate(item,result)
    if dry_run:
     counts['proposed_'+result['decision']]+=1
-    print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility','')},ensure_ascii=False));return
+    print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'research_quality':result.get('research_quality'),'quality_issues':result.get('quality_issues',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility','')},ensure_ascii=False));return
    if result.get('category_warnings'):print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'category_warnings':result['category_warnings']},ensure_ascii=False))
    response=db.rpc('btb_research_apply',{'p_id':item['id'] if item else None,'p_result':result,'p_expected_updated_at':item['updated_at'] if item else None})
    counts[response['action']]+=1
