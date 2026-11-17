@@ -1,18 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getPublicMarket, listPublicMarkets } from "../../../lib/publicMarkets";
+import { getPublicMarket } from "../../../lib/publicMarkets";
 import { pageMetadata, isIndexableMarket } from "../../../lib/siteMetadata";
 import MarketProfileClient from "./MarketProfileClient";
 
 export const instant = false;
 
 type Props = { params: Promise<{ id: string }> };
-
-export async function generateStaticParams() {
-  const markets = await listPublicMarkets();
-  return markets.map(market => ({ id: market.slug }));
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;

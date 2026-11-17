@@ -9,7 +9,7 @@ import { createClient } from "../../../lib/supabase/client";
 
 type Market = {
   id: string; slug: string; name: string; city: string; state: string;
-  description: string; website_url: string | null; is_sample: boolean; revision: string; organizer: string | null;
+  description: string; website_url: string | null; is_sample: boolean; is_hidden: boolean; revision: string; organizer: string | null;
 };
 type Draft = { name: string; city: string; state: string; description: string; website: string; organizer: string };
 type Results = { items: Market[]; total: number };
@@ -173,6 +173,32 @@ export default function ManageMarketsPage() {
     } catch (error) { if (identity.current === actor) setSaveError(errorMessage(error)); }
     finally { saving.current = false; setBusy(false); }
   }
+  async function changeVisibility() {
+    if (!selected || !allowed || !userId || locked || saving.current) return;
+    const market = selected;
+    const actor = userId;
+    const hidden = !market.is_hidden;
+    if (!window.confirm(hidden
+      ? `Hide “${market.name}”? Its public profile and linked opportunities will be unavailable. Reviews, history, and its permanent URL are preserved. You can unhide it here later.`
+      : `Unhide “${market.name}”? Its public profile will return. Linked opportunities still follow their publication, status, and deadline rules.`)) return;
+    saving.current = true; setBusy(true); setSaveError(""); setSuccess("");
+    try {
+      const supabase = createClient();
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (authData.user?.id !== actor || identity.current !== actor) throw new Error("Your signed-in account changed. Reload before saving.");
+      const { data, error } = await supabase.rpc("btb_admin_set_market_visibility", {
+        p_id: market.id, p_revision: market.revision, p_hidden: hidden,
+      });
+      if (error) throw error;
+      if (identity.current !== actor) return;
+      const updated = data as Market;
+      setSelected(updated); setDraft(draftOf(updated)); setPreview(null);
+      setSuccess(hidden ? "Market hidden. Reviews, history, and its URL are preserved." : "Market unhidden. Normal opportunity publication and deadline rules still apply.");
+      setRefresh(n => n + 1);
+    } catch (error) { if (identity.current === actor) setSaveError(errorMessage(error)); }
+    finally { saving.current = false; setBusy(false); }
+  }
   function reloadDirectory() {
     if (busy) return;
     setSelected(null); setDraft(null); setPreview(null); setSaveError(""); setSuccess(""); setRefresh(n => n + 1);
@@ -192,19 +218,24 @@ export default function ManageMarketsPage() {
           <button type="button" className={buttonStyle} disabled={locked || loading} onClick={reloadDirectory}>Refresh</button>
         </form>
         {(dirty||resourceDirty) && <p role="status" className="mt-3 text-sm text-[#80621A]">You have unsaved changes. Save or discard them before choosing another listing or searching.</p>}
-        {success && <div role="status" className="mt-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{success} {selected && <Link href={`/markets/${selected.slug}`} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">View updated listing ↗</Link>}</div>}
+        {success && <div role="status" className="mt-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{success} {selected && !selected.is_hidden && <Link href={`/markets/${selected.slug}`} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">View updated listing ↗</Link>}</div>}
         {listError && <div role="alert" className="mt-5 break-words border-l-2 border-[#9B3E35] bg-[#F0E3DA] p-4 text-sm text-[#9B3E35]">Could not load the directory: {listError}</div>}
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
           <section aria-label="Market listings" className="min-w-0 rounded-sm border border-[#252521]/20 bg-[#FFFCF6]">
             <div className="border-b border-[#252521]/15 px-5 py-4"><h2 className="font-serif text-xl font-bold">Find a listing</h2>{results && <p className="mt-1 text-xs text-[#626C57]">{results.total} {results.total === 1 ? "market" : "markets"} found</p>}</div>
-            {loading ? <p role="status" className="p-5 text-sm">Loading markets…</p> : !results ? <p className="p-5 text-sm text-[#626C57]">Use Refresh to load the directory.</p> : !results.items.length ? <p className="p-5 text-sm text-[#626C57]">No matching markets. Try a shorter name or another city.</p> : <ul className="divide-y divide-[#252521]/10">{results.items.map(market => <li key={market.id}><button type="button" disabled={locked} aria-pressed={selected?.id === market.id} onClick={() => choose(market)} className={`w-full px-5 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${selected?.id === market.id ? "border-l-4 border-[#07472B] bg-[#E9E7DA]" : "hover:bg-[#F4F0E6]"}`}><span className="block break-words text-sm font-bold">{market.name}</span><span className="mt-1 block text-xs text-[#626C57]">{market.city}, {market.state}{market.is_sample ? " · Demonstration" : ""}</span></button></li>)}</ul>}
+            {loading ? <p role="status" className="p-5 text-sm">Loading markets…</p> : !results ? <p className="p-5 text-sm text-[#626C57]">Use Refresh to load the directory.</p> : !results.items.length ? <p className="p-5 text-sm text-[#626C57]">No matching markets. Try a shorter name or another city.</p> : <ul className="divide-y divide-[#252521]/10">{results.items.map(market => <li key={market.id}><button type="button" disabled={locked} aria-pressed={selected?.id === market.id} onClick={() => choose(market)} className={`w-full px-5 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${selected?.id === market.id ? "border-l-4 border-[#07472B] bg-[#E9E7DA]" : "hover:bg-[#F4F0E6]"}`}><span className="block break-words text-sm font-bold">{market.name}</span><span className="mt-1 block text-xs text-[#626C57]">{market.city}, {market.state}{market.is_sample ? " · Demonstration" : ""}{market.is_hidden ? " · Hidden" : ""}</span></button></li>)}</ul>}
             {results && results.total > 20 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#252521]/15 p-4 text-xs"><span>{offset + 1}–{Math.min(offset + 20, results.total)} of {results.total}</span><div className="flex gap-2"><button type="button" className={buttonStyle} disabled={locked || !offset} onClick={() => { setSelected(null); setDraft(null); setOffset(n => Math.max(0, n - 20)); }}>Previous</button><button type="button" className={buttonStyle} disabled={locked || offset + 20 >= results.total} onClick={() => { setSelected(null); setDraft(null); setOffset(n => n + 20); }}>Next</button></div></div>}
           </section>
           <section aria-label="Market editor" className="min-w-0 rounded-sm border border-[#252521]/20 bg-[#FFFCF6] p-5 md:p-7">
             {!selected || !draft ? <div className="py-8"><p className="heritage-label">Keep the details current</p><h2 className="mt-4 font-serif text-2xl font-bold">Choose a market to edit.</h2><p className="mt-3 text-sm leading-relaxed text-[#55554E]">Select a listing from the directory. You can update its name, location, organizer, description, and website.</p></div> : <>
               <h2 className="break-words font-serif text-2xl font-bold">{selected.name}</h2>
               <p className="mt-2 break-all text-xs text-[#626C57]">Permanent URL: /markets/{selected.slug}</p>
-              <Link href={`/markets/${selected.slug}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#07472B] underline underline-offset-4">View current public listing ↗</Link>
+              {!selected.is_hidden && <Link href={`/markets/${selected.slug}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#07472B] underline underline-offset-4">View current public listing ↗</Link>}
+              <div className="mt-4 border-l-2 border-[#07472B] bg-[#F4F0E6] p-4">
+                <p className="text-sm font-semibold">Visibility: {selected.is_hidden ? "Hidden" : "Public"}</p>
+                <p className="mt-2 text-sm text-[#55554E]">Hide this market from public pages and linked opportunities while preserving its reviews, history, and permanent URL.</p>
+                <button type="button" className={`${buttonStyle} mt-3`} disabled={locked} onClick={() => void changeVisibility()}>{busy ? "Saving…" : selected.is_hidden ? "Unhide market" : "Hide market"}</button>
+              </div>
               {selected.is_sample && <p className="mt-4 border-l-2 border-[#AD573B] bg-[#F4F0E6] p-3 text-sm">This is a demonstration market. Its sample label stays in place.</p>}
               {saveError && <div role="alert" className="mt-5 break-words border-l-2 border-[#9B3E35] bg-[#F0E3DA] p-4 text-sm text-[#9B3E35]">{saveError}<p className="mt-2">If the listing changed elsewhere or the connection was interrupted, reload the latest listing before retrying. Reloading discards this draft.</p><button type="button" disabled={busy} className={`${buttonStyle} mt-3`} onClick={reloadDirectory}>Discard draft & reload directory</button></div>}
               {preview ? <div className="mt-6">
@@ -222,7 +253,7 @@ export default function ManageMarketsPage() {
                   <div className="flex flex-wrap gap-3 sm:col-span-2"><button type="submit" disabled={!dirty} className="heritage-button disabled:opacity-50">Review changes →</button><button type="button" disabled={!dirty} className={buttonStyle} onClick={() => { setDraft(draftOf(selected)); setSaveError(""); }}>Discard changes</button></div>
                 </fieldset>
               </form>}
-              <MarketVendorApplicationEditor key={selected.id} marketId={selected.id} onDirtyChange={setResourceDirty}/>
+              <fieldset disabled={busy}><MarketVendorApplicationEditor key={selected.id} marketId={selected.id} onDirtyChange={setResourceDirty}/></fieldset>
             </>}
           </section>
         </div>

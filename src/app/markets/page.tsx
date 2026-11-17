@@ -41,6 +41,7 @@ function MarketDirectory() {
         const { data, error } = await supabase
           .from("markets")
           .select("id, slug, name, city, state, description, is_sample, organizer")
+          .eq("is_hidden", false)
           .order("name");
 
         if (error) throw error;
