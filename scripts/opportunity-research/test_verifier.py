@@ -40,7 +40,7 @@ class VerificationTests(unittest.TestCase):
   with self.assertRaises(verifier.Uncertain):self.check_result(app_event={'name':'Other Market'})
  def test_ambiguous_sold_out(self):
   source,app=fixtures();source=source.replace('$100 vendor fee','One booth sold out. $100 vendor fee')
-  with self.assertRaises(verifier.Uncertain):verifier.verify(SOURCE,APP,FakeFetcher(source,app),NOW)
+  self.assertEqual(verifier.verify(SOURCE,APP,FakeFetcher(source,app),NOW)['decision'],'review')
  def test_explicit_waitlist(self):
   source,app=fixtures();source=source.replace('Apply now','Join waitlist');self.assertEqual(verifier.verify(SOURCE,APP,FakeFetcher(source,app),NOW)['candidate']['availability'],'waitlist')
  def test_explicit_limited(self):

@@ -2,7 +2,7 @@
 import re
 from urllib.parse import urljoin
 from verifier import canonical_application, application_key, validate_event, norm, deadline_from, has_start_action
-from category_rules import nodes_with_parents, visible_text, evidence, application_facts
+from category_rules import nodes_with_parents, visible_text, evidence, application_facts, availability_text
 
 
 def research_routes(event_doc, source_url, application_url, supplements, fetcher, now):
@@ -29,7 +29,7 @@ def research_routes(event_doc, source_url, application_url, supplements, fetcher
    title=' '.join(visible_text(n) for n,_ in nodes_with_parents(doc.root) if n.tag=='h1')
    if not re.search(r'\bfood trucks?\b',title,re.I):
     warnings.append('Linked food-truck application type could not be confirmed.');continue
-   text=visible_text(doc.root)
+   text=availability_text(doc)
    try:deadline=deadline_from(text)
    except Exception:deadline=None
    closed=bool((deadline and deadline<=now) or re.search(r'\b(application deadline has passed|applications? (?:are |is )?closed|no longer accepting applications|fully booked)\b',text,re.I))

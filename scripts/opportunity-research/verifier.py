@@ -187,10 +187,13 @@ def verify(source_url,application_url,fetcher,now=None):
  heading=' '.join(n.text() for n in card.walk() if n.tag=='a' and application_key(urljoin(source_url,n.attrs.get('href','')))==application_key(application_url))
  if re.search(r'food trucks?',heading,re.I):raise Uncertain('Food-truck application requires a separate category-specific listing')
  app,app_hash=fetcher.get(application_url);text=app.root.text()
+ from category_rules import availability_text
+ status_text=availability_text(card)+' '+availability_text(app)
+ status_problem=''
  app_events=list(app.events())
  if not app_events or any(norm(e.get('organizer',{}).get('name',''))!='themakrssociety' for e in app_events):raise Uncertain('Application organizer could not be verified')
  if any(norm(e.get('name',''))!=norm(event.get('name','')) for e in app_events):raise Uncertain('Application and dated event identities disagree')
- if re.search(r'\b(applications? (?:are |is )?closed|application closed|no longer accepting applications|not accepting applications|fully booked)\b',card_text+' '+text,re.I):closed=True
+ if re.search(r'\b(applications? (?:are |is )?closed|application closed|no longer accepting applications|not accepting applications|fully booked)\b',status_text,re.I):closed=True
  try:deadline=deadline_from(text)
  except Uncertain:
   if not closed:raise
@@ -199,9 +202,9 @@ def verify(source_url,application_url,fetcher,now=None):
  if not closed and not has_start_action(app):raise Uncertain('Application has no enabled start action')
  status='closed' if closed else 'open'
  if closed:pass
- elif re.search(r'\b(waitlist only|join (?:the )?waitlist|apply to waitlist)\b',card_text+' '+text,re.I):status='waitlist'
- elif re.search(r'\blimited (?:vendor )?(?:spaces|booths|availability)\b',card_text+' '+text,re.I):status='limited'
- elif re.search(r'\b(sold out|fully booked|no longer accepting|applications? (?:are |is )?closed|application closed|deadline (?:has )?passed|waitlist|wait list)\b',card_text+' '+text,re.I):raise Uncertain('Closure, sold-out, or waitlist wording needs review')
+ elif re.search(r'\b(waitlist only|join (?:the )?waitlist|apply to waitlist)\b',status_text,re.I):status='waitlist'
+ elif re.search(r'\blimited (?:vendor )?(?:spaces|booths|availability)\b',status_text,re.I):status='limited'
+ elif re.search(r'\b(sold out|fully booked|no longer accepting|applications? (?:are |is )?closed|application closed|deadline (?:has )?passed|waitlist|wait list)\b',status_text,re.I):status_problem='Unscoped closure, sold-out, or waitlist wording needs review.'
  if status=='open' and any(n.text().lower()!='apply now' for n in buttons):raise Uncertain('Application action contradicts open status')
  amounts=set(re.findall(r'\$([\d,]+(?:\.\d{1,2})?)\s+(?:vendor|booth) fee\b',card_text,re.I))
  fee=float(next(iter(amounts)).replace(',','')) if len(amounts)==1 else None
@@ -209,15 +212,20 @@ def verify(source_url,application_url,fetcher,now=None):
  details=application_facts(app)
  fee_conflict=fee is not None and details['standard_fee'] is not None and fee!=details['standard_fee']
  if fee is None:fee=details['standard_fee']
+ if details['standard_unavailable'] or details['standard_conflict']:fee=None
  series=exact_series(event['name'])
+ series_deadline=any(str(e.get('startDate',''))[:10]!=start.date().isoformat() or str(e.get('endDate',''))[:10]!=end.date().isoformat() for e in app_events)
  category_evidence,category_conflicts=category_research(doc,app,source_url,application_url,fetcher,now,source_hash,app_hash,series)
  result = {'policy':POLICY,'decision':('closed' if status=='closed' else 'publish') if series else 'review','reason':'' if series else 'New or unmatched market profile: confirm identity and create/link a profile.',
   'checked_at':now.isoformat(),'source_hash':source_hash,'application_hash':app_hash,'evidence':card_text[:600],
   'candidate':{'title':series[1] if series else event['name'][:160], 'market_slug':series[0] if series else None,'organizer':'The MAKRS Society', 'city':addr['addressLocality'],'state':'NC',
    'venue':', '.join(filter(None,[event['location'].get('name'),addr.get('streetAddress')])), 'starts_on':start.date().isoformat(),'ends_on':end.date().isoformat(), 'deadline':deadline.isoformat() if deadline else None,
-   'application_url':application_url,'source_url':source_url,'availability':status,'booth_fee':fee,'application_fee':None,'deposit':None,'categories':sorted(c for c,e in category_evidence['categories'].items() if e['status']=='eligible'),
-   'fee_notes':(details['fee_notes']+' ' if details['fee_notes'] else '')+'Processing fees may be additional. Other booth types have separate pricing. Confirm totals with the organizer.',
+   'application_url':application_url,'source_url':source_url,'availability':status,'booth_fee':fee,'application_fee':details['application_fee'],'deposit':details['deposit'],'categories':sorted(c for c,e in category_evidence['categories'].items() if e['status']=='eligible'),
+   'fee_notes':(details['fee_notes']+' ' if details['fee_notes'] else '')+("Series application deadline; confirm this event date's cutoff with the organizer. " if series_deadline else '')+'Processing fees may be additional. Other booth types have separate pricing. Confirm totals with the organizer.',
    'eligibility':(details['requirements']+' ' if details['requirements'] else '')+'The official event page lists an active application for this date. Acceptance and category availability are subject to organizer approval; remaining booth spaces are not published.'}}
+ if status_problem or details['standard_unavailable'] or details['standard_conflict'] or details['overflow']:
+  if result['decision']!='closed':
+   result['decision']='review';result['reason']=status_problem or ('The standard vendor option is unavailable; review remaining options.' if details['standard_unavailable'] else 'Standard prices conflict or published terms exceed field limits; review the source.')
  if fee_conflict and result['decision']=='publish':
   result['decision']='review';result['reason']='Published booth prices disagree between event and application; confirm the applicable fee.'
  from research_quality import build_quality

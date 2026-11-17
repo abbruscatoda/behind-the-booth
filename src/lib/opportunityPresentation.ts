@@ -75,6 +75,7 @@ export function opportunityDetailSections(item: {fee_notes: string; eligibility:
     "Acceptance and category availability are subject to organizer approval; remaining booth spaces are not published.",
     "Other booth types have separate pricing.",
     "Confirm totals with the organizer.",
+    "Series application deadline; confirm this event date's cutoff with the organizer.",
     "Confirm on the official application.",
   ]);
   function bullets(value: string) {

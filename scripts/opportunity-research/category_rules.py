@@ -128,11 +128,11 @@ def research_categories(event_doc,app_doc,source_url,app_url,now,source_hash,app
   categories=[c for c,pattern in PATTERNS.items() if re.search(pattern,title,re.I)]
   if re.search(r'food trucks?|food trailers?',title,re.I):categories.append('Food Trucks')
   for category in categories:
-   unavailable=bool(re.search(r'\b(sold out|unavailable|fully booked)\b',text,re.I))
+   unavailable=bool(re.search(r'\b(sold out|unavailable|fully booked|waitlist)\b',text,re.I))
    conditional=bool(re.search(r'only choose.*discussed|prior (?:approval|discussion)|pre.?approval',text,re.I))
    amount=re.search(r'\$\s*[\d,]+(?:\.\d{1,2})?',text)
    note=('This application lists this category'+(' at '+amount[0] if amount else '')+'. ')
-   note+=('This option is marked unavailable.' if unavailable else 'Prior organizer discussion is required before selecting this option.' if conditional else 'Confirm product approval and remaining availability with the organizer.')
+   note+=(('This option is waitlisted; check with the organizer.' if re.search(r'waitlist',text,re.I) else 'This option is marked unavailable.') if unavailable else 'Prior organizer discussion is required before selecting this option.' if conditional else 'Confirm product approval and remaining availability with the organizer.')
    record(category,'unavailable' if unavailable else 'eligible',note,app_url,app_hash,text,4 if unavailable else 3)
  for doc,url,digest,kind in supplements:
   if kind=='organizer_event':
@@ -160,33 +160,74 @@ def price_rows(doc):
  for node,_ in nodes_with_parents(doc.root):
   if node.tag!='tr':continue
   cells=[visible_text(n) for n in node.children if hasattr(n,'tag') and n.tag in {'td','th'}]
-  if len(cells)<2 or not re.search(r'\$\s*[\d,]+|\bsold out\b|\bunavailable\b|\bfully booked\b',' '.join(cells[1:]),re.I):continue
+  if len(cells)<2 or not re.search(r'\$\s*[\d,]+|\bsold out\b|\bunavailable\b|\bfully booked\b|\bwaitlist\b',' '.join(cells[1:]),re.I):continue
   yield cells[0], ' '.join(cells)
 
 
 def application_facts(doc):
- """Extract prices and explicit requirements without inventing a total fee."""
- prices=[];standard=[]
- for title,text in price_rows(doc):
-  amount=re.search(r'\$\s*([\d,]+(?:\.\d{1,2})?)',text)
-  if not amount:continue
-  value=float(amount[1].replace(',',''))
-  closed=bool(re.search(r'\b(sold out|unavailable|fully booked)\b',text,re.I))
+ """Read each option independently and retain its conditions, never a total."""
+ prices=[];standard=[];standard_unavailable=False;amount_fields={"application_fee":set(),"deposit":set()};amount_conflict=False
+ for node,_ in nodes_with_parents(doc.root):
+  if node.tag!='tr':continue
+  cells=[visible_text(n) for n in node.children if hasattr(n,'tag') and n.tag in {'td','th'}]
+  if len(cells)<2:continue
+  title=cells[0];text=' '.join(cells)
+  if not re.search(r'\$\s*[\d,]+|\bsold out\b|\bunavailable\b|\bfully booked\b|\bwaitlist\b',' '.join(cells[1:]),re.I):continue
+  is_standard=bool(re.fullmatch(r'(?:10\s*[x×]\s*10 (?:space|booth)|vendor booth|vendor space|full table)',title.strip(),re.I))
+  unavailable=bool(re.search(r'\b(sold out|unavailable|fully booked|waitlist)\b',text,re.I))
+  # Amount must come from the price cell, never a description's group rate.
+  amount=re.search(r'\$\s*([\d,]+(?:\.\d{1,2})?)',cells[1])
+  value=float(amount[1].replace(',','')) if amount else None
   condition='; prior organizer discussion required' if re.search(r'only choose.*discussed|prior (?:approval|discussion)|pre.?approval',text,re.I) else ''
-  if re.search(r'\b(?:space|table|booth|services|workshop|boutique|food truck|electricity|special request)\b',title,re.I):
-   prices.append(f'{title}: ${value:,.2f}'+('; marked unavailable' if closed else '')+condition+'.')
-  if re.fullmatch(r'(?:10\s*[x×]\s*10 (?:space|booth)|vendor booth|vendor space|full table)',title.strip(),re.I) and not closed:standard.append(value)
- text=' '.join(sections(doc,{'about the application','terms & conditions'}))
+  price=f'${value:,.2f}' if value is not None else 'price not published'
+  if unavailable:price+='; '+('waitlist only' if re.search(r'waitlist',text,re.I) else 'marked unavailable')
+  prices.append(f'{title}: {price}'+condition+'.')
+  # Preserve special tier/bundle/refund qualifiers in the source description.
+  description=' '.join(cells[2:])
+  if description and re.search(r'\$|only choose|prior (?:approval|discussion)|pre.?approval|minimum|all \d+|per event',description,re.I):prices.append(f'{title} terms: {description}')
+  for key,pattern in [('application_fee',r'application fee'),('deposit',r'(?:refundable |security )?deposit')]:
+   if re.fullmatch(pattern,title.strip(),re.I) and not unavailable and value is not None:amount_fields[key].add(value)
+  if value is not None and not 0<=value<=10000:amount_conflict=True
+  if is_standard:
+   if unavailable:standard_unavailable=True
+   elif value is not None:standard.append(value)
+ text=' '.join(sections(doc,{'about the application','terms & conditions','additional information','picture requirements'}))
  requirements=[]
  for pattern,message in [
   (r'no\s+mlm|no\s+multi.level.marketing','No MLM businesses.'),
   (r'bring your own 10\s*[x×]\s*10 tent','Bring your own 10×10 tent for the 10×10 vendor option.'),
-  (r'4\s*[-–]\s*20\s*lb bagged tent weights','Four 20 lb bagged tent weights are required.'),
+  (r'4\s*[-–]\s*20\s*lb (?:bagged )?tent weights|20lb bagged tent weights per corner','Four 20 lb bagged tent weights are required.'),
+  (r'must be sand filled bags|sand bag tent weights filled with rocks or sand','The application specifies filled, bagged tent weights; check its material requirements.'),
   (r'no circular weights','Circular tent weights are not allowed.'),
   (r'fees? will be due when accepted','Vendor and platform fees are due upon acceptance.'),
   (r'no refunds|no refund or market credit','The application says no refunds or market credits; check organizer cancellation exceptions.'),
+  (r'cancel.{0,160}75% refund','The organizer states a 75% refund if it cancels due to unforeseen circumstances.'),
   (r'electricity is needed.*special request','Electricity requires a special request and an additional fee.'),
+  (r'rain or shine','The event is rain or shine.'),
+  (r'not a THC/CBD Vendor or Mobile Boutique','THC/CBD vendors and mobile boutiques are excluded from this application.'),
+  (r'at least 3 photos of your products, 1 photo of your booth set up, and 1 photo of your tent weights','Include at least three product photos, one booth setup photo, and one tent-weight photo.'),
  ]:
   if re.search(pattern,text,re.I):requirements.append(message)
- return {'standard_fee':standard[0] if len(set(standard))==1 else None,
-         'fee_notes':' '.join(prices)[:1600], 'requirements':' '.join(requirements)[:1600]}
+ if re.search(r'(?:^|[.!?])\s*(?:There is )?no application fee\s*[.!?]',text,re.I):amount_fields['application_fee'].add(0)
+ amount_conflict=amount_conflict or any(len(values)>1 for values in amount_fields.values())
+ fee_notes=' '.join(prices);rules=' '.join(requirements)
+ return {'standard_fee':standard[0] if len(set(standard))==1 and not standard_unavailable else None,
+         'standard_unavailable':standard_unavailable,'standard_conflict':len(set(standard))>1 or amount_conflict,
+         **{key:next(iter(values)) if len(values)==1 and 0<=next(iter(values))<=10000 else None for key,values in amount_fields.items()},
+         'overflow':len(fee_notes)>1800 or len(rules)>1600,
+         'fee_notes':fee_notes if len(fee_notes)<=1800 else '', 'requirements':rules if len(rules)<=1600 else ''}
+
+
+def availability_text(doc):
+ """Overall application status excludes structured option-price rows only.
+
+A nonprofit/sponsor row marked sold out is not a closure of the whole form.
+Unscoped closure text elsewhere remains authoritative or review-worthy.
+"""
+ def visit(node):
+  if blocked(node):return ''
+  if node.tag=='tr':
+   cells=[visible_text(n) for n in node.children if hasattr(n,'tag') and n.tag in {'td','th'}]
+   if len(cells)>=2 and not re.fullmatch(r'(?:applications?|application status|application availability|status|availability|all (?:applications|booths|vendors))',cells[0].strip(),re.I) and re.search(r'\$\s*[\d,]+|\bsold out\b|\bunavailable\b|\bfully booked\b|\bwaitlist\b',' '.join(cells[1:]),re.I):return ''
+  return ' '.join(visit(x) if hasattr(x,'tag') else x for x in node.children)
+ return ' '.join(visit(doc.root if hasattr(doc,'root') else doc).split())

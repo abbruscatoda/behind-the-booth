@@ -52,3 +52,15 @@ def apply_quality_gate(item,result):
  issues=regression_issues((item or {}).get('previous_quality'),q)
  if issues:return {**result,'decision':'review','reason':'Source change needs review: '+'; '.join(issues),'quality_issues':issues}
  return result
+
+
+def add_review_suggestions(item,result):
+ """Keep collected facts available if publication is deferred by either layer."""
+ c=result.get('candidate',{})
+ if not item or result.get('policy')!='makrs-eventeny-v5-quality' or not c or not result.get('checked_at') or not result.get('source_hash'):return result
+ if c.get('application_url')!=item.get('application_url') or c.get('starts_on')!=item.get('starts_on') or c.get('ends_on')!=item.get('ends_on'):return result
+ fields={k:c[k] for k in ('booth_fee','application_fee','deposit','deadline','fee_notes','eligibility') if c.get(k) is not None and c[k]!=''}
+ return {**result,'research_suggestions':{'application_url':c['application_url'],'starts_on':c['starts_on'],'ends_on':c['ends_on'],
+  'source_url':c['source_url'],'source_hash':result['source_hash'],'checked_at':result['checked_at'],'fields':fields,
+  'notes':result.get('reason') or 'Research collected. Confirm any remaining source warnings before publishing.',
+  'form_readable':True,'complete':result.get('decision')=='publish'}}
