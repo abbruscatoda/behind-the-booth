@@ -1,5 +1,6 @@
 "use client";
 
+import ExternalLinkIcon from "../../../components/ExternalLinkIcon";
 import Link from "next/link";
 import MarketVendorApplicationEditor from "../../../components/MarketVendorApplicationEditor";
 import OrganizerField from "../../../components/OrganizerField";
@@ -218,7 +219,7 @@ export default function ManageMarketsPage() {
           <button type="button" className={buttonStyle} disabled={locked || loading} onClick={reloadDirectory}>Refresh</button>
         </form>
         {(dirty||resourceDirty) && <p role="status" className="mt-3 text-sm text-[#80621A]">You have unsaved changes. Save or discard them before choosing another listing or searching.</p>}
-        {success && <div role="status" className="mt-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{success} {selected && !selected.is_hidden && <Link href={`/markets/${selected.slug}`} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">View updated listing ↗</Link>}</div>}
+        {success && <div role="status" className="mt-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{success} {selected && !selected.is_hidden && <Link href={`/markets/${selected.slug}`} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">View updated listing <ExternalLinkIcon /></Link>}</div>}
         {listError && <div role="alert" className="mt-5 break-words border-l-2 border-[#9B3E35] bg-[#F0E3DA] p-4 text-sm text-[#9B3E35]">Could not load the directory: {listError}</div>}
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
           <section aria-label="Market listings" className="min-w-0 rounded-sm border border-[#252521]/20 bg-[#FFFCF6]">
@@ -230,7 +231,7 @@ export default function ManageMarketsPage() {
             {!selected || !draft ? <div className="py-8"><p className="heritage-label">Keep the details current</p><h2 className="mt-4 font-serif text-2xl font-bold">Choose a market to edit.</h2><p className="mt-3 text-sm leading-relaxed text-[#55554E]">Select a listing from the directory. You can update its name, location, organizer, description, and website.</p></div> : <>
               <h2 className="break-words font-serif text-2xl font-bold">{selected.name}</h2>
               <p className="mt-2 break-all text-xs text-[#626C57]">Permanent URL: /markets/{selected.slug}</p>
-              {!selected.is_hidden && <Link href={`/markets/${selected.slug}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#07472B] underline underline-offset-4">View current public listing ↗</Link>}
+              {!selected.is_hidden && <Link href={`/markets/${selected.slug}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#07472B] underline underline-offset-4">View current public listing <ExternalLinkIcon /></Link>}
               <div className="mt-4 border-l-2 border-[#07472B] bg-[#F4F0E6] p-4">
                 <p className="text-sm font-semibold">Visibility: {selected.is_hidden ? "Hidden" : "Public"}</p>
                 <p className="mt-2 text-sm text-[#55554E]">Hide this market from public pages and linked opportunities while preserving its reviews, history, and permanent URL.</p>

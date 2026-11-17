@@ -1,5 +1,6 @@
 "use client";
 
+import ExternalLinkIcon from "../../components/ExternalLinkIcon";
 import Link from "next/link";
 import OrganizerField from "../../components/OrganizerField";
 import { cleanOrganizer } from "../../lib/marketOrganizers";
@@ -53,7 +54,7 @@ function safeUrl(value: string | null) {
 }
 function Website({ value }: { value: string | null }) {
   const url = safeUrl(value);
-  return url ? <a href={url} target="_blank" rel="noopener noreferrer" className="break-all text-sm font-semibold text-[#07472B] underline underline-offset-4">Open submitted website ↗</a> : <p className="text-sm text-[#626C57]">No usable website supplied.</p>;
+  return url ? <a href={url} target="_blank" rel="noopener noreferrer" className="break-all text-sm font-semibold text-[#07472B] underline underline-offset-4">Open submitted website <ExternalLinkIcon /></a> : <p className="text-sm text-[#626C57]">No usable website supplied.</p>;
 }
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block text-sm font-semibold">{label}{children}</label>;

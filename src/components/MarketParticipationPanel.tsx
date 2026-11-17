@@ -3,6 +3,7 @@
   
 "use client";
 
+import ExternalLinkIcon from "./ExternalLinkIcon";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "../lib/supabase/client";
@@ -64,7 +65,7 @@ export default function MarketParticipationPanel({ marketId, marketName, slug }:
       <div className="min-w-0">
         <p className="text-xs font-bold uppercase tracking-wider text-[#626C57]">General application</p>
         {!current ? <p role="status" className="mt-2 text-sm text-[#55554E]">Checking application information…</p> : applicationUrl && resource ? <>
-          <a href={applicationUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[#07472B] underline underline-offset-4">Vendor application information ↗</a>
+          <a href={applicationUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[#07472B] underline underline-offset-4">Vendor application information <ExternalLinkIcon /></a>
           <p className="text-xs text-[#626C57]">General / seasonal resource; openings vary.</p>
           <details className="mt-2 text-xs text-[#55554E]"><summary className="min-h-8 cursor-pointer py-2 font-semibold text-[#07472B]">Requirements & link details</summary>
             <div className="mt-1 space-y-3 border-l-2 border-[#07472B] pl-3 leading-relaxed">
@@ -86,7 +87,7 @@ export default function MarketParticipationPanel({ marketId, marketName, slug }:
               <p className="mt-1 text-xs text-[#626C57]">{statusLabel(item.effective_status)} · {deadline.label}: {deadline.value}</p>
               {deadline.note&&<p className="mt-1 text-xs leading-relaxed text-[#626C57]">{deadline.note}</p>}
               <div className="mt-1 flex flex-wrap items-center gap-x-5">
-                {safeExternalUrl(item.application_url) && <a href={safeExternalUrl(item.application_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline">Official application ↗</a>}
+                {safeExternalUrl(item.application_url) && <a href={safeExternalUrl(item.application_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline">Official application <ExternalLinkIcon /></a>}
                 <Link href={`/opportunities#${item.id}`} className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline">Details & save →</Link>
               </div>
             </li>;})}</ul>

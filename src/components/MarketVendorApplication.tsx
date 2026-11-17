@@ -1,4 +1,5 @@
 "use client";
+import ExternalLinkIcon from "./ExternalLinkIcon";
 import { useEffect, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import { safeExternalUrl } from "../lib/opportunities";
@@ -27,7 +28,7 @@ export default function MarketVendorApplication({ marketId, marketName, slug }: 
     <p className="mt-3 text-sm leading-relaxed text-[#55554E]">Use the organizer’s general or seasonal vendor information to learn how to apply. This link does not confirm that applications or every vendor category are currently open.</p>
     {resource.public_note && <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-[#55554E]">{resource.public_note}</p>}
     <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
-      <a href={url} target="_blank" rel="noopener noreferrer" className="min-h-11 inline-flex items-center font-semibold text-[#07472B] underline underline-offset-4">Vendor application information ↗</a>
+      <a href={url} target="_blank" rel="noopener noreferrer" className="min-h-11 inline-flex items-center font-semibold text-[#07472B] underline underline-offset-4">Vendor application information <ExternalLinkIcon /></a>
       <a href={report} className="min-h-11 inline-flex items-center text-xs text-[#626C57] underline">Report an outdated link</a>
     </div>
     <p className="mt-3 text-xs text-[#626C57]">Link checked: <time dateTime={resource.checked_on}>{formatAttendanceDate(resource.checked_on)}</time>. Dates, fees, eligibility, and application windows may change.</p>

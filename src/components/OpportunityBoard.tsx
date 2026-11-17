@@ -1,4 +1,5 @@
 "use client";
+import ExternalLinkIcon from "./ExternalLinkIcon";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "../lib/supabase/client";
@@ -86,11 +87,11 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
      {highlights.length>0&&<ul className="mt-3 space-y-2 border-l-2 border-[#AD573B] pl-3 text-xs leading-relaxed">{highlights.map(([category,entry])=><li key={category}>
        <span className="font-semibold">{category}: {categoryEvidenceLabel(entry)}.</span> {entry.note}
        {entry.application_deadline&&Number.isFinite(Date.parse(entry.application_deadline))&&<span> Separate deadline: {new Date(entry.application_deadline).toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"})} Eastern.</span>}
-       {entry.application_state&&safeExternalUrl(entry.source_url)&&<> <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#07472B] underline">View separate application ↗</a></>}
+       {entry.application_state&&safeExternalUrl(entry.source_url)&&<> <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#07472B] underline">View separate application <ExternalLinkIcon /></a></>}
      </li>)}</ul>}
      <div className="mt-4 flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
        {["open","limited","waitlist"].includes(item.effective_status)&&safeExternalUrl(item.application_url)
-         ? <a href={safeExternalUrl(item.application_url)!} target="_blank" rel="noopener noreferrer" className="heritage-button min-h-11 w-full sm:w-auto">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} ↗</a>
+         ? <a href={safeExternalUrl(item.application_url)!} target="_blank" rel="noopener noreferrer" className="heritage-button min-h-11 w-full sm:w-auto">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} <ExternalLinkIcon /></a>
          : <span className="text-sm text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Recheck with organizer before applying"}</span>}
        <button disabled={saving!==null} onClick={()=>void toggle(item.id)} className="min-h-11 text-sm font-semibold text-[#07472B] underline disabled:opacity-50 sm:px-1">{saved.includes(item.id)?"Saved — remove":"Save opportunity"}</button>
      </div>
@@ -108,7 +109,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
 
            {Object.entries(evidence).length>0&&<ul className="mt-3 space-y-3">{Object.entries(evidence).map(([category,entry])=><li key={category}>
              <p className="font-semibold">{category}: {categoryEvidenceLabel(entry)}</p><p className="mt-1">{entry.note}</p>
-             <p className="mt-1 text-xs text-[#626C57]">Category checked {new Date(entry.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(entry.source_url)&&<> · <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="underline">Category source ↗</a></>}</p>
+             <p className="mt-1 text-xs text-[#626C57]">Category checked {new Date(entry.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(entry.source_url)&&<> · <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="underline">Category source <ExternalLinkIcon /></a></>}</p>
            </li>)}</ul>}
          </div>
          {coverage.length>0&&<div><h3 className="font-semibold text-[#252521]">What the sources confirm</h3>
@@ -116,13 +117,13 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
            <ul className="mt-3 grid gap-3 sm:grid-cols-2">{coverage.map(([key,fact])=><li key={key} className="border border-[#252521]/15 p-3">
              <p className="font-semibold">{coverageLabels[key]}: {coverageStatus[fact.status]}</p>
              <p className="mt-1 text-xs leading-relaxed">{fact.summary}</p>
-             <p className="mt-2 text-xs">Checked {new Date(fact.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(fact.source_url)&&<> · <a href={safeExternalUrl(fact.source_url)!} target="_blank" rel="noopener noreferrer" className="text-[#07472B] underline">Official source ↗</a></>}</p>
+             <p className="mt-2 text-xs">Checked {new Date(fact.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(fact.source_url)&&<> · <a href={safeExternalUrl(fact.source_url)!} target="_blank" rel="noopener noreferrer" className="text-[#07472B] underline">Official source <ExternalLinkIcon /></a></>}</p>
            </li>)}</ul>
          </div>}
            </div>
          </details>}
          <p className="text-xs">Organizer approval is required. Confirm current terms and availability before applying; reviews describe past experiences.</p>
-         {safeExternalUrl(item.source_url)&&<a href={safeExternalUrl(item.source_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">Official source ↗</a>}
+         {safeExternalUrl(item.source_url)&&<a href={safeExternalUrl(item.source_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">Official source <ExternalLinkIcon /></a>}
        </div>
      </details>
    </article>;
