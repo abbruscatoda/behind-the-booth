@@ -9,7 +9,7 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.error import HTTPError, URLError
 import hashlib, json, re, time
 
-POLICY = 'makrs-eventeny-v3-categories'
+POLICY = 'makrs-eventeny-v4-details'
 ROOTS = ['https://makrs.com/market-applications','https://makrs.com/makrs-holiday-fest', 'https://makrs.com/moore-square-winterfaire']
 # Exact series identity; a familiar organizer alone never borrows another market's reviews.
 SERIES = {
@@ -122,9 +122,11 @@ def deadline_from(text):
 def validate_event(doc,now):
  events=list(doc.events())
  # Reject contradictory metadata rather than picking whichever result looks convenient.
- dates={(e.get('startDate'),e.get('endDate'),e.get('name')) for e in events}
+ try:dates={(datetime.fromisoformat(e.get('startDate','')),datetime.fromisoformat(e.get('endDate','')),e.get('name')) for e in events}
+ except (TypeError,ValueError):raise Uncertain('Exact dated event metadata is invalid')
  if len(dates)!=1:raise Uncertain('Exact dated event metadata is missing or contradictory')
  event=events[0]
+ if any(e.get('organizer')!=event.get('organizer') or e.get('location')!=event.get('location') or e.get('eventStatus')!=event.get('eventStatus') for e in events):raise Uncertain('Event identity metadata is contradictory')
  if event.get('organizer',{}).get('url','').rstrip('/') not in {'https://www.eventeny.com/company/?c=27023','https://eventeny.com/company/?c=27023'}:raise Uncertain('Organizer identity is not the trusted MAKRS account')
  if norm(event['organizer'].get('name',''))!='themakrssociety':raise Uncertain('Organizer name does not match MAKRS')
  if event.get('eventStatus')!='https://schema.org/EventScheduled':raise Uncertain('Event is cancelled, postponed, or not confirmed scheduled')
@@ -138,7 +140,7 @@ def validate_event(doc,now):
 
 
 def category_research(doc,app,source_url,application_url,fetcher,now,source_hash,app_hash,series=None):
- from category_rules import research_categories, nodes_with_parents, visible_text
+ from category_rules import research_categories, nodes_with_parents, visible_text, question_options
  supplements=[]
  # Exact known market pages, tied to the same application. No search-engine
  # snippets, unrelated vendors, photos, or event names are category evidence.
@@ -155,7 +157,16 @@ def category_research(doc,app,source_url,application_url,fetcher,now,source_hash
     supplements.append((extra,url,digest,kind))
    except Exception:failures.add(url)
   fetcher.category_failures=failures
- return research_categories(doc,app,source_url,application_url,now,source_hash,app_hash,supplements)
+ receipt,conflicts=research_categories(doc,app,source_url,application_url,now,source_hash,app_hash,supplements)
+ if series:
+  from application_routes import research_routes
+  routes,warnings=research_routes(doc,source_url,application_url,supplements,fetcher,now)
+  # These facts describe the separate route, never acceptance into the main form.
+  if 'Food Trucks' not in conflicts and receipt['categories'].get('Food Trucks',{}).get('status') not in {'excluded','eligible','unavailable'}:receipt['categories'].update(routes)
+  receipt['warnings']=warnings
+ if re.search(r'please choose your medium category|which category best fits your work',visible_text(app.root),re.I) and not question_options(app):
+  receipt.setdefault('warnings',[]).append('The public application names a category question but does not expose its choices; review category coverage with the organizer.')
+ return receipt,conflicts
 
 def verify(source_url,application_url,fetcher,now=None):
  """Returns verified facts or raises Uncertain. No content supplied by an AI is trusted."""
@@ -191,6 +202,10 @@ def verify(source_url,application_url,fetcher,now=None):
  if status=='open' and any(n.text().lower()!='apply now' for n in buttons):raise Uncertain('Application action contradicts open status')
  amounts=set(re.findall(r'\$([\d,]+(?:\.\d{1,2})?)\s+(?:vendor|booth) fee\b',card_text,re.I))
  fee=float(next(iter(amounts)).replace(',','')) if len(amounts)==1 else None
+ from category_rules import application_facts
+ details=application_facts(app)
+ fee_conflict=fee is not None and details['standard_fee'] is not None and fee!=details['standard_fee']
+ if fee is None:fee=details['standard_fee']
  series=exact_series(event['name'])
  category_evidence,category_conflicts=category_research(doc,app,source_url,application_url,fetcher,now,source_hash,app_hash,series)
  result = {'policy':POLICY,'decision':('closed' if status=='closed' else 'publish') if series else 'review','reason':'' if series else 'New or unmatched market profile: confirm identity and create/link a profile.',
@@ -198,9 +213,12 @@ def verify(source_url,application_url,fetcher,now=None):
   'candidate':{'title':series[1] if series else event['name'][:160], 'market_slug':series[0] if series else None,'organizer':'The MAKRS Society', 'city':addr['addressLocality'],'state':'NC',
    'venue':', '.join(filter(None,[event['location'].get('name'),addr.get('streetAddress')])), 'starts_on':start.date().isoformat(),'ends_on':end.date().isoformat(), 'deadline':deadline.isoformat() if deadline else None,
    'application_url':application_url,'source_url':source_url,'availability':status,'booth_fee':fee,'application_fee':None,'deposit':None,'categories':sorted(c for c,e in category_evidence['categories'].items() if e['status']=='eligible'),
-   'fee_notes':'Processing fees may be additional. Other booth types have separate pricing. Confirm totals with the organizer.',
-   'eligibility':'The official event page lists an active application for this date. Acceptance and category availability are subject to organizer approval; remaining booth spaces are not published.'+(' No MLM businesses.' if re.search(r'no\s+mlm',text,re.I) else '')}}
+   'fee_notes':(details['fee_notes']+' ' if details['fee_notes'] else '')+'Processing fees may be additional. Other booth types have separate pricing. Confirm totals with the organizer.',
+   'eligibility':(details['requirements']+' ' if details['requirements'] else '')+'The official event page lists an active application for this date. Acceptance and category availability are subject to organizer approval; remaining booth spaces are not published.'}}
+ if fee_conflict and result['decision']=='publish':
+  result['decision']='review';result['reason']='Published booth prices disagree between event and application; confirm the applicable fee.'
  result['category_evidence']=category_evidence
+ result['category_warnings']=category_evidence.get('warnings',[])
  if category_conflicts and result['decision']=='publish':
   result['decision']='review';result['reason']='Conflicting category statements require review: '+', '.join(category_conflicts);result['category_conflicts']=category_conflicts
  return result
@@ -339,7 +357,7 @@ def verify_artspace(item,fetcher,now):
  slug=item.get('market_slug')
  linked=bool(item.get('market_id') and slug and norm(item.get('market_name','')) in ARTSPACE_NAMES and norm(item.get('market_organizer',''))=='artspace' and item.get('market_city','').lower()=='raleigh' and item.get('market_state')=='NC')
  category_evidence,category_conflicts=category_research(source,app,ARTSPACE_SOURCE,ARTSPACE_APP,fetcher,now,source_hash,app_hash)
- result = {'policy':'artspace-jotform-v2-categories','decision':('closed' if closed else 'publish') if linked else 'review','reason':'' if linked else 'Confirm and link the Artspace market profile once before automatic updates.',
+ result = {'policy':'artspace-jotform-v3-details','decision':('closed' if closed else 'publish') if linked else 'review','reason':'' if linked else 'Confirm and link the Artspace market profile once before automatic updates.',
  'checked_at':now.isoformat(),'source_hash':source_hash,'application_hash':app_hash,'evidence':clean(text)[:600],
  'candidate':{'title':ARTSPACE_TITLE,'market_slug':slug,'organizer':'Artspace','city':'Raleigh','state':'NC','venue':'Artspace, 201 E Davie Street',
  'starts_on':event_date.isoformat(),'ends_on':event_date.isoformat(),'deadline':deadline.isoformat(),'application_url':ARTSPACE_APP,'source_url':ARTSPACE_SOURCE,'availability':status,
@@ -348,6 +366,7 @@ def verify_artspace(item,fetcher,now):
  'eligibility':'The official organizer links a dated vendor form with enabled submission controls. Acceptance is juried; a working form does not guarantee acceptance or category availability. '+note}}
 
  result['category_evidence']=category_evidence
+ result['category_warnings']=category_evidence.get('warnings',[])
  if category_conflicts and result['decision']=='publish':
   result['decision']='review';result['reason']='Conflicting category statements require review: '+', '.join(category_conflicts);result['category_conflicts']=category_conflicts
  return result

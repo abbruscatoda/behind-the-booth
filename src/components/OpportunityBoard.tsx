@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "../lib/supabase/client";
-import { activeCategoryEvidence, categoryStatusLabel, listedOpportunityCategories, opportunityCategoryStatus } from "../lib/opportunityCategories";
+import { activeCategoryEvidence, categoryEvidenceLabel, categoryHighlights, listedOpportunityCategories, opportunityCategoryStatus } from "../lib/opportunityCategories";
 import { opportunityDeadline, publicOpportunityCopy } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
 import { filterOpportunities, fee, safeExternalUrl, statusLabel, VENDOR_CATEGORIES, type Opportunity } from "../lib/opportunities";
@@ -50,6 +50,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
    const deadline=opportunityDeadline(item);
    const evidence=activeCategoryEvidence(item);
    const listed=listedOpportunityCategories(item);
+   const highlights=categoryHighlights(item);
    const selected=filters.category ? evidence[filters.category] : undefined;
    const categoryText=filters.category
      ? opportunityCategoryStatus(item,filters.category)==="eligible" ? `${filters.category} — listed by organizer` : `${filters.category} — unconfirmed`
@@ -66,12 +67,18 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
      <p className="mt-3 text-sm"><strong>{deadline.label}:</strong> {deadline.value}</p>
      <p className="mt-2 text-sm"><strong>Listed categories:</strong> {categoryText}</p>
      <p className="mt-1 text-xs text-[#626C57]">This list may be incomplete; other categories may be considered.</p>
-     {selected?.note&&<p className="mt-2 text-xs leading-relaxed text-[#626C57]">{selected.note}</p>}
+     {highlights.length>0&&<ul className="mt-3 space-y-2 border-l-2 border-[#AD573B] pl-3 text-xs leading-relaxed">{highlights.map(([category,entry])=><li key={category}>
+       <span className="font-semibold">{category}: {categoryEvidenceLabel(entry)}.</span> {entry.note}
+       {entry.application_deadline&&Number.isFinite(Date.parse(entry.application_deadline))&&<span> Separate deadline: {new Date(entry.application_deadline).toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"})} Eastern.</span>}
+       {entry.application_state&&safeExternalUrl(entry.source_url)&&<> <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#07472B] underline">View separate application ↗</a></>}
+     </li>)}</ul>}
+     {selected?.note&&!highlights.some(([category])=>category===filters.category)&&<p className="mt-2 text-xs leading-relaxed text-[#626C57]">{selected.note}</p>}
      <dl className="mt-3 grid grid-cols-3 gap-3 border-y border-[#252521]/15 py-3 text-sm">
-       <div><dt className="text-xs text-[#626C57]">Booth / table</dt><dd>{fee(item.booth_fee)}</dd></div>
+       <div><dt className="text-xs text-[#626C57]">Standard booth / table</dt><dd>{fee(item.booth_fee)}</dd></div>
        <div><dt className="text-xs text-[#626C57]">Application fee</dt><dd>{fee(item.application_fee)}</dd></div>
        <div><dt className="text-xs text-[#626C57]">Deposit</dt><dd>{fee(item.deposit)}</dd></div>
      </dl>
+     <p className="mt-1 text-xs text-[#626C57]">Other booth options, add-ons, and processing fees may differ. See fee details below.</p>
      <div className="mt-3 text-sm"><Link href={`/markets/${item.market_slug}#vendor-reviews`} className="font-semibold text-[#07472B] underline">{item.history.review_count?"Read vendor reviews →":"View market & add a review →"}</Link>
        <p className="mt-1 text-xs text-[#626C57]">{item.history.review_count?`${item.history.overall}/5 · ${item.history.review_count} reviews from ${item.history.reviewer_count} vendors`:"No approved reviews yet"}</p>
      </div>
@@ -91,7 +98,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
            {listed.length>0&&<p className="mt-1">Listed categories: {listed.join(", ")}.</p>}
            <p className="mt-1 text-xs">Other categories may be unconfirmed. A listed category is not a guarantee of space or acceptance; the organizer must approve your products.</p>
            {Object.entries(evidence).length>0&&<ul className="mt-3 space-y-3">{Object.entries(evidence).map(([category,entry])=><li key={category}>
-             <p className="font-semibold">{category}: {categoryStatusLabel[entry.status]}</p><p className="mt-1">{entry.note}</p>
+             <p className="font-semibold">{category}: {categoryEvidenceLabel(entry)}</p><p className="mt-1">{entry.note}</p>
              <p className="mt-1 text-xs text-[#626C57]">Category checked {new Date(entry.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(entry.source_url)&&<> · <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="underline">Category source ↗</a></>}</p>
            </li>)}</ul>}
          </div>

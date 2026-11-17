@@ -40,19 +40,21 @@ def nodes_with_parents(root,parents=()):
   if hasattr(child,'tag'):yield from nodes_with_parents(child,parents+(root,))
 
 def sections(doc,names):
- """Visible prose following exact headings, not a footer or vendor directory."""
- result=[]
- for parent,_ in nodes_with_parents(doc.root):
-  for index,child in enumerate(parent.children):
-   if not hasattr(child,'tag') or child.tag not in {'h1','h2','h3','h4'} or visible_text(child).lower().strip(' :') not in names:continue
-   prose=[]
-   for sibling in parent.children[index+1:]:
-    if hasattr(sibling,'tag') and sibling.tag in {'h1','h2','h3','h4'}:break
-    text=visible_text(sibling) if hasattr(sibling,'tag') else sibling
-    if text:prose.append(text)
-   value=' '.join(prose)
-   if value:result.append(value)
- return result
+ """Collect visible section prose across layout wrappers until the next heading."""
+ result=[];parts=[];active=False
+ def visit(node):
+  nonlocal active,parts
+  if blocked(node):return
+  if node.tag in {'h1','h2','h3','h4','h5','h6'}:
+   if active and parts:result.append(' '.join(' '.join(parts).split()))
+   parts=[];active=visible_text(node).lower().strip(' :') in names
+   return
+  for child in node.children:
+   if hasattr(child,'tag'):visit(child)
+   elif active:parts.append(child)
+ visit(doc.root)
+ if active and parts:result.append(' '.join(' '.join(parts).split()))
+ return [text for text in result if text]
 
 def question_options(doc):
  options=[]
@@ -103,7 +105,7 @@ def research_categories(event_doc,app_doc,source_url,app_url,now,source_hash,app
      continue
     note='The organizer lists this type; product approval and space are still subject to review.'
     if category=='Food & Beverages' and re.search(r'baked goods|prepackaged|packaged food|savory food',text,re.I):note='Baked/savory or packaged foods are listed; ask about freshly prepared drinks.'
-    record(category,'eligible',note,url,digest,text,scope)
+    record(category,'eligible',note,url,digest,text[max(0,match.start()-80):match.end()+200],scope)
  # Typed event metadata was already identity/date-validated by the caller.
  for event in event_doc.events():
   if isinstance(event.get('description'),str):positive(event['description'],source_url,source_hash,1)
@@ -120,10 +122,18 @@ def research_categories(event_doc,app_doc,source_url,app_url,now,source_hash,app
   for category,pattern in [('Food Trucks',r'\b(?:no|not accepting|do not accept) food trucks?\b'),('Food & Beverages',r'\b(?:no|not accepting|do not accept) (?:food(?:\s*(?:and|&)\s*beverage)?|beverage) vendors?\b')]:
    match=re.search(pattern,text,re.I)
    if match:record(category,'excluded','The application explicitly excludes this category.',app_url,app_hash,match.group(0)+' in the organizer application requirements.',3)
- for node,_ in nodes_with_parents(app_doc.root):
-  if node.tag=='tr':
-   text=visible_text(node)
-   if re.search(r'\bfood trucks?\b',text,re.I) and re.search(r'\bsold out\b',text,re.I):record('Food Trucks','unavailable','Food-truck spaces are marked sold out on this application.',app_url,app_hash,text,4)
+ for title,text in price_rows(app_doc):
+  # The option name carries its category. Descriptions carry conditions, not
+  # additional categories (e.g. a sponsor package mentioning food trucks).
+  categories=[c for c,pattern in PATTERNS.items() if re.search(pattern,title,re.I)]
+  if re.search(r'food trucks?|food trailers?',title,re.I):categories.append('Food Trucks')
+  for category in categories:
+   unavailable=bool(re.search(r'\b(sold out|unavailable|fully booked)\b',text,re.I))
+   conditional=bool(re.search(r'only choose.*discussed|prior (?:approval|discussion)|pre.?approval',text,re.I))
+   amount=re.search(r'\$\s*[\d,]+(?:\.\d{1,2})?',text)
+   note=('This application lists this category'+(' at '+amount[0] if amount else '')+'. ')
+   note+=('This option is marked unavailable.' if unavailable else 'Prior organizer discussion is required before selecting this option.' if conditional else 'Confirm product approval and remaining availability with the organizer.')
+   record(category,'unavailable' if unavailable else 'eligible',note,app_url,app_hash,text,4 if unavailable else 3)
  for doc,url,digest,kind in supplements:
   if kind=='organizer_event':
    # Caller checks exact official-market identity and its outgoing application.
@@ -140,6 +150,43 @@ def research_categories(event_doc,app_doc,source_url,app_url,now,source_hash,app
    if link.tag=='a' and re.search(r'food trucks?',visible_text(link),re.I):
     other=urljoin(source_url,link.attrs.get('href',''))
     if app_id(other) and app_id(other)!=app_id(app_url) and any(n.tag in {'a','button-element'} and visible_text(n).lower() in {'apply now','join waitlist','apply to waitlist'} for n,_ in nodes_with_parents(card)):
-     if not found.get('Food Trucks') or found['Food Trucks'][0]<3:record('Food Trucks','separate_application','This event has a separate food-truck application with its own fees and deadline.',source_url,source_hash,visible_text(card),2)
+     if not found.get('Food Trucks') or found['Food Trucks'][0]<3:record('Food Trucks','separate_application','A separate food-truck application is linked; its current availability is unconfirmed. Check its fees and deadline.',source_url,source_hash,visible_text(card),2)
  categories={key:value[1] for key,value in found.items() if key not in conflicts}
  return {'application_url':app_url,'checked_at':now.astimezone(timezone.utc).isoformat(),'categories':categories},sorted(set(conflicts))
+
+
+def price_rows(doc):
+ """Published option rows with a price or explicit unavailability."""
+ for node,_ in nodes_with_parents(doc.root):
+  if node.tag!='tr':continue
+  cells=[visible_text(n) for n in node.children if hasattr(n,'tag') and n.tag in {'td','th'}]
+  if len(cells)<2 or not re.search(r'\$\s*[\d,]+|\bsold out\b|\bunavailable\b|\bfully booked\b',' '.join(cells[1:]),re.I):continue
+  yield cells[0], ' '.join(cells)
+
+
+def application_facts(doc):
+ """Extract prices and explicit requirements without inventing a total fee."""
+ prices=[];standard=[]
+ for title,text in price_rows(doc):
+  amount=re.search(r'\$\s*([\d,]+(?:\.\d{1,2})?)',text)
+  if not amount:continue
+  value=float(amount[1].replace(',',''))
+  closed=bool(re.search(r'\b(sold out|unavailable|fully booked)\b',text,re.I))
+  condition='; prior organizer discussion required' if re.search(r'only choose.*discussed|prior (?:approval|discussion)|pre.?approval',text,re.I) else ''
+  if re.search(r'\b(?:space|table|booth|services|workshop|boutique|food truck|electricity|special request)\b',title,re.I):
+   prices.append(f'{title}: ${value:,.2f}'+('; marked unavailable' if closed else '')+condition+'.')
+  if re.fullmatch(r'(?:10\s*[x×]\s*10 (?:space|booth)|vendor booth|vendor space|full table)',title.strip(),re.I) and not closed:standard.append(value)
+ text=' '.join(sections(doc,{'about the application','terms & conditions'}))
+ requirements=[]
+ for pattern,message in [
+  (r'no\s+mlm|no\s+multi.level.marketing','No MLM businesses.'),
+  (r'bring your own 10\s*[x×]\s*10 tent','Bring your own 10×10 tent for the 10×10 vendor option.'),
+  (r'4\s*[-–]\s*20\s*lb bagged tent weights','Four 20 lb bagged tent weights are required.'),
+  (r'no circular weights','Circular tent weights are not allowed.'),
+  (r'fees? will be due when accepted','Vendor and platform fees are due upon acceptance.'),
+  (r'no refunds|no refund or market credit','The application says no refunds or market credits; check organizer cancellation exceptions.'),
+  (r'electricity is needed.*special request','Electricity requires a special request and an additional fee.'),
+ ]:
+  if re.search(pattern,text,re.I):requirements.append(message)
+ return {'standard_fee':standard[0] if len(set(standard))==1 else None,
+         'fee_notes':' '.join(prices)[:1600], 'requirements':' '.join(requirements)[:1600]}
