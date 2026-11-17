@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { organizerHref } from "../../../lib/marketOrganizers";
 import { Suspense, useEffect, useState } from "react";
+import { useDeferredAnchor } from "../../../hooks/useDeferredAnchor";
 import { createClient } from "../../../lib/supabase/client";
 import MarketParticipationPanel from "../../../components/MarketParticipationPanel";
 import ReviewForm from "../../../components/ReviewForm";
@@ -146,6 +147,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
     };
   }, [marketId]);
 
+  useDeferredAnchor("vendor-reviews", !loading, marketId);
   const hasData = !loading && !error;
   const count = reviews.length;
   const averageRatings = ratingCategories.map((category) => {
@@ -188,7 +190,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
   const categorizedReviews = reviews.filter((review) => review.vendor_categories.length > 0).length;
 
   if (hasData && summary.count === 0) {
-    return <section id="vendor-reviews" className="mt-8 scroll-mt-8 border border-[#252521]/20 bg-[#E9E7DA] p-6 sm:p-8" aria-labelledby="first-review-heading">
+    return <section id="vendor-reviews" tabIndex={-1} className="mt-8 scroll-mt-8 border border-[#252521]/20 bg-[#E9E7DA] p-6 sm:p-8" aria-labelledby="first-review-heading">
       <p className="heritage-label">No approved reviews yet</p>
       <h2 id="first-review-heading" className="mt-3 font-serif text-2xl font-bold sm:text-3xl">Be the first vendor to review this market.</h2>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#55554E]">Have you sold here? Share your firsthand experience to help other vendors decide whether it is right for them. There is no vendor report to read until an approved review is published.</p>
@@ -223,7 +225,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
         <div className="rating-color-legend" aria-label="Rating scale from 1, poor, to 5, exceptional">
           <span>1 · Poor</span><span className="rating-color-ramp" aria-hidden="true" /><span>5 · Exceptional</span>
         </div>
-        <div id="vendor-reviews" className="mt-4 scroll-mt-8 border border-[#252521]/20 bg-[#E9E7DA] p-6 sm:p-8">
+        <div id="vendor-reviews" tabIndex={-1} className="mt-4 scroll-mt-8 border border-[#252521]/20 bg-[#E9E7DA] p-6 sm:p-8">
           <p className="heritage-label">Free Member Access</p>
           <h3 className="mt-3 font-serif text-2xl font-bold sm:text-3xl">See the full vendor report.</h3>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#55554E]">Create a free account to read approved vendor reviews, explore all five rating breakdowns, see reported booth costs, and find out whether vendors would return.</p>
@@ -318,7 +320,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
         )}
       </section>
 
-      <section id="vendor-reviews" className="mt-20 scroll-mt-8 border-t border-[#252521]/25 pt-14">
+      <section id="vendor-reviews" tabIndex={-1} className="mt-20 scroll-mt-8 border-t border-[#252521]/25 pt-14">
         <p className="heritage-label">From Behind the Booth</p>
         <h2 className="heritage-heading mt-4 text-4xl">Vendor Reviews</h2>
         <p className="mt-5 max-w-3xl text-sm leading-relaxed text-[#55554E]">Reviews are moderated before publication. Account names, emails, and private verification details are not displayed. Ratings reflect individual vendor experiences.</p>

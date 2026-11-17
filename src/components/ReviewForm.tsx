@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useDeferredAnchor } from "../hooks/useDeferredAnchor";
 import { createClient } from "../lib/supabase/client";
 import { getRatingColor } from "../lib/ratingColors";
 
@@ -80,6 +81,7 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 
 export default function ReviewForm({ marketId }: { marketId: string }) {
   const [access, setAccess] = useState<"loading" | "signin" | "verify" | "ready" | "exists" | "error">("loading");
+  useDeferredAnchor("write-review", access !== "loading", marketId);
   const [reviewStatus, setReviewStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -304,7 +306,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
 
   if (access !== "ready") {
     return (
-      <section id="write-review" className="mt-10 border border-[#252521]/20 bg-[#F4F0E6] p-6 text-[#252521] sm:p-10">
+      <section id="write-review" tabIndex={-1} className="mt-10 border border-[#252521]/20 bg-[#F4F0E6] p-6 text-[#252521] sm:p-10">
         <h3 className="font-serif text-3xl font-bold">Share Your Experience</h3>
         <div className="mt-5 leading-relaxed text-[#55554E]" role="status">
           {access === "loading" && <p>Checking your review access...</p>}
@@ -318,7 +320,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
   }
 
   return (
-    <section id="write-review" className="mt-10 overflow-hidden border border-[#252521]/20 bg-[#F4F0E6] text-[#252521]">
+    <section id="write-review" tabIndex={-1} className="mt-10 overflow-hidden border border-[#252521]/20 bg-[#F4F0E6] text-[#252521]">
       {/* Header */}
       <div className="bg-[#07472B] px-6 py-8 text-[#F4F0E6] sm:px-10">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D6D4BF]">

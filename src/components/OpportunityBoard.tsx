@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "../lib/supabase/client";
+import { activeCategoryEvidence, categoryStatusLabel, listedOpportunityCategories, opportunityCategoryStatus } from "../lib/opportunityCategories";
 import { opportunityDeadline, publicOpportunityCopy } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
 import { filterOpportunities, fee, safeExternalUrl, statusLabel, VENDOR_CATEGORIES, type Opportunity } from "../lib/opportunities";
@@ -29,7 +30,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
   if(target){target.scrollIntoView({block:"start"});followedHash.current=id;}
  },[loading,error,items]);
  const visible=filterOpportunities(items,filters).sort((a,b)=>sort==="deadline"?(opportunityDeadline(a).sortAt-opportunityDeadline(b).sortAt || a.starts_on.localeCompare(b.starts_on)):a.starts_on.localeCompare(b.starts_on));
- const unconfirmedCount=filters.category ? visible.filter(item=>item.categories.length===0).length : 0;
+ const unconfirmedCount=filters.category ? visible.filter(item=>opportunityCategoryStatus(item,filters.category)==="unknown").length : 0;
  const input="mt-2 w-full min-w-0 border border-[#252521]/25 bg-[#FFFCF6] px-3 py-3 text-sm outline-none focus:border-[#07472B]";
  return <div>
  {!compact&&<div className="mt-6 border-y border-[#252521]/20 py-4"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -45,18 +46,60 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  {!compact&&sort==="deadline"&&<p className="mt-3 text-xs leading-relaxed text-[#626C57]">Event-specific deadlines appear first. Series deadlines and unconfirmed cutoffs appear afterward, ordered by event date.</p>}
  {message&&<p role="status" className="my-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{message} <Link href="/login" className="font-semibold underline">My Account →</Link></p>}
  {error?<div role="alert" className="mt-6"><p>{error}</p><button onClick={()=>setRefresh(value=>value+1)} className="mt-3 font-semibold underline">Refresh opportunities</button></div>:loading?<p role="status" className="mt-6">Loading opportunities…</p>:visible.length===0?<p className="mt-6 text-[#55554E]">{compact?"No recently verified open applications are listed for this market right now.":"No opportunities match these filters. Try another location or month, include unconfirmed categories, or show all statuses."}</p>:<div className={`mt-5 grid gap-5 ${compact?"":"lg:grid-cols-2"}`}>
- {(compact?visible.slice(0,3):visible).map(item=>{const deadline=opportunityDeadline(item);return <article key={item.id} id={item.id} className="heritage-card scroll-mt-8 flex flex-col">
- <div className="flex flex-wrap items-center justify-between gap-3"><p className="heritage-label">{statusLabel(item.effective_status)}</p><p className="text-xs text-[#626C57]">{item.verified_at?`Checked ${new Date(item.verified_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}`:"Not verified"}</p></div>
- <h2 className="mt-5 font-serif text-3xl font-bold">{item.title}</h2><p className="mt-3 text-sm font-semibold text-[#07472B]">{item.organizer}</p>
- <p className="mt-3 text-sm leading-relaxed">{item.venue} · {item.city}, {item.state}<br/>{formatAttendanceDate(item.starts_on)}{item.ends_on!==item.starts_on?` – ${formatAttendanceDate(item.ends_on)}`:""}</p>
- <p className="mt-4 text-sm"><strong>{deadline.label}:</strong> {deadline.value}</p>
- {deadline.note&&<p className="mt-2 text-xs leading-relaxed text-[#626C57]">{deadline.note}</p>}
- <p className="mt-3 text-sm"><strong>Categories:</strong> {item.categories.join(", ")||"Unconfirmed — check with organizer"}</p>
- <dl className="mt-5 grid grid-cols-3 gap-3 border-y border-[#252521]/15 py-4 text-sm"><div><dt className="text-xs text-[#626C57]">Booth / table</dt><dd>{fee(item.booth_fee)}</dd></div><div><dt className="text-xs text-[#626C57]">Application fee</dt><dd>{fee(item.application_fee)}</dd></div><div><dt className="text-xs text-[#626C57]">Deposit</dt><dd>{fee(item.deposit)}</dd></div></dl>
- {item.fee_notes&&<p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-[#626C57]">{publicOpportunityCopy(item.fee_notes)}</p>}{item.eligibility&&<p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">{publicOpportunityCopy(item.eligibility)}</p>}
- <div className="mt-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm"><Link href={`/markets/${item.market_slug}#vendor-reviews`} className="font-semibold text-[#07472B] underline">Read past vendor reviews →</Link><p className="mt-2 text-xs">{item.history.review_count?`${item.history.overall}/5 · ${item.history.review_count} reviews from ${item.history.reviewer_count} vendors`:"No approved reviews yet"}. Past market experiences—not a rating of this upcoming date.</p></div>
- <div className="mt-6 flex flex-wrap items-center gap-5">{["open","limited","waitlist"].includes(item.effective_status)&&safeExternalUrl(item.application_url)?<a href={safeExternalUrl(item.application_url)!} target="_blank" rel="noopener noreferrer" className="heritage-button">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} ↗</a>:<span className="text-sm text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Recheck with organizer before applying"}</span>}<button disabled={saving!==null} onClick={()=>void toggle(item.id)} className="min-h-11 text-sm font-semibold text-[#07472B] underline disabled:opacity-50">{saved.includes(item.id)?"Saved — remove":"Save opportunity"}</button>{safeExternalUrl(item.source_url)&&<a href={safeExternalUrl(item.source_url)!} target="_blank" rel="noopener noreferrer" className="text-xs text-[#626C57] underline">Source ↗</a>}</div>
- </article>;})}
+ {(compact?visible.slice(0,3):visible).map(item=>{
+   const deadline=opportunityDeadline(item);
+   const evidence=activeCategoryEvidence(item);
+   const listed=listedOpportunityCategories(item);
+   const selected=filters.category ? evidence[filters.category] : undefined;
+   const categoryText=filters.category
+     ? opportunityCategoryStatus(item,filters.category)==="eligible" ? `${filters.category} — listed by organizer` : `${filters.category} — unconfirmed`
+     : listed.length ? `${listed.slice(0,3).join(", ")}${listed.length>3?` +${listed.length-3} more`:""}` : "Unconfirmed — check with organizer";
+   return <article key={item.id} id={item.id} className="heritage-card scroll-mt-8 flex flex-col">
+     <div className="flex flex-wrap items-center justify-between gap-3">
+       <p className="heritage-label">{statusLabel(item.effective_status)}</p>
+       <p className="text-xs text-[#626C57]">{item.verified_at?`Checked ${new Date(item.verified_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}`:"Not verified"}</p>
+     </div>
+     <h2 className="mt-4 font-serif text-2xl font-bold sm:text-3xl"><Link href={`/markets/${item.market_slug}`} className="text-inherit hover:text-[#07472B] hover:underline underline-offset-4">{item.title}</Link></h2>
+     <p className="mt-2 text-sm font-semibold text-[#07472B]">{item.organizer}</p>
+     <p className="mt-3 text-base font-semibold">{formatAttendanceDate(item.starts_on)}{item.ends_on!==item.starts_on?` – ${formatAttendanceDate(item.ends_on)}`:""}</p>
+     <p className="mt-1 text-sm text-[#55554E]">{item.venue} · {item.city}, {item.state}</p>
+     <p className="mt-3 text-sm"><strong>{deadline.label}:</strong> {deadline.value}</p>
+     <p className="mt-2 text-sm"><strong>Categories:</strong> {categoryText}</p>
+     {selected?.note&&<p className="mt-2 text-xs leading-relaxed text-[#626C57]">{selected.note}</p>}
+     <dl className="mt-3 grid grid-cols-3 gap-3 border-y border-[#252521]/15 py-3 text-sm">
+       <div><dt className="text-xs text-[#626C57]">Booth / table</dt><dd>{fee(item.booth_fee)}</dd></div>
+       <div><dt className="text-xs text-[#626C57]">Application fee</dt><dd>{fee(item.application_fee)}</dd></div>
+       <div><dt className="text-xs text-[#626C57]">Deposit</dt><dd>{fee(item.deposit)}</dd></div>
+     </dl>
+     <div className="mt-3 text-sm"><Link href={`/markets/${item.market_slug}#vendor-reviews`} className="font-semibold text-[#07472B] underline">{item.history.review_count?"Read vendor reviews →":"View market & add a review →"}</Link>
+       <p className="mt-1 text-xs text-[#626C57]">{item.history.review_count?`${item.history.overall}/5 · ${item.history.review_count} reviews from ${item.history.reviewer_count} vendors`:"No approved reviews yet"}</p>
+     </div>
+     <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+       {["open","limited","waitlist"].includes(item.effective_status)&&safeExternalUrl(item.application_url)
+         ? <a href={safeExternalUrl(item.application_url)!} target="_blank" rel="noopener noreferrer" className="heritage-button">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} ↗</a>
+         : <span className="text-sm text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Recheck with organizer before applying"}</span>}
+       <button disabled={saving!==null} onClick={()=>void toggle(item.id)} className="min-h-11 text-sm font-semibold text-[#07472B] underline disabled:opacity-50">{saved.includes(item.id)?"Saved — remove":"Save opportunity"}</button>
+     </div>
+     <details className="mt-4 border-t border-[#252521]/15 pt-1 text-sm">
+       <summary className="min-h-11 cursor-pointer py-3 font-semibold text-[#07472B]">More details<span className="sr-only"> for {item.title}, {formatAttendanceDate(item.starts_on)}</span></summary>
+       <div className="space-y-4 pb-2 leading-relaxed text-[#55554E]">
+         {deadline.note&&<p>{deadline.note}</p>}
+         {item.fee_notes&&<div><h3 className="font-semibold text-[#252521]">Fee details</h3><p className="mt-1 whitespace-pre-wrap">{publicOpportunityCopy(item.fee_notes)}</p></div>}
+         {item.eligibility&&<div><h3 className="font-semibold text-[#252521]">Vendor requirements</h3><p className="mt-1 whitespace-pre-wrap">{publicOpportunityCopy(item.eligibility)}</p></div>}
+         <div><h3 className="font-semibold text-[#252521]">Category eligibility</h3>
+           {listed.length>0&&<p className="mt-1">Listed categories: {listed.join(", ")}.</p>}
+           <p className="mt-1 text-xs">Other categories may be unconfirmed. A listed category is not a guarantee of space or acceptance; the organizer must approve your products.</p>
+           {Object.entries(evidence).length>0&&<ul className="mt-3 space-y-3">{Object.entries(evidence).map(([category,entry])=><li key={category}>
+             <p className="font-semibold">{category}: {categoryStatusLabel[entry.status]}</p><p className="mt-1">{entry.note}</p>
+             <p className="mt-1 text-xs text-[#626C57]">Category checked {new Date(entry.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(entry.source_url)&&<> · <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="underline">Category source ↗</a></>}</p>
+           </li>)}</ul>}
+         </div>
+         <p className="text-xs">Review scores reflect past market experiences, not this upcoming date. Confirm current fees, requirements, and availability before applying.</p>
+         {safeExternalUrl(item.source_url)&&<a href={safeExternalUrl(item.source_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">Official source ↗</a>}
+       </div>
+     </details>
+   </article>;
+ })}
  </div>}
  </div>;
 }

@@ -203,7 +203,7 @@ function MarketDirectory() {
               <div className="my-4 h-px bg-[#252521]/20" />
 
               <h2 className="font-serif text-3xl font-bold leading-tight">
-                {market.name}
+                <Link href={`/markets/${market.slug}`} className="text-inherit hover:text-[#07472B] hover:underline underline-offset-4">{market.name}</Link>
               </h2>
 
               <p className="mt-3 text-sm font-semibold uppercase tracking-wider text-[#626C57]">
