@@ -25,14 +25,17 @@ SERIES = {
  'raleightwilightmarket':('raleigh-twilight-market','Raleigh Twilight Market'),
 }
 CITIES={'raleigh','durham','cary','apex','wendell','rolesville','wake forest','chapel hill','carrboro','holly springs','fuquay-varina','morrisville','garner','clayton','pittsboro','hillsborough'}
-HOSTS={'makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com'}
+HOSTS={'www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com'}
 MAX_SOURCE_BYTES=4_000_000
 VOID={'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
 def norm(value):return re.sub(r'[^a-z0-9]','',value.lower())
 def clean(value):return ' '.join(unescape(value).split())
 def valid_url(url):
  p=urlparse(url)
- if p.hostname=='artspacenc.org' and p.path.rstrip('/')!='/calls-for-art':return False
+ if p.hostname=='www.artsplosure.org' and (p.path.rstrip('/')!='/first-night-raleigh' or p.query):return False
+ if p.hostname=='forms.gle' and (p.path!='/e8JRmQUUcEirUzzY9' or p.query):return False
+ if p.hostname=='docs.google.com' and (p.path!='/forms/d/e/1FAIpQLScPXt0euH9ziXcAR3tA9BkXTQ4qtnTK9V6aqttIYbxlittBlA/viewform' or p.query not in ('','usp=send_form')):return False
+ if p.hostname=='artspacenc.org'  and p.path.rstrip('/')!='/calls-for-art':return False
  if p.hostname=='form.jotform.com' and (p.path!='/252944311617153' or p.query):return False
  return p.scheme=='https' and p.hostname in HOSTS and not p.username and not p.password and p.port in (None,443) and not p.fragment
 

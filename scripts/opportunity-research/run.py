@@ -30,6 +30,10 @@ class Database:
    raise RuntimeError(f'{name} failed; inspect configuration and the admin run history.') from None
 
 def existing_result(item,found,fetcher,now):
+ from first_night import handles,verify_first_night
+ if handles(item):return verify_first_night(item,fetcher,now)
+ if urlparse(item['application_url']).hostname in {'forms.gle','docs.google.com'}:
+  raise Uncertain('Unsupported Google Form: no organizer-bound reader is configured. Application fees and requirements have NOT been verified; review the official form.')
  key=(canonical_application(item['application_url']),item['starts_on'])
  if key in found:return found[key]
  if not application_key(item['application_url']):return verify_artspace(item,fetcher,now)
@@ -66,7 +70,7 @@ def run(dry_run=False):
    result=apply_quality_gate(item,result)
    if dry_run:
     counts['proposed_'+result['decision']]+=1
-    print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'research_quality':result.get('research_quality'),'quality_issues':result.get('quality_issues',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility','')},ensure_ascii=False));return
+    print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url') or result.get('research_suggestions',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'research_quality':result.get('research_quality'),'quality_issues':result.get('quality_issues',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility',''),'research_suggestions':result.get('research_suggestions')},ensure_ascii=False));return
    if result.get('category_warnings'):print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'category_warnings':result['category_warnings']},ensure_ascii=False))
    response=db.rpc('btb_research_apply',{'p_id':item['id'] if item else None,'p_result':result,'p_expected_updated_at':item['updated_at'] if item else None})
    counts[response['action']]+=1
