@@ -39,8 +39,8 @@ class OtherOrganizerTests(unittest.TestCase):
    verifier.verify(SOURCE,APP,self.pages(app_event={"organizer":{"name":"Meow City","url":"https://www.eventeny.com/company/?c=11111"}}),NOW,expected_item=ITEM)
 
  def test_saved_market_organizer_mismatch_does_not_publish(self):
-  result=verifier.verify(SOURCE,APP,self.pages(),NOW,expected_item={**ITEM,"market_organizer":"Other organizer"})
-  self.assertNotEqual(result["decision"],"publish")
+  with self.assertRaises(verifier.Uncertain):
+   verifier.verify(SOURCE,APP,self.pages(),NOW,expected_item={**ITEM,"market_organizer":"Other organizer"})
 
  def test_event_location_must_match_saved_market(self):
   result=verifier.verify(SOURCE,APP,self.pages(),NOW,expected_item={**ITEM,"market_city":"Cary"})
