@@ -8,6 +8,7 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 from research_quality import apply_quality_gate,add_review_suggestions
 from review_policy import defer_inconclusive_review, transient_source_failure
 from verifier import Fetcher, discover, verify, canonical_event, canonical_application, application_key, norm, Uncertain, verify_artspace
+from discovery import discover_triangle
 
 class NoRedirect(HTTPRedirectHandler):
  def redirect_request(self,*args,**kwargs):raise ValueError("Database redirects are not allowed")
@@ -21,7 +22,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -87,7 +88,7 @@ def run(dry_run=False):
  db=Database();context=db.rpc('btb_research_context')
  if not context['enabled']:
   print('Automatic updates are paused in admin. No writes or source requests made.');return
- now=datetime.now(timezone.utc);fetcher=Fetcher(limit=120);run_id=None;counts=Counter();problems=[]
+ now=datetime.now(timezone.utc);fetcher=Fetcher(limit=220);run_id=None;counts=Counter();problems=[]
  if not dry_run:run_id=db.rpc('btb_research_run')
  try:
   results,problems=discover(fetcher,now)
@@ -118,8 +119,26 @@ def run(dry_run=False):
    apply(item,result)
   for key,result in found.items():
    if key not in known:apply(None,result)
-  if fetcher.requests>=fetcher.limit:problems.append('Source request budget reached. Some checks may be deferred or need review.')
-  summary={'dry_run':dry_run,'counts':dict(counts),'issues':problems[:12],'source_requests':fetcher.requests}
+  # Broad discovery is subordinate to verified rechecks, and never auto-publishes.
+  # Discovery source failures stay diagnostic rather than invalidating existing
+  # published opportunities. Every new dated Eventeny candidate is a draft.
+  incoming,leads,discovery_stats=discover_triangle(fetcher,now,known=known|set(found))
+  for candidate in incoming:
+   data=candidate['candidate']
+   key=(canonical_application(data['application_url']),data['starts_on'])
+   if key in known or key in found:continue
+   apply(None,candidate)
+  if dry_run:
+   counts['proposed_discovery_leads']=len(leads)
+   for lead in leads[:10]:
+    print(json.dumps({'action':'proposed_discovery_lead','title':lead['title'],
+      'source':lead['source_url'],'target':lead['target_url']}))
+  elif leads:
+   saved=db.rpc('btb_research_record_discovery_leads',{'p_leads':leads})
+   counts['discovery_leads_seen']=saved.get('saved',0)
+  if fetcher.requests>=fetcher.limit:
+   problems.append('Source request budget reached. Some checks may be deferred or need review.')
+  summary={'dry_run':dry_run,'counts':dict(counts),'issues':problems[:12],'source_requests':fetcher.requests,'discovery':discovery_stats}
   summary['failed']=bool(problems)
   if not dry_run:db.rpc('btb_research_run',{'p_id':run_id,'p_summary':summary})
   print(json.dumps(summary))
