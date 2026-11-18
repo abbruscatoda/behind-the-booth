@@ -74,7 +74,7 @@ class DiscoveryTests(unittest.TestCase):
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
    found,_,stats=discovery.discover_triangle(pages,NOW,include_search=False,known={(APP,'2026-11-29')})
   self.assertEqual(found,[])
-  self.assertEqual(stats['discovery_reviewable_drafts'],0)
+  self.assertEqual(stats['discovery_verified_candidates'],0)
 
  def test_event_must_link_this_exact_vendor_application(self):
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
