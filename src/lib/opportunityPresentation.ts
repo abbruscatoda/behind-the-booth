@@ -1,6 +1,11 @@
 import { deadlineForInput } from "./opportunityDeadline";
 
-type DeadlineDetails = { starts_on: string; deadline: string | null; fee_notes?: string };
+type DeadlineDetails = {
+ starts_on: string;
+ deadline: string | null;
+ fee_notes?: string;
+ research_coverage?: {deadline?: {status?: string}};
+};
 
 export function opportunityDeadline(item: DeadlineDetails) {
   const timestamp = item.deadline ? Date.parse(item.deadline) : NaN;
@@ -12,9 +17,10 @@ export function opportunityDeadline(item: DeadlineDetails) {
   });
   const seriesDeadline = /\bseries\b[^.!?]*\bdeadline\b/i.test(item.fee_notes ?? "");
   const afterEventStarts = deadlineForInput(item.deadline!) > item.starts_on;
-  if (seriesDeadline || afterEventStarts) return {
+  const sourceUnconfirmed = item.research_coverage?.deadline?.status === "unconfirmed";
+  if (seriesDeadline || afterEventStarts || sourceUnconfirmed) return {
     label: "Application deadline", value: "Confirm with organizer",
-    note: `${seriesDeadline ? "Series application deadline" : "Organizer-listed deadline"}: ${formatted}. This does not confirm the application cutoff for this event date.`,
+    note: `${seriesDeadline ? "Series application deadline" : sourceUnconfirmed ? "Unconfirmed organizer-listed deadline" : "Organizer-listed deadline"}: ${formatted}. This does not confirm the application cutoff for this event date.`,
     sortAt: Infinity,
   };
   return {
