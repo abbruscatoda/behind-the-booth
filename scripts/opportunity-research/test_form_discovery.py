@@ -39,6 +39,8 @@ class AutoPublicFormTests(unittest.TestCase):
   r=verify_public_form({'source_url':SOURCE,'target_url':APP},Fetch(),NOW)
   self.assertIsNotNone(r)
   self.assertEqual(r['policy'],'triangle-form-auto-v1')
+  self.assertTrue(r['form_complete'])
+  self.assertTrue(r['form_readable'])
   self.assertEqual(r['decision'],'publish')
   self.assertEqual(r['candidate']['title'],'Raleigh Holiday Artisan Market')
   self.assertEqual(r['candidate']['starts_on'],'2026-12-13')
