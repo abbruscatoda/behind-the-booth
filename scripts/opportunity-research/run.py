@@ -48,6 +48,9 @@ def existing_result(item,found,fetcher,now):
   for event in app.events():
    source=canonical_event(event.get('url',''))
    if source and source not in sources:sources.append(source)
+  for link in app.root.links(canonical_application(item['application_url'])):
+   source=canonical_event(link)
+   if source and source not in sources:sources.append(source)
   if not sources:raise Uncertain('The Eventeny application does not identify a trusted dated event page.')
   for source in sources[:10]:
    doc,_=fetcher.get(source)
