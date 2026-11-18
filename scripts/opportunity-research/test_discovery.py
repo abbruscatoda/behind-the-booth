@@ -139,6 +139,23 @@ class DiscoveryTests(unittest.TestCase):
   events,apps,leads=discovery.extract_links(doc,SEED)
   self.assertEqual(leads,set())
 
+ def test_survey_teaching_artist_and_general_registration_not_applications(self):
+  cases=[
+   ('https://forms.gle/bTUNdKrSVG4HodyN7','community survey'),
+   ('https://form.jotform.com/262795159298173','Call for Summer Teaching Artists'),
+   ('https://www.hollyspringsnc.gov/1701','Programs & Registration')
+  ]
+  for url,label in cases:
+   with self.subTest(url=url):self.assertFalse(discovery.is_application_hint(url,label))
+
+ def test_known_published_form_not_rediscovered_as_a_lead(self):
+  form='https://form.jotform.com/252944311617153'
+  pages=Pages()
+  pages.docs[SEED]='<a href="'+form+'">Call for Holiday Mini Mall Vendors</a>'
+  with patch.object(discovery,'SOURCES',[('Artspace','Raleigh',SEED)]):
+   _,leads,_=discovery.discover_triangle(pages,NOW,include_search=False,known={(form,'2026-12-13')})
+  self.assertEqual(leads,[])
+
  def test_ssrf_and_hidden_urls_rejected(self):
   for url in ('http://example.com/vendors','https://127.0.0.1/app',
    'https://localhost/vendor','https://example.com:8080/vendors',
