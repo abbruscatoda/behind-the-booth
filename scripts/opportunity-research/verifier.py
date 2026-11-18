@@ -267,8 +267,10 @@ def verify(source_url,application_url,fetcher,now=None,expected_item=None):
  result['category_evidence']=category_evidence
  result['research_quality']=build_quality(result,app,details['requirements'])
  result['category_warnings']=category_evidence.get('warnings',[])
- if category_conflicts and result['decision']=='publish':
-  result['decision']='review';result['reason']='Conflicting category statements require review: '+', '.join(category_conflicts);result['category_conflicts']=category_conflicts
+ if category_conflicts:
+  result['category_conflicts']=category_conflicts
+  if result['decision']=='publish':
+   result['decision']='review';result['reason']='Conflicting category statements require review: '+', '.join(category_conflicts)
  return result
 
 
