@@ -70,6 +70,7 @@ def read(item, fetcher, now):
     reason=' '.join(messages) or 'Organizer-linked public application researched; confirm remaining vendor eligibility and submission details.'
     return {
         'decision':'review','policy':POLICY,'reason':reason,
+        'form_closed':bool(facts and facts['closed']),
         'checked_at':now.isoformat(),'source_hash':source_hash,'application_hash':form_hash,
         'evidence':'Official event source links the exact public application.',
         'research_suggestions':{
