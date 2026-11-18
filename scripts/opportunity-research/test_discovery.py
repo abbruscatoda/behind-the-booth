@@ -34,6 +34,13 @@ class DiscoveryTests(unittest.TestCase):
   self.assertEqual(candidates[0]['candidate']['organizer'],'Geek and Grub Market')
   self.assertEqual(stats['discovery_reviewable_drafts'],1)
 
+ def test_known_opportunity_does_not_consume_new_draft_slot(self):
+  pages=Pages()
+  with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
+   found,_,stats=discovery.discover_triangle(pages,NOW,include_search=False,known={(APP,'2026-11-29')})
+  self.assertEqual(found,[])
+  self.assertEqual(stats['discovery_reviewable_drafts'],0)
+
  def test_event_must_link_this_exact_vendor_application(self):
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
    candidates,leads,stats=discovery.discover_triangle(Pages(missing_app_link=True),NOW,include_search=False)
