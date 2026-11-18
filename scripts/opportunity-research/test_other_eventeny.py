@@ -30,6 +30,32 @@ class OtherOrganizerTests(unittest.TestCase):
   self.assertEqual(result["candidate"]["organizer"],"Meow City")
   self.assertEqual(result["candidate"]["market_slug"],"test-market")
 
+ def test_slug_profile_organizer_is_verified(self):
+  event_organizer={'name':'Geek and Grub Market','url':'https://www.eventeny.com/company/geekandgrub/'}
+  item={**ITEM,'market_organizer':'Geek and Grub Market'}
+  event={'organizer':event_organizer,'name':'Approved test market'}
+  source,app=fixtures(event=event,app_event={'organizer':event_organizer,'name':'Approved test market'})
+  result=verifier.verify(SOURCE,APP,FakeFetcher(source,app),NOW,expected_item=item)
+  self.assertEqual(result['decision'],'publish')
+  self.assertEqual(result['policy'],'eventeny-organizer-v1')
+
+ def test_slug_profile_account_mismatch_is_blocked(self):
+  event_organizer={'name':'Geek and Grub Market','url':'https://www.eventeny.com/company/geekandgrub/'}
+  other_organizer={'name':'Geek and Grub Market','url':'https://www.eventeny.com/company/otherorg/'}
+  item={**ITEM,'market_organizer':'Geek and Grub Market'}
+  source,app=fixtures(event={'organizer':event_organizer,'name':'Approved test market'},
+      app_event={'organizer':other_organizer,'name':'Approved test market'})
+  with self.assertRaises(verifier.Uncertain):
+   verifier.verify(SOURCE,APP,FakeFetcher(source,app),NOW,expected_item=item)
+
+ def test_slug_url_guards(self):
+  self.assertEqual(verifier.eventeny_organizer_identity('https://www.eventeny.com/company/geekandgrub/'),('slug','geekandgrub'))
+  self.assertEqual(verifier.eventeny_organizer_identity('https://eventeny.com/company/?c=27023'),('id','27023'))
+  for url in ['https://eventeny.com/company/geekandgrub/?redirect=foo',
+     'https://eventeny.com/company/geekandgrub/extra','https://eventeny.com/company/','https://eventeny.com/company/?c=123&x=1',
+     'https://eventeny.com.evil.test/company/geekandgrub/','http://eventeny.com/company/geekandgrub/']:
+   with self.subTest(url=url):self.assertIsNone(verifier.eventeny_organizer_identity(url))
+
  def test_wrong_eventeny_account_blocked(self):
   with self.assertRaises(verifier.Uncertain):
    verifier.verify(SOURCE,APP,self.pages(event={"organizer":{"name":"Meow City","url":"https://www.eventeny.com/company/?c=99999"}}),NOW,expected_item=ITEM)

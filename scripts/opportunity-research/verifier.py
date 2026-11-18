@@ -125,6 +125,22 @@ def deadline_from(text):
  stamp=f'{month[:3]} {day} {year} {clock} {ampm.upper()} {offset.replace(":","")}'
  return datetime.strptime(stamp,'%b %d %Y %I:%M %p %z')
 
+def eventeny_organizer_identity(url):
+ """A stable, canonical account reference for either Eventeny profile format.
+
+ No arbitrary external domains, fragments, credentials, query parameters,
+ numeric-id lookalikes or account-root URLs are permitted.
+ """
+ p=urlparse(url)
+ if p.scheme!='https' or p.hostname not in {'eventeny.com','www.eventeny.com'} or p.username or p.password or p.port not in (None,443) or p.fragment:return None
+ if p.path.rstrip('/')=='/company':
+  params=parse_qs(p.query)
+  if set(params)!={'c'} or len(params['c'])!=1 or not re.fullmatch(r'[0-9]+',params['c'][0]):return None
+  return ('id',params['c'][0])
+ if p.query:return None
+ slug=re.fullmatch(r'/company/([a-zA-Z0-9][a-zA-Z0-9_-]{1,80})/?',p.path)
+ return ('slug',slug[1].lower()) if slug else None
+
 def validate_event(doc,now,expected_organizer=None):
  events=list(doc.events())
  # Reject contradictory metadata rather than picking whichever result looks convenient.
@@ -139,9 +155,7 @@ def validate_event(doc,now,expected_organizer=None):
   if organizer_url.rstrip('/') not in {'https://www.eventeny.com/company/?c=27023','https://eventeny.com/company/?c=27023'}:raise Uncertain('Organizer identity is not the trusted MAKRS account')
   if norm(organizer.get('name',''))!='themakrssociety':raise Uncertain('Organizer name does not match MAKRS')
  else:
-  p=urlparse(organizer_url)
-  company_id=parse_qs(p.query).get('c',[])
-  if p.scheme!='https' or p.hostname not in {'eventeny.com','www.eventeny.com'} or p.path.rstrip('/')!='/company' or len(company_id)!=1 or not company_id[0].isdigit() or norm(organizer.get('name',''))!=norm(expected_organizer):
+  if eventeny_organizer_identity(organizer_url) is None or norm(organizer.get('name',''))!=norm(expected_organizer):
    raise Uncertain('Eventeny organizer account or name does not match the approved market')
  if event.get('eventStatus')!='https://schema.org/EventScheduled':raise Uncertain('Event is cancelled, postponed, or not confirmed scheduled')
  start=datetime.fromisoformat(event['startDate']);end=datetime.fromisoformat(event['endDate'])
@@ -202,7 +216,7 @@ def verify(source_url,application_url,fetcher,now=None,expected_item=None):
  status_text=availability_text(card)+' '+availability_text(app)
  status_problem=''
  app_events=list(app.events())
- if not app_events or any(norm(e.get('organizer',{}).get('name',''))!=norm(event['organizer']['name']) or e.get('organizer',{}).get('url','').rstrip('/')!=event['organizer'].get('url','').rstrip('/') for e in app_events):raise Uncertain('Application organizer account does not match the event organizer')
+ if not app_events or any(norm(e.get('organizer',{}).get('name',''))!=norm(event['organizer']['name']) or eventeny_organizer_identity(e.get('organizer',{}).get('url','')) != eventeny_organizer_identity(event['organizer'].get('url','')) for e in app_events):raise Uncertain('Application organizer account does not match the event organizer')
  if any(norm(e.get('name',''))!=norm(event.get('name','')) for e in app_events):raise Uncertain('Application and dated event identities disagree')
  if re.search(r'\b(applications? (?:are |is )?closed|application closed|no longer accepting applications|not accepting applications|fully booked)\b',status_text,re.I):closed=True
  try:deadline=deadline_from(text)
