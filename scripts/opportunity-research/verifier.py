@@ -24,7 +24,7 @@ SERIES = {
  'durhamfoodiefare':('durham-foodie-fare','Durham Foodie Fare'),
  'raleightwilightmarket':('raleigh-twilight-market','Raleigh Twilight Market'),
 }
-CITIES={'raleigh','durham','cary','apex','wendell','rolesville','wake forest','chapel hill','carrboro','holly springs','fuquay-varina','morrisville','garner','clayton','pittsboro','hillsborough'}
+CITIES={'raleigh','durham','cary','apex','wendell','rolesville','wake forest','chapel hill','carrboro','holly springs','fuquay-varina','morrisville','garner','clayton','pittsboro','hillsborough','knightdale','zebulon','youngsville','creedmoor','angier','siler city','mebane','franklinton'}
 HOSTS={'www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com',
  'www.trianglepopup.com','trianglepopup.com','thenightmarketcompany.com','www.thenightmarketcompany.com',
  'shoplocalraleigh.org','www.shoplocalraleigh.org','www.geekandgrubmarket.com','geekandgrubmarket.com',
