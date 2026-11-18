@@ -158,13 +158,14 @@ def _stage_event(source,app,fetcher,now):
  result['reason']='New Triangle vendor application found on an official dated event page. Confirm the organizer, linked market and terms before publishing.'
  return result
 
-def discover_triangle(fetcher,now=None,include_search=True):
+def discover_triangle(fetcher,now=None,include_search=True,known=None):
  """Returns (unpublished candidates, form leads, diagnostics).
 
  Errors on optional outside pages do not erase validated listings or turn
  source discovery into a false "no applications" claim.
  """
  now=now or datetime.now(timezone.utc)
+ known=known or set()
  events=set()
  apps=set()
  raw_leads={}
@@ -211,7 +212,7 @@ def discover_triangle(fetcher,now=None,include_search=True):
     if not candidate:continue
     data=candidate['candidate']
     key=(data['application_url'],data['starts_on'])
-    if key in staged:continue
+    if key in staged or key in known:continue
     staged[key]=candidate
     if len(staged)>=MAX_NEW_DRAFTS:break
   except Exception:
