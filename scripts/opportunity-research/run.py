@@ -38,6 +38,25 @@ def existing_result(item,found,fetcher,now):
  key=(canonical_application(item['application_url']),item['starts_on'])
  if key in found:return found[key]
  if not application_key(item['application_url']):return verify_artspace(item,fetcher,now)
+ if norm(item.get('market_organizer') or '')!='themakrssociety':
+  # Bind verification to the exact existing, manually approved market.
+  # Applications can link back to the dated Eventeny page even when the
+  # stored source is an organizer website or the application itself.
+  app,_=fetcher.get(canonical_application(item['application_url']))
+  sources=[]
+  if canonical_event(item.get('source_url','')):sources.append(canonical_event(item['source_url']))
+  for event in app.events():
+   source=canonical_event(event.get('url',''))
+   if source and source not in sources:sources.append(source)
+  for link in app.root.links(canonical_application(item['application_url'])):
+   source=canonical_event(link)
+   if source and source not in sources:sources.append(source)
+  if not sources:raise Uncertain('The Eventeny application does not identify a trusted dated event page.')
+  for source in sources[:10]:
+   doc,_=fetcher.get(source)
+   if any(str(e.get('startDate',''))[:10]==item['starts_on'] for e in doc.events()):
+    return verify(source,item['application_url'],fetcher,now,expected_item=item)
+  raise Uncertain('The Eventeny application and saved event date do not match.')
  sources=[]
  if canonical_event(item['source_url']):sources.append(canonical_event(item['source_url']))
  app,_=fetcher.get(canonical_application(item['application_url']))
