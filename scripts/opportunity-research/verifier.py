@@ -25,7 +25,13 @@ SERIES = {
  'raleightwilightmarket':('raleigh-twilight-market','Raleigh Twilight Market'),
 }
 CITIES={'raleigh','durham','cary','apex','wendell','rolesville','wake forest','chapel hill','carrboro','holly springs','fuquay-varina','morrisville','garner','clayton','pittsboro','hillsborough'}
-HOSTS={'www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com'}
+HOSTS={'www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com',
+ 'www.trianglepopup.com','trianglepopup.com','thenightmarketcompany.com','www.thenightmarketcompany.com',
+ 'shoplocalraleigh.org','www.shoplocalraleigh.org','www.geekandgrubmarket.com','geekandgrubmarket.com',
+ 'hummingbirdmarketnc.com','www.hummingbirdmarketnc.com','www.caryfarmersmarket.com','caryfarmersmarket.com',
+ 'www.hillsboroughartscouncil.org','hillsboroughartscouncil.org','www.takethehighstreet.com','takethehighstreet.com',
+ 'blackfarmersmkt.org','www.blackfarmersmkt.org','www.durhamcraftmarket.com','durhamcraftmarket.com',
+ 'www.carrborofarmersmarket.com','carrborofarmersmarket.com','www.apexfarmersmarket.com','apexfarmersmarket.com'}
 MAX_SOURCE_BYTES=4_000_000
 VOID={'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
 def norm(value):return re.sub(r'[^a-z0-9]','',value.lower())
