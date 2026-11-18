@@ -42,7 +42,7 @@ The GitHub Actions workflow `.github/workflows/opportunity-research.yml` runs tw
 when `BTB_RESEARCH_SCHEDULE=enabled`. A manual workflow run supports `dry_run`.
 
 The worker first rechecks approved opportunities using their official source,
-then looks for **new** vendor applications across 14 curated Triangle organizer
+then looks for **new** vendor applications across 20 curated Triangle organizer
 pages (`scripts/opportunity-research/discovery.py`) and optional public web
 search hints for Raleigh, Durham, Cary/Apex, and Chapel Hill/Carrboro.
 
