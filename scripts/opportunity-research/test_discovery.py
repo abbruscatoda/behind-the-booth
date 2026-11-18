@@ -76,6 +76,18 @@ class DiscoveryTests(unittest.TestCase):
   self.assertEqual(found,[])
   self.assertEqual(stats['discovery_verified_candidates'],0)
 
+ def test_application_metadata_must_cover_this_exact_event_date(self):
+  pages=Pages()
+  event={'name':'New Triangle Holiday Market','organizer':ORGANIZER}
+  source,app=fixtures(event=event,app_event={**event,
+   'startDate':'2026-12-29T11:00:00-05:00',
+   'endDate':'2026-12-29T15:00:00-05:00'})
+  pages.docs[SOURCE]=source
+  pages.docs[APP]=app
+  with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
+   candidates,_,_=discovery.discover_triangle(pages,NOW,include_search=False)
+  self.assertEqual(candidates,[])
+
  def test_event_must_link_this_exact_vendor_application(self):
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
    candidates,leads,stats=discovery.discover_triangle(Pages(missing_app_link=True),NOW,include_search=False)
