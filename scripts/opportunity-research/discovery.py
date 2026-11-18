@@ -77,12 +77,27 @@ def is_safe_lead_url(value):
 def is_application_hint(url,label):
  if not is_safe_lead_url(url):return False
  p=urlparse(url)
+ # Discovery should surface actionable vendor applications, not the site's
+ # vendor directory, employment application, PDF policies, or advertisements.
+ if p.path.lower().endswith(('.pdf','.jpg','.png','.zip')):return False
+ title=label.lower().strip()
+ path=p.path.lower().replace('-',' ').replace('_',' ')
+ combined=title+' '+path
+ if re.search(r'\b(?:volunteer|musician|employment|work with us|careers?|staff|job|jobs|hiring|'
+              r'faq|faqs|rules|policies|resources?|directories|members|our vendors|meet our vendors|'
+              r'payment|payments|closed|fundrais(?:er|ing)|community booth|nonprofit|sponsor)\b',combined):
+  return False
+ if p.hostname in {'godaddy.com','www.godaddy.com'}:return False
  if canonical_application(url):return True
- if p.hostname in {'docs.google.com','forms.gle','form.jotform.com'}:
+ if p.hostname in {'docs.google.com','forms.gle','form.jotform.com','pci.jotform.com'}:
   from verifier import valid_url
+  if p.hostname=='pci.jotform.com':
+   return bool(re.fullmatch(r'/form/[0-9]{10,20}',p.path) and not p.query)
   return valid_url(url)
- words=(label+' '+p.path.replace('-',' ')+' '+p.query.replace('_',' ')).lower()
- return bool(re.search(r'\b(?:vendor|vendors|merchant|merchants|exhibitor|exhibitors|booth|apply|application|applications)\b',words))
+ # A generic vendor information page is not a new application.
+ if re.search(r'\b(?:info|information|opportunities|our vendors|vendor list)\b',combined) and not re.search(r'\b(?:apply|application|applications|register|registration)\b',title):
+  return False
+ return bool(re.search(r'\b(?:apply|application|applications|registration|register)\b',combined))
 
 def search_urls(now, opener=None):
  """Optional keyless search discovery. Fail closed to an empty set on outages."""
@@ -122,7 +137,7 @@ def extract_links(doc, base):
   if app:
    app_urls.add(app);continue
   label=node.text()[:180]
-  if is_application_hint(url,label):lead_urls.add((url,label))
+  if url.rstrip('/')!=base.rstrip('/') and is_application_hint(url,label):lead_urls.add((url,label))
  return event_urls,app_urls,lead_urls
 
 def _stage_event(source,app,fetcher,now):
