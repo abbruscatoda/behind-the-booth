@@ -22,7 +22,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_publish_discovery'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -46,7 +46,7 @@ def existing_result(item,found,fetcher,now):
  key=(canonical_application(item['application_url']),item['starts_on'])
  if key in found:return found[key]
  if not application_key(item['application_url']):return verify_artspace(item,fetcher,now)
- if norm(item.get('market_organizer') or '')!='themakrssociety':
+ if norm(item.get('market_organizer') or '')!='themakrssociety' or item.get('verification_policy')=='triangle-eventeny-auto-v1':
   # Bind verification to the exact existing, manually approved market.
   # Applications can link back to the dated Eventeny page even when the
   # stored source is an organizer website or the application itself.
@@ -104,7 +104,10 @@ def run(dry_run=False):
     counts['proposed_'+result['decision']]+=1
     print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url') or result.get('research_suggestions',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'research_quality':result.get('research_quality'),'quality_issues':result.get('quality_issues',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility',''),'research_suggestions':result.get('research_suggestions')},ensure_ascii=False));return
    if result.get('category_warnings'):print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'category_warnings':result['category_warnings']},ensure_ascii=False))
-   response=db.rpc('btb_research_apply',{'p_id':item['id'] if item else None,'p_result':result,'p_expected_updated_at':item['updated_at'] if item else None})
+   if item is None and result.get('policy')=='triangle-eventeny-auto-v1' and result.get('decision')=='publish':
+    response=db.rpc('btb_research_publish_discovery',{'p_result':result})
+   else:
+    response=db.rpc('btb_research_apply',{'p_id':item['id'] if item else None,'p_result':result,'p_expected_updated_at':item['updated_at'] if item else None})
    counts[response['action']]+=1
    print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'action':response['action'],'reason':response.get('reason',''),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()} if response['action']=='publish' else {}},ensure_ascii=False))
   for item in context['items']:
@@ -119,9 +122,10 @@ def run(dry_run=False):
    apply(item,result)
   for key,result in found.items():
    if key not in known:apply(None,result)
-  # Broad discovery is subordinate to verified rechecks, and never auto-publishes.
-  # Discovery source failures stay diagnostic rather than invalidating existing
-  # published opportunities. Every new dated Eventeny candidate is a draft.
+  # Broad discovery follows previously published rechecks. Newly discovered
+  # opportunities are published only through the dedicated, guarded RPC after
+  # both Eventeny identities, dates, application status and receipts match.
+  # Inconclusive organizer links remain private admin research leads.
   incoming,leads,discovery_stats=discover_triangle(fetcher,now,known=known|set(found))
   for candidate in incoming:
    data=candidate['candidate']

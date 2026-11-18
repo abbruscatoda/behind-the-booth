@@ -1,5 +1,8 @@
-"""Triangle discovery must produce review-only drafts, never auto-publish."""
+"""Triangle discovery auto-publishes only fully verified, organizer-linked events."""
 import unittest
+import io
+import contextlib
+import run as worker
 from datetime import datetime,timezone
 from unittest.mock import patch
 import discovery
@@ -31,22 +34,59 @@ class DiscoveryTests(unittest.TestCase):
     self.assertIn(city.lower(),verifier.CITIES)
   self.assertGreaterEqual(len(discovery.SOURCES),20)
 
- def test_new_triangle_application_staged_as_review_only(self):
+ def test_new_triangle_application_qualifies_for_safe_auto_publication(self):
   pages=Pages()
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
    candidates,leads,stats=discovery.discover_triangle(pages,NOW,include_search=False)
   self.assertEqual(len(candidates),1)
-  self.assertEqual(candidates[0]['decision'],'review')
+  self.assertEqual(candidates[0]['decision'],'publish')
+  self.assertEqual(candidates[0]['policy'],'triangle-eventeny-auto-v1')
+  self.assertEqual(candidates[0]['research_quality']['fields']['identity']['status'],'confirmed')
   self.assertIsNone(candidates[0]['candidate']['market_slug'])
   self.assertEqual(candidates[0]['candidate']['organizer'],'Geek and Grub Market')
-  self.assertEqual(stats['discovery_reviewable_drafts'],1)
+  self.assertEqual(stats['discovery_verified_candidates'],1)
+
+ def test_real_worker_uses_guarded_autopublisher_for_new_verified_event(self):
+  pages=Pages()
+  with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
+   found,_,_=discovery.discover_triangle(pages,NOW,include_search=False)
+  calls=[]
+  class FakeDB:
+   def rpc(self,name,body=None):
+    calls.append((name,body))
+    if name=='btb_research_context':return {'enabled':True,'items':[]}
+    if name=='btb_research_run':return 'test-run'
+    if name=='btb_research_publish_discovery':
+     self_result=body['p_result']
+     assert self_result['policy']=='triangle-eventeny-auto-v1'
+     assert self_result['decision']=='publish'
+     return {'action':'publish','reason':'Auto-published new verified market.'}
+    raise AssertionError('Unexpected RPC '+name)
+  class FakeFetcher:
+   def __init__(self,limit):self.limit=limit;self.requests=0
+  with patch.object(worker,'Database',FakeDB),patch.object(worker,'discover',return_value=([],[])),patch.object(worker,'discover_triangle',return_value=(found,[],{})),patch.object(worker,'Fetcher',FakeFetcher),contextlib.redirect_stdout(io.StringIO()):
+   worker.run(False)
+  self.assertIn('btb_research_publish_discovery',[name for name,_ in calls])
+  self.assertNotIn('btb_research_apply',[name for name,_ in calls])
 
  def test_known_opportunity_does_not_consume_new_draft_slot(self):
   pages=Pages()
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
    found,_,stats=discovery.discover_triangle(pages,NOW,include_search=False,known={(APP,'2026-11-29')})
   self.assertEqual(found,[])
-  self.assertEqual(stats['discovery_reviewable_drafts'],0)
+  self.assertEqual(stats['discovery_verified_candidates'],0)
+
+ def test_application_metadata_must_cover_this_exact_event_date(self):
+  pages=Pages()
+  event={'name':'New Triangle Holiday Market','organizer':ORGANIZER}
+  source,app=fixtures(event=event,app_event={**event,
+   'startDate':'2026-12-29T11:00:00-05:00',
+   'endDate':'2026-12-29T15:00:00-05:00'})
+  pages.docs[SOURCE]=source
+  pages.docs[APP]=app
+  with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
+   candidates,_,_=discovery.discover_triangle(pages,NOW,include_search=False)
+  self.assertEqual(candidates,[])
 
  def test_event_must_link_this_exact_vendor_application(self):
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):

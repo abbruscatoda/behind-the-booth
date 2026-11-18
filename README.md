@@ -51,8 +51,11 @@ search hints for Raleigh, Durham, Cary/Apex, and Chapel Hill/Carrboro.
 - A new Eventeny event must have a validated organizer account, exact dated
   Triangle location, a vendor application linked from the event itself,
   matching application metadata, an enabled application action, and a future
-  deadline. **New discoveries are drafts requiring administrator review**, not
-  automatically published or linked to unrelated market reviews.
+  deadline. **Fully verified new discoveries are automatically published** via a
+  separate research-secret-protected Supabase RPC, creating a market profile
+  and dated occurrence in one transaction. Existing profiles are reused only
+  when the normalized market name, organizer and city agree; conflicting or
+  hidden markets are not overwritten. New events never borrow unrelated reviews.
 - Vendor-form links that lack independently confirmed event details enter the
   private **New vendor-application leads** queue on
   `/admin/opportunities`. Admins can open the official source, use the
@@ -65,7 +68,11 @@ search hints for Raleigh, Durham, Cary/Apex, and Chapel Hill/Carrboro.
   signs in, bypasses controls, pays fees, or submits applications.
 - No third-party search API key is needed. The RSS search is opportunistic;
   the curated sources continue functioning without it. Current request
-  budgets and per-run staging caps are in `discovery.py`.
+  budgets and per-run verified-candidate caps are in `discovery.py`.
 - The private discovery-lead table and worker/admin RPCs must be installed
   before deploying the worker. See
-  `scripts/opportunity-research/sql/20261118_triangle_discovery_leads.sql`.
+  `scripts/opportunity-research/sql/20261118_triangle_discovery_leads.sql`
+  and `scripts/opportunity-research/sql/20261118_verified_triangle_auto_publish.sql`.
+  Organizer-linked Google and Jotform applications still require stronger
+  source- and deadline-bound publication policies, so incomplete links remain
+  in the private research queue; they are not falsely labeled open.
