@@ -101,7 +101,7 @@ def verify_public_form(lead,fetcher,now=None):
    'categories':[],'fee_notes':facts.get('fee_notes') or '',
    'eligibility':facts.get('eligibility') or ''}
   receipt={'application_url':app_url,'checked_at':now.isoformat(),'categories':{}}
-  result={'policy':POLICY,'decision':'publish',
+  result={'policy':POLICY,'decision':'publish','form_complete':True,'form_readable':True,
    'reason':'Official dated organizer page and public vendor form independently match; enabled submission and exact future deadline verified.',
    'checked_at':now.isoformat(),'source_hash':source_hash,
    'application_hash':app_hash,
