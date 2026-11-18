@@ -73,6 +73,13 @@ search hints for Raleigh, Durham, Cary/Apex, and Chapel Hill/Carrboro.
   before deploying the worker. See
   `scripts/opportunity-research/sql/20261118_triangle_discovery_leads.sql`
   and `scripts/opportunity-research/sql/20261118_verified_triangle_auto_publish.sql`.
-  Organizer-linked Google and Jotform applications still require stronger
-  source- and deadline-bound publication policies, so incomplete links remain
-  in the private research queue; they are not falsely labeled open.
+  Public Google Forms and Jotform applications now qualify for automatic
+  publication only when a single official organizer page has exact, scheduled
+  Event metadata, that page links the precise public form, and the form itself
+  contains the matching event name/date, enabled Submit, and an explicitly
+  timezone-labelled future application cutoff. Unreadable, multi-page,
+  season-wide, conflicting or gated forms remain private leads. The additional
+  guarded RPC is versioned at
+  `scripts/opportunity-research/sql/20261118_verified_public_form_auto_publish.sql`.
+  Previously published form-backed events are rechecked against the same
+  evidence, with quality regressions held for review.

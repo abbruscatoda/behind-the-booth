@@ -286,9 +286,25 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
     if len(staged)>=MAX_NEW_DRAFTS:break
   except Exception:
    continue
+ # A public Jotform/Google Form can qualify too, but only when it
+ # independently matches a single dated official organizer event and exposes
+ # a live Submit control plus an exact future deadline. Generic seasonal
+ # forms are deliberately left as private leads.
+ from form_discovery import verify_public_form
+ verified_forms=0
+ for lead in list(raw_leads.values())[:MAX_LEADS]:
+  if len(staged)>=MAX_NEW_DRAFTS:break
+  result=verify_public_form(lead,fetcher,now)
+  if not result:continue
+  data=result['candidate']
+  key=(data['application_url'],data['starts_on'])
+  if key in known or key in staged:continue
+  staged[key]=result
+  verified_forms+=1
  leads=list(raw_leads.values())[:MAX_LEADS]
  stats={'discovery_sources':len(SOURCES),'optional_source_failures':failures[:10],
         'discovery_event_urls':len(events),'discovery_vendor_application_urls':len(apps),
         'discovery_followed_organizer_pages':len(followed),
-        'discovery_verified_candidates':len(staged),'discovery_unconfirmed_leads':len(leads)}
+        'discovery_verified_candidates':len(staged),
+        'discovery_verified_public_forms':verified_forms,'discovery_unconfirmed_leads':len(leads)}
  return list(staged.values()),leads,stats
