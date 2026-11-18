@@ -157,6 +157,21 @@ def _stage_event(source,app,fetcher,now):
             if 'app-card' in node.attrs.get('class','').split()
             for link in node.links(source)):
   return None
+ # A dated event cannot borrow a form from another occurrence just
+ # because the event name or organizer matches. The application's structured
+ # event date must either match or explicitly span this dated occurrence.
+ try:
+  app_doc,_=fetcher.get(app)
+  dates=[]
+  for entry in app_doc.events():
+   app_start=datetime.fromisoformat(entry['startDate'])
+   app_end=datetime.fromisoformat(entry['endDate'])
+   if app_start.tzinfo is None or app_end.tzinfo is None:continue
+   dates.append((app_start.date(),app_end.date()))
+  if not any(a<=start.date() and b>=end.date() for a,b in dates):
+   return None
+ except (KeyError,TypeError,ValueError):
+  return None
  # This verifier checks *both* the event and application, including the organizer
  # account, dates, availability, deadline and enabled start controls.
  expected={'market_id':None,'market_organizer':organizer,
