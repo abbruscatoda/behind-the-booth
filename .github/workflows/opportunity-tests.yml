@@ -1,0 +1,22 @@
+name: Opportunity worker tests
+on:
+  pull_request:
+    paths:
+      - 'scripts/opportunity-research/**'
+      - '.github/workflows/opportunity-tests.yml'
+  push:
+    paths:
+      - 'scripts/opportunity-research/**'
+      - '.github/workflows/opportunity-tests.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run deterministic worker tests
+        run: python3 -m unittest discover -s scripts/opportunity-research -p 'test_*.py' -v

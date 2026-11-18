@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 from research_quality import apply_quality_gate,add_review_suggestions
+from review_policy import defer_inconclusive_review
 from verifier import Fetcher, discover, verify, canonical_event, canonical_application, application_key, norm, Uncertain, verify_artspace
 
 class NoRedirect(HTTPRedirectHandler):
@@ -68,6 +69,10 @@ def run(dry_run=False):
   known={(canonical_application(i['application_url']),i['starts_on']) for i in context['items']}
   def apply(item,result):
    result=add_review_suggestions(item,apply_quality_gate(item,result))
+   if defer_inconclusive_review(item,result):
+    counts['deferred_inconclusive']+=1
+    print(json.dumps({'title':item['title'],'action':'deferred_inconclusive','reason':'Previously published listing retained; inaccessible source is not evidence of a change.'},ensure_ascii=False))
+    return
    if dry_run:
     counts['proposed_'+result['decision']]+=1
     print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url') or result.get('research_suggestions',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'research_quality':result.get('research_quality'),'quality_issues':result.get('quality_issues',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility',''),'research_suggestions':result.get('research_suggestions')},ensure_ascii=False));return
