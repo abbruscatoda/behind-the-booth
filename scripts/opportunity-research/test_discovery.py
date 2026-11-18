@@ -24,6 +24,13 @@ class Pages:
   return verifier.Document(self.docs[url]),'a'*64
 
 class DiscoveryTests(unittest.TestCase):
+ def test_curated_sources_are_covered_by_the_https_allowlist(self):
+  for name,city,url in discovery.SOURCES:
+   with self.subTest(source=name):
+    self.assertTrue(verifier.valid_url(url))
+    self.assertIn(city.lower(),verifier.CITIES)
+  self.assertGreaterEqual(len(discovery.SOURCES),20)
+
  def test_new_triangle_application_staged_as_review_only(self):
   pages=Pages()
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
