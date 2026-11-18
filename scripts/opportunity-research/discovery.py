@@ -33,6 +33,12 @@ SOURCES = (
  ('Durham Craft Market', 'Durham', 'https://www.durhamcraftmarket.com/saturdays-in-durham-central-park.html'),
  ('Carrboro Farmers Market', 'Carrboro', 'https://www.carrborofarmersmarket.com/'),
  ('Apex Farmers Market', 'Apex', 'https://www.apexfarmersmarket.com/'),
+ ('Chapel Hill Farmers Market', 'Chapel Hill', 'https://www.thechapelhillfarmersmarket.com/'),
+ ('Holly Springs Farmers Market', 'Holly Springs', 'https://www.hollyspringsnc.gov/319/Farmers-Market'),
+ ('Western Wake Farmers Market', 'Morrisville', 'https://westernwakefarmersmarket.org/'),
+ ('Eno River Farmers Market', 'Hillsborough', 'https://www.enoriverfarmersmarket.com/'),
+ ('Fuquay-Varina Growers Market', 'Fuquay-Varina', 'https://www.fvgrowersmarket.com/'),
+ ('YMCA of the Triangle', 'Cary', 'https://www.ymcatriangle.org/events/vendor-market'),
  ('Artspace', 'Raleigh', 'https://artspacenc.org/calls-for-art/'),
  ('Artsplosure', 'Raleigh', 'https://www.artsplosure.org/first-night-raleigh'),
 )
