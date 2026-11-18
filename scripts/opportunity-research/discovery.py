@@ -219,6 +219,26 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
    failures.append(f'{organizer}: {source_error(error)}')
  if include_search:
   events.update(search_urls(now))
+ # Follow only one same-host application page from each curated organizer.
+ # An organizer's front page often links to a separate, current application
+ # index; that index can in turn link to a dated Eventeny event. Never crawl
+ # unrelated domains, form submissions, arbitrary URLs, or multiple layers.
+ from verifier import valid_url
+ followed=set()
+ for entry in list(raw_leads.values()):
+  target=entry['target_url']
+  source=entry['source_url']
+  if len(followed)>=30:break
+  if urlparse(target).hostname!=urlparse(source).hostname or not valid_url(target):continue
+  if target in followed:continue
+  followed.add(target)
+  try:
+   inner,_=fetcher.get(target)
+   extra_events,extra_apps,_=extract_links(inner,target)
+   events.update(extra_events)
+   apps.update(extra_apps)
+  except Exception:
+   continue
  # Recognized vendor-application links can supply their *own* Eventeny event URL.
  for app in sorted(apps)[:MAX_APPLICATIONS]:
   try:
@@ -254,5 +274,6 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
  leads=list(raw_leads.values())[:MAX_LEADS]
  stats={'discovery_sources':len(SOURCES),'optional_source_failures':failures[:10],
         'discovery_event_urls':len(events),'discovery_vendor_application_urls':len(apps),
+        'discovery_followed_organizer_pages':len(followed),
         'discovery_verified_candidates':len(staged),'discovery_unconfirmed_leads':len(leads)}
  return list(staged.values()),leads,stats
