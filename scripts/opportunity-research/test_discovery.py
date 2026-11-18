@@ -1,4 +1,4 @@
-"""Triangle discovery must produce review-only drafts, never auto-publish."""
+"""Triangle discovery auto-publishes only fully verified, organizer-linked events."""
 import unittest
 from datetime import datetime,timezone
 from unittest.mock import patch
@@ -31,15 +31,17 @@ class DiscoveryTests(unittest.TestCase):
     self.assertIn(city.lower(),verifier.CITIES)
   self.assertGreaterEqual(len(discovery.SOURCES),20)
 
- def test_new_triangle_application_staged_as_review_only(self):
+ def test_new_triangle_application_qualifies_for_safe_auto_publication(self):
   pages=Pages()
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
    candidates,leads,stats=discovery.discover_triangle(pages,NOW,include_search=False)
   self.assertEqual(len(candidates),1)
-  self.assertEqual(candidates[0]['decision'],'review')
+  self.assertEqual(candidates[0]['decision'],'publish')
+  self.assertEqual(candidates[0]['policy'],'triangle-eventeny-auto-v1')
+  self.assertEqual(candidates[0]['research_quality']['fields']['identity']['status'],'confirmed')
   self.assertIsNone(candidates[0]['candidate']['market_slug'])
   self.assertEqual(candidates[0]['candidate']['organizer'],'Geek and Grub Market')
-  self.assertEqual(stats['discovery_reviewable_drafts'],1)
+  self.assertEqual(stats['discovery_verified_candidates'],1)
 
  def test_known_opportunity_does_not_consume_new_draft_slot(self):
   pages=Pages()
