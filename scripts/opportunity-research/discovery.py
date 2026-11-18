@@ -85,7 +85,7 @@ def is_application_hint(url,label):
  combined=title+' '+path
  if re.search(r'\b(?:volunteer|musician|employment|work with us|careers?|staff|job|jobs|hiring|'
               r'faq|faqs|rules|policies|resources?|directories|members|our vendors|meet our vendors|'
-              r'payment|payments|closed|fundrais(?:er|ing)|community booth|nonprofit|sponsor|'              r'survey|teaching artist|workshops?|programs?\s*&\s*registration)\b',combined):
+              r'payment|payments|closed|fundrais(?:er|ing)|community booth|nonprofit|sponsor|'              r'survey|teaching artists?|workshops?|programs?\s*&\s*registration)\b',combined):
   return False
  if p.hostname in {'godaddy.com','www.godaddy.com'}:return False
  if canonical_application(url):return True
