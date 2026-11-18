@@ -85,7 +85,7 @@ def is_application_hint(url,label):
  combined=title+' '+path
  if re.search(r'\b(?:volunteer|musician|employment|work with us|careers?|staff|job|jobs|hiring|'
               r'faq|faqs|rules|policies|resources?|directories|members|our vendors|meet our vendors|'
-              r'payment|payments|closed|fundrais(?:er|ing)|community booth|nonprofit|sponsor)\b',combined):
+              r'payment|payments|closed|fundrais(?:er|ing)|community booth|nonprofit|sponsor|'              r'survey|teaching artist|workshops?|programs?\s*&\s*registration)\b',combined):
   return False
  if p.hostname in {'godaddy.com','www.godaddy.com'}:return False
  if canonical_application(url):return True
@@ -138,7 +138,7 @@ def extract_links(doc, base):
   if app:
    app_urls.add(app);continue
   label=node.text()[:180]
-  if url.rstrip('/')!=base.rstrip('/') and is_application_hint(url,label):lead_urls.add((url,label))
+  if url.rstrip('/#')!=base.rstrip('/#') and is_application_hint(url,label):lead_urls.add((url,label))
  return event_urls,app_urls,lead_urls
 
 def _stage_event(source,app,fetcher,now):
@@ -301,7 +301,10 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
   if key in known or key in staged:continue
   staged[key]=result
   verified_forms+=1
- leads=list(raw_leads.values())[:MAX_LEADS]
+ # Never put already-published applications back into the action queue,
+ # regardless of whether their source uses Eventeny or a public form.
+ known_apps={url for url,_ in known if url}
+ leads=[lead for lead in raw_leads.values() if lead['target_url'] not in known_apps][:MAX_LEADS]
  stats={'discovery_sources':len(SOURCES),'optional_source_failures':failures[:10],
         'discovery_event_urls':len(events),'discovery_vendor_application_urls':len(apps),
         'discovery_followed_organizer_pages':len(followed),
