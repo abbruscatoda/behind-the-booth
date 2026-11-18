@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 from research_quality import apply_quality_gate,add_review_suggestions
-from review_policy import defer_inconclusive_review
+from review_policy import defer_inconclusive_review, transient_source_failure
 from verifier import Fetcher, discover, verify, canonical_event, canonical_application, application_key, norm, Uncertain, verify_artspace
 
 class NoRedirect(HTTPRedirectHandler):
@@ -86,7 +86,9 @@ def run(dry_run=False):
     apply(item,{'decision':'closed','reason':'Application deadline or event date has passed.'});continue
    try:result=existing_result(item,found,fetcher,now)
    except Uncertain as error:result={'decision':'closed' if item.get('deadline') and datetime.fromisoformat(item['deadline'].replace('Z','+00:00'))<now else 'review','reason':str(error)}
-   except Exception:result={'decision':'closed' if item.get('deadline') and datetime.fromisoformat(item['deadline'].replace('Z','+00:00'))<now else 'review','reason':'Official source could not be read reliably. The next successful run can resolve this automatically.'}
+   except Exception as error:
+    if not transient_source_failure(error):raise
+    result={'decision':'closed' if item.get('deadline') and datetime.fromisoformat(item['deadline'].replace('Z','+00:00'))<now else 'review','reason':'Official source could not be read reliably. The next successful run can resolve this automatically.'}
    apply(item,result)
   for key,result in found.items():
    if key not in known:apply(None,result)
