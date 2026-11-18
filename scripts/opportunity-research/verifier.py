@@ -25,7 +25,7 @@ SERIES = {
  'raleightwilightmarket':('raleigh-twilight-market','Raleigh Twilight Market'),
 }
 CITIES={'raleigh','durham','cary','apex','wendell','rolesville','wake forest','chapel hill','carrboro','holly springs','fuquay-varina','morrisville','garner','clayton','pittsboro','hillsborough','knightdale','zebulon','youngsville','creedmoor','angier','siler city','mebane','franklinton'}
-HOSTS={'www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com',
+HOSTS={'www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com','pci.jotform.com',
  'www.trianglepopup.com','trianglepopup.com','thenightmarketcompany.com','www.thenightmarketcompany.com',
  'shoplocalraleigh.org','www.shoplocalraleigh.org','www.geekandgrubmarket.com','geekandgrubmarket.com',
  'hummingbirdmarketnc.com','www.hummingbirdmarketnc.com','www.caryfarmersmarket.com','caryfarmersmarket.com',
@@ -49,6 +49,7 @@ def valid_url(url):
  if p.hostname=='docs.google.com' and (not re.fullmatch(r'/forms/d/e/[A-Za-z0-9_-]{20,120}/viewform',p.path) or p.query not in ('','usp=send_form')):return False
  if p.hostname=='artspacenc.org' and p.path.rstrip('/')!='/calls-for-art':return False
  if p.hostname=='form.jotform.com' and (not re.fullmatch(r'/[0-9]{10,20}',p.path) or p.query):return False
+ if p.hostname=='pci.jotform.com' and (not re.fullmatch(r'/form/[0-9]{10,20}',p.path) or p.query):return False
  return p.scheme=='https' and p.hostname in HOSTS and not p.username and not p.password and p.port in (None,443) and not p.fragment
 
 def application_key(url):
