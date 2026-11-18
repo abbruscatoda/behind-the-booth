@@ -37,6 +37,12 @@ allowed text[]:=array[
  'https://www.durhamcraftmarket.com/saturdays-in-durham-central-park.html',
  'https://www.carrborofarmersmarket.com/',
  'https://www.apexfarmersmarket.com/',
+ 'https://www.thechapelhillfarmersmarket.com/',
+ 'https://www.hollyspringsnc.gov/319/Farmers-Market',
+ 'https://westernwakefarmersmarket.org/',
+ 'https://www.enoriverfarmersmarket.com/',
+ 'https://www.fvgrowersmarket.com/',
+ 'https://www.ymcatriangle.org/events/vendor-market',
  'https://artspacenc.org/calls-for-art/',
  'https://www.artsplosure.org/first-night-raleigh'];
 begin
