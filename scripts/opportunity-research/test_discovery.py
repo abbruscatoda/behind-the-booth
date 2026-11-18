@@ -1,5 +1,8 @@
 """Triangle discovery auto-publishes only fully verified, organizer-linked events."""
 import unittest
+import io
+import contextlib
+import run as worker
 from datetime import datetime,timezone
 from unittest.mock import patch
 import discovery
@@ -42,6 +45,29 @@ class DiscoveryTests(unittest.TestCase):
   self.assertIsNone(candidates[0]['candidate']['market_slug'])
   self.assertEqual(candidates[0]['candidate']['organizer'],'Geek and Grub Market')
   self.assertEqual(stats['discovery_verified_candidates'],1)
+
+ def test_real_worker_uses_guarded_autopublisher_for_new_verified_event(self):
+  pages=Pages()
+  with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
+   found,_,_=discovery.discover_triangle(pages,NOW,include_search=False)
+  calls=[]
+  class FakeDB:
+   def rpc(self,name,body=None):
+    calls.append((name,body))
+    if name=='btb_research_context':return {'enabled':True,'items':[]}
+    if name=='btb_research_run':return 'test-run'
+    if name=='btb_research_publish_discovery':
+     self_result=body['p_result']
+     assert self_result['policy']=='triangle-eventeny-auto-v1'
+     assert self_result['decision']=='publish'
+     return {'action':'publish','reason':'Auto-published new verified market.'}
+    raise AssertionError('Unexpected RPC '+name)
+  class FakeFetcher:
+   def __init__(self,limit):self.limit=limit;self.requests=0
+  with patch.object(worker,'Database',FakeDB),patch.object(worker,'discover',return_value=([],[])),patch.object(worker,'discover_triangle',return_value=(found,[],{})),patch.object(worker,'Fetcher',FakeFetcher),contextlib.redirect_stdout(io.StringIO()):
+   worker.run(False)
+  self.assertIn('btb_research_publish_discovery',[name for name,_ in calls])
+  self.assertNotIn('btb_research_apply',[name for name,_ in calls])
 
  def test_known_opportunity_does_not_consume_new_draft_slot(self):
   pages=Pages()
