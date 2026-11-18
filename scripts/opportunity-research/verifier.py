@@ -122,7 +122,7 @@ def deadline_from(text):
  stamp=f'{month[:3]} {day} {year} {clock} {ampm.upper()} {offset.replace(":","")}'
  return datetime.strptime(stamp,'%b %d %Y %I:%M %p %z')
 
-def validate_event(doc,now):
+def validate_event(doc,now,expected_organizer=None):
  events=list(doc.events())
  # Reject contradictory metadata rather than picking whichever result looks convenient.
  try:dates={(datetime.fromisoformat(e.get('startDate','')),datetime.fromisoformat(e.get('endDate','')),e.get('name')) for e in events}
@@ -130,8 +130,16 @@ def validate_event(doc,now):
  if len(dates)!=1:raise Uncertain('Exact dated event metadata is missing or contradictory')
  event=events[0]
  if any(e.get('organizer')!=event.get('organizer') or e.get('location')!=event.get('location') or e.get('eventStatus')!=event.get('eventStatus') for e in events):raise Uncertain('Event identity metadata is contradictory')
- if event.get('organizer',{}).get('url','').rstrip('/') not in {'https://www.eventeny.com/company/?c=27023','https://eventeny.com/company/?c=27023'}:raise Uncertain('Organizer identity is not the trusted MAKRS account')
- if norm(event['organizer'].get('name',''))!='themakrssociety':raise Uncertain('Organizer name does not match MAKRS')
+ organizer=event.get('organizer') or {}
+ organizer_url=organizer.get('url','')
+ if expected_organizer is None:
+  if organizer_url.rstrip('/') not in {'https://www.eventeny.com/company/?c=27023','https://eventeny.com/company/?c=27023'}:raise Uncertain('Organizer identity is not the trusted MAKRS account')
+  if norm(organizer.get('name',''))!='themakrssociety':raise Uncertain('Organizer name does not match MAKRS')
+ else:
+  p=urlparse(organizer_url)
+  company_id=parse_qs(p.query).get('c',[])
+  if p.scheme!='https' or p.hostname not in {'eventeny.com','www.eventeny.com'} or p.path.rstrip('/')!='/company' or len(company_id)!=1 or not company_id[0].isdigit() or norm(organizer.get('name',''))!=norm(expected_organizer):
+   raise Uncertain('Eventeny organizer account or name does not match the approved market')
  if event.get('eventStatus')!='https://schema.org/EventScheduled':raise Uncertain('Event is cancelled, postponed, or not confirmed scheduled')
  start=datetime.fromisoformat(event['startDate']);end=datetime.fromisoformat(event['endDate'])
  if start.tzinfo is None or end.tzinfo is None or end<start:raise Uncertain('Event dates or timezone are invalid')
@@ -171,12 +179,12 @@ def category_research(doc,app,source_url,application_url,fetcher,now,source_hash
   receipt.setdefault('warnings',[]).append('The public application names a category question but does not expose its choices; review category coverage with the organizer.')
  return receipt,conflicts
 
-def verify(source_url,application_url,fetcher,now=None):
+def verify(source_url,application_url,fetcher,now=None,expected_item=None):
  """Returns verified facts or raises Uncertain. No content supplied by an AI is trusted."""
  now=now or datetime.now(timezone.utc)
  source_url=canonical_event(source_url);application_url=canonical_application(application_url)
  if not source_url or not application_url:raise Uncertain('A dated Eventeny event and vendor application are required')
- doc,source_hash=fetcher.get(source_url);event,start,end,addr=validate_event(doc,now)
+ doc,source_hash=fetcher.get(source_url);event,start,end,addr=validate_event(doc,now,expected_item.get('market_organizer') if expected_item else None)
  cards=[n for n in doc.root.walk() if 'app-card' in n.attrs.get('class','').split() and any(application_key(u)==application_key(application_url) for u in n.links(source_url))]
  if len(cards)!=1:raise Uncertain('This application is not uniquely linked from the dated event')
  card=cards[0];card_text=card.text()
@@ -191,7 +199,7 @@ def verify(source_url,application_url,fetcher,now=None):
  status_text=availability_text(card)+' '+availability_text(app)
  status_problem=''
  app_events=list(app.events())
- if not app_events or any(norm(e.get('organizer',{}).get('name',''))!='themakrssociety' for e in app_events):raise Uncertain('Application organizer could not be verified')
+ if not app_events or any(norm(e.get('organizer',{}).get('name',''))!=norm(event['organizer']['name']) or e.get('organizer',{}).get('url','').rstrip('/')!=event['organizer'].get('url','').rstrip('/') for e in app_events):raise Uncertain('Application organizer account does not match the event organizer')
  if any(norm(e.get('name',''))!=norm(event.get('name','')) for e in app_events):raise Uncertain('Application and dated event identities disagree')
  if re.search(r'\b(applications? (?:are |is )?closed|application closed|no longer accepting applications|not accepting applications|fully booked)\b',status_text,re.I):closed=True
  try:deadline=deadline_from(text)
@@ -213,12 +221,13 @@ def verify(source_url,application_url,fetcher,now=None):
  fee_conflict=fee is not None and details['standard_fee'] is not None and fee!=details['standard_fee']
  if fee is None:fee=details['standard_fee']
  if details['standard_unavailable'] or details['standard_conflict']:fee=None
- series=exact_series(event['name'])
+ series=exact_series(event['name']) if not expected_item else None
  series_deadline=any(str(e.get('startDate',''))[:10]!=start.date().isoformat() or str(e.get('endDate',''))[:10]!=end.date().isoformat() for e in app_events)
  category_evidence,category_conflicts=category_research(doc,app,source_url,application_url,fetcher,now,source_hash,app_hash,series)
- result = {'policy':POLICY,'decision':('closed' if status=='closed' else 'publish') if series else 'review','reason':'' if series else 'New or unmatched market profile: confirm identity and create/link a profile.',
+ linked=bool(expected_item and expected_item.get('market_id') and norm(expected_item.get('market_organizer',''))==norm(event['organizer']['name']) and (expected_item.get('market_city') or '').lower()==addr['addressLocality'].lower() and expected_item.get('market_state')=='NC' and expected_item.get('starts_on')==start.date().isoformat() and expected_item.get('ends_on')==end.date().isoformat())
+ result = {'policy':('eventeny-organizer-v1' if expected_item else POLICY),'decision':('closed' if status=='closed' else 'publish') if series or linked else 'review','reason':'' if series or linked else 'New or unmatched market profile: confirm identity and create/link a profile.',
   'checked_at':now.isoformat(),'source_hash':source_hash,'application_hash':app_hash,'evidence':card_text[:600],
-  'candidate':{'title':series[1] if series else event['name'][:160], 'market_slug':series[0] if series else None,'organizer':'The MAKRS Society', 'city':addr['addressLocality'],'state':'NC',
+  'candidate':{'title':series[1] if series else event['name'][:160], 'market_slug':series[0] if series else (expected_item.get('market_slug') if expected_item else None),'organizer':event['organizer']['name'], 'city':addr['addressLocality'],'state':'NC',
    'venue':', '.join(filter(None,[event['location'].get('name'),addr.get('streetAddress')])), 'starts_on':start.date().isoformat(),'ends_on':end.date().isoformat(), 'deadline':deadline.isoformat() if deadline else None,
    'application_url':application_url,'source_url':source_url,'availability':status,'booth_fee':fee,'application_fee':details['application_fee'],'deposit':details['deposit'],'categories':sorted(c for c,e in category_evidence['categories'].items() if e['status']=='eligible'),
    'fee_notes':(details['fee_notes']+' ' if details['fee_notes'] else '')+("Series application deadline; confirm this event date's cutoff with the organizer. " if series_deadline else '')+'Processing fees may be additional. Other booth types have separate pricing. Confirm totals with the organizer.',
