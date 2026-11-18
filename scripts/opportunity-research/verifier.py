@@ -33,10 +33,13 @@ def clean(value):return ' '.join(unescape(value).split())
 def valid_url(url):
  p=urlparse(url)
  if p.hostname=='www.artsplosure.org' and (p.path.rstrip('/')!='/first-night-raleigh' or p.query):return False
- if p.hostname=='forms.gle' and (p.path!='/e8JRmQUUcEirUzzY9' or p.query):return False
- if p.hostname=='docs.google.com' and (p.path!='/forms/d/e/1FAIpQLScPXt0euH9ziXcAR3tA9BkXTQ4qtnTK9V6aqttIYbxlittBlA/viewform' or p.query not in ('','usp=send_form')):return False
- if p.hostname=='artspacenc.org'  and p.path.rstrip('/')!='/calls-for-art':return False
- if p.hostname=='form.jotform.com' and (p.path!='/252944311617153' or p.query):return False
+ # Form IDs may vary, but the path stays scoped to a real hosted application.
+ # Google Docs/Forms must not be used to fetch documents, sign-in, prefill,
+ # entry values, or arbitrary query paths.
+ if p.hostname=='forms.gle' and (not re.fullmatch(r'/[A-Za-z0-9_-]{6,60}',p.path) or p.query):return False
+ if p.hostname=='docs.google.com' and (not re.fullmatch(r'/forms/d/e/[A-Za-z0-9_-]{20,120}/viewform',p.path) or p.query not in ('','usp=send_form')):return False
+ if p.hostname=='artspacenc.org' and p.path.rstrip('/')!='/calls-for-art':return False
+ if p.hostname=='form.jotform.com' and (not re.fullmatch(r'/[0-9]{10,20}',p.path) or p.query):return False
  return p.scheme=='https' and p.hostname in HOSTS and not p.username and not p.password and p.port in (None,443) and not p.fragment
 
 def application_key(url):

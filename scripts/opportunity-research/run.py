@@ -33,8 +33,15 @@ class Database:
 def existing_result(item,found,fetcher,now):
  from first_night import handles,verify_first_night
  if handles(item):return verify_first_night(item,fetcher,now)
- if urlparse(item['application_url']).hostname in {'forms.gle','docs.google.com'}:
-  raise Uncertain('Unsupported Google Form: no organizer-bound reader is configured. Application fees and requirements have NOT been verified; review the official form.')
+ from linked_forms import handles as handles_public_form, read as read_linked_public_form
+ from verifier import ARTSPACE_APP
+ if item['application_url']==ARTSPACE_APP:return verify_artspace(item,fetcher,now)
+ if handles_public_form(item):
+  if not item.get('source_url'):
+   raise Uncertain('Unsupported Google Form: no separate organizer-bound source is configured.')
+  return read_linked_public_form(item,fetcher,now)
+ if urlparse(item['application_url']).hostname in {'forms.gle','docs.google.com','form.jotform.com'}:
+  raise Uncertain('Unsupported Google Form or Jotform URL: an organizer-bound reader is required.')
  key=(canonical_application(item['application_url']),item['starts_on'])
  if key in found:return found[key]
  if not application_key(item['application_url']):return verify_artspace(item,fetcher,now)
