@@ -34,3 +34,15 @@ def defer_inconclusive_review(item, result):
         return True
 
     return False
+
+def transient_source_failure(error):
+    """Only treat known HTTP/network failures as inconclusive source reads.
+
+    Programmer errors, invalid source URLs, and unexpected parser failures
+    must not silently preserve listings as if a source check had succeeded.
+    """
+    from urllib.error import HTTPError, URLError
+
+    if isinstance(error, HTTPError):
+        return error.code in (408, 429, 500, 502, 503, 504)
+    return isinstance(error, (TimeoutError, ConnectionError, URLError))
