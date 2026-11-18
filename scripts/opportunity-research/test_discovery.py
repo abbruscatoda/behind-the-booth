@@ -70,6 +70,35 @@ class DiscoveryTests(unittest.TestCase):
   self.assertEqual(pages.calls,[SEED])
   self.assertEqual(len(leads),1)
 
+ def test_vendor_directories_and_non_vendor_forms_are_filtered(self):
+  irrelevant=[
+   ('https://www.godaddy.com/websites/website-builder','Vendor application'),
+   ('https://www.apexfarmersmarket.com/volunteer-application','Volunteer Application'),
+   ('https://www.apexfarmersmarket.com/musician-application','Musician Application'),
+   ('https://www.caryfarmersmarket.com/meet-our-vendors/','MEET OUR VENDORS'),
+   ('https://www.caryfarmersmarket.com/booth-payments/','Booth Payment Forms'),
+   ('https://www.geekandgrubmarket.com/vendors-faqs','Market Rules & Policies / FAQs'),
+   ('https://www.apexfarmersmarket.com/applicationclose','Application Closed!'),
+   ('https://www.trianglepopup.com/apply-to-work-with-us','Apply to Work with Us'),
+   ('https://www.caryfarmersmarket.com/wp-content/uploads/2026/rules.pdf','Please read rules before applying')
+  ]
+  for url,label in irrelevant:
+   with self.subTest(url=url):self.assertFalse(discovery.is_application_hint(url,label))
+  relevant=[
+   ('https://pci.jotform.com/form/253207413592151','2026 Fall Vendor Application'),
+   ('https://www.apexfarmersmarket.com/apply','Apply Now'),
+   ('https://blackfarmersmkt.org/be-a-vendor/','Be A Vendor'),
+   ('https://www.trianglepopup.com/apply-to-be-a-vendor','Apply to be a Vendor'),
+   ('https://shoplocalraleigh.org/brewgaloo/brewgaloo-applications/','Apply to Brewgaloo')
+  ]
+  for url,label in relevant:
+   with self.subTest(url=url):self.assertTrue(discovery.is_application_hint(url,label))
+
+ def test_source_page_cannot_create_self_link_lead(self):
+  doc=verifier.Document('<a href="'+SEED+'">Vendor Application</a>')
+  events,apps,leads=discovery.extract_links(doc,SEED)
+  self.assertEqual(leads,set())
+
  def test_ssrf_and_hidden_urls_rejected(self):
   for url in ('http://example.com/vendors','https://127.0.0.1/app',
    'https://localhost/vendor','https://example.com:8080/vendors',
