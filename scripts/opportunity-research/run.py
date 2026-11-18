@@ -122,7 +122,7 @@ def run(dry_run=False):
   # Broad discovery is subordinate to verified rechecks, and never auto-publishes.
   # Discovery source failures stay diagnostic rather than invalidating existing
   # published opportunities. Every new dated Eventeny candidate is a draft.
-  incoming,leads,discovery_stats=discover_triangle(fetcher,now)
+  incoming,leads,discovery_stats=discover_triangle(fetcher,now,known=known|set(found))
   for candidate in incoming:
    data=candidate['candidate']
    key=(canonical_application(data['application_url']),data['starts_on'])
