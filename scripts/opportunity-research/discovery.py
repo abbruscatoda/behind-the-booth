@@ -97,7 +97,8 @@ def is_application_hint(url,label):
  # A generic vendor information page is not a new application.
  if re.search(r'\b(?:info|information|opportunities|our vendors|vendor list)\b',combined) and not re.search(r'\b(?:apply|application|applications|register|registration)\b',title):
   return False
- return bool(re.search(r'\b(?:apply|application|applications|registration|register)\b',combined))
+ return bool(re.search(r'\b(?:apply|application|applications|registration|register)\b',combined)
+             or re.search(r'\b(?:be|become) a vendor\b',combined))
 
 def search_urls(now, opener=None):
  """Optional keyless search discovery. Fail closed to an empty set on outages."""
