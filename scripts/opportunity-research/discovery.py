@@ -142,7 +142,7 @@ def extract_links(doc, base):
  return event_urls,app_urls,lead_urls
 
 def _stage_event(source,app,fetcher,now):
- """An independently verifiable dated vendor application becomes a draft only."""
+ """Verify a new dated Eventeny application before requesting automatic publication."""
  doc,_=fetcher.get(source)
  metadata=list(doc.events())
  if not metadata or not all(isinstance(e.get('organizer'),dict) for e in metadata):
@@ -173,18 +173,30 @@ def _stage_event(source,app,fetcher,now):
   return None
  if (candidate.get('city') or '').lower() not in CITIES:
   return None
- # Newly discovered profiles cannot inherit another organizer's reviews.
+ # The database independently checks the submitted market identity, date,
+ # linked source/application, category and quality receipts before publishing.
+ # Never borrow an unrelated existing market or its historical reviews.
+ if result.get('category_conflicts') or result.get('decision')=='closed':
+  return None
+ if result.get('decision')=='review' and result.get('reason')!='New or unmatched market profile: confirm identity and create/link a profile.':
+  return None
+ if result.get('research_quality',{}).get('fields',{}).get('identity',{}).get('status')!='confirmed':
+  return None
+ if result.get('research_quality',{}).get('fields',{}).get('availability',{}).get('status')!='confirmed':
+  return None
  candidate['market_slug']=None
- result['decision']='review'
- result['policy']='triangle-discovery-v1'
- result['reason']='New Triangle vendor application found on an official dated event page. Confirm the organizer, linked market and terms before publishing.'
+ result['decision']='publish'
+ result['policy']='triangle-eventeny-auto-v1'
+ result['reason']='Organizer account, dated event and enabled vendor application independently verified for automated publication.'
  return result
 
 def discover_triangle(fetcher,now=None,include_search=True,known=None):
  """Returns (unpublished candidates, form leads, diagnostics).
 
  Errors on optional outside pages do not erase validated listings or turn
- source discovery into a false "no applications" claim.
+ source discovery into a false "no applications" claim. Unverified URLs remain
+ private leads. Fully verified Eventeny opportunities are eligible for the
+ separate database-side automatic publisher.
  """
  now=now or datetime.now(timezone.utc)
  known=known or set()
@@ -242,5 +254,5 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
  leads=list(raw_leads.values())[:MAX_LEADS]
  stats={'discovery_sources':len(SOURCES),'optional_source_failures':failures[:10],
         'discovery_event_urls':len(events),'discovery_vendor_application_urls':len(apps),
-        'discovery_reviewable_drafts':len(staged),'discovery_unconfirmed_leads':len(leads)}
+        'discovery_verified_candidates':len(staged),'discovery_unconfirmed_leads':len(leads)}
  return list(staged.values()),leads,stats
