@@ -31,7 +31,10 @@ HOSTS={'www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makr
  'hummingbirdmarketnc.com','www.hummingbirdmarketnc.com','www.caryfarmersmarket.com','caryfarmersmarket.com',
  'www.hillsboroughartscouncil.org','hillsboroughartscouncil.org','www.takethehighstreet.com','takethehighstreet.com',
  'blackfarmersmkt.org','www.blackfarmersmkt.org','www.durhamcraftmarket.com','durhamcraftmarket.com',
- 'www.carrborofarmersmarket.com','carrborofarmersmarket.com','www.apexfarmersmarket.com','apexfarmersmarket.com'}
+ 'www.carrborofarmersmarket.com','carrborofarmersmarket.com','www.apexfarmersmarket.com','apexfarmersmarket.com',
+ 'www.thechapelhillfarmersmarket.com','thechapelhillfarmersmarket.com','www.hollyspringsnc.gov','hollyspringsnc.gov',
+ 'westernwakefarmersmarket.org','www.westernwakefarmersmarket.org','www.enoriverfarmersmarket.com','enoriverfarmersmarket.com',
+ 'www.fvgrowersmarket.com','fvgrowersmarket.com','www.ymcatriangle.org','ymcatriangle.org'}
 MAX_SOURCE_BYTES=4_000_000
 VOID={'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
 def norm(value):return re.sub(r'[^a-z0-9]','',value.lower())
