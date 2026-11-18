@@ -129,7 +129,7 @@ def _stage_event(source,app,fetcher,now):
  """An independently verifiable dated vendor application becomes a draft only."""
  doc,_=fetcher.get(source)
  metadata=list(doc.events())
- if len(metadata)!=1 or not isinstance(metadata[0].get('organizer'),dict):
+ if not metadata or not all(isinstance(e.get('organizer'),dict) for e in metadata):
   return None
  organizer=metadata[0]['organizer'].get('name','')
  if not organizer:return None
