@@ -22,7 +22,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_publish_discovery'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_publish_discovery','btb_research_publish_form'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -32,6 +32,12 @@ class Database:
    raise RuntimeError(f'{name} failed; inspect configuration and the admin run history.') from None
 
 def existing_result(item,found,fetcher,now):
+ if item.get('verification_policy')=='triangle-form-auto-v1':
+  from form_discovery import verify_public_form
+  result=verify_public_form({'source_url':item['source_url'],'target_url':item['application_url']},fetcher,now)
+  if not result or result['candidate']['starts_on']!=item['starts_on'] or result['candidate']['ends_on']!=item['ends_on'] or norm(result['candidate']['organizer'])!=norm(item.get('market_organizer') or ''):
+   raise Uncertain('A previously verified linked form has changed or lacks current evidence. Confirm the application with the organizer.')
+  return result
  from first_night import handles,verify_first_night
  if handles(item):return verify_first_night(item,fetcher,now)
  from linked_forms import handles as handles_public_form, read as read_linked_public_form
@@ -93,7 +99,7 @@ def run(dry_run=False):
  try:
   results,problems=discover(fetcher,now)
   found={(r['candidate']['application_url'],r['candidate']['starts_on']):r for r in results}
-  known={(canonical_application(i['application_url']),i['starts_on']) for i in context['items']}
+  known={(canonical_application(i['application_url']) or i['application_url'],i['starts_on']) for i in context['items']}
   def apply(item,result):
    result=add_review_suggestions(item,apply_quality_gate(item,result))
    if defer_inconclusive_review(item,result):
@@ -104,7 +110,11 @@ def run(dry_run=False):
     counts['proposed_'+result['decision']]+=1
     print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url') or result.get('research_suggestions',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'research_quality':result.get('research_quality'),'quality_issues':result.get('quality_issues',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility',''),'research_suggestions':result.get('research_suggestions')},ensure_ascii=False));return
    if result.get('category_warnings'):print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'category_warnings':result['category_warnings']},ensure_ascii=False))
-   if item is None and result.get('policy')=='triangle-eventeny-auto-v1' and result.get('decision')=='publish':
+   if result.get('policy')=='triangle-form-auto-v1' and result.get('decision')=='publish':
+    response=db.rpc('btb_research_publish_form',{'p_result':result,
+      'p_id':item['id'] if item else None,
+      'p_expected_updated_at':item['updated_at'] if item else None})
+   elif item is None and result.get('policy')=='triangle-eventeny-auto-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_discovery',{'p_result':result})
    else:
     response=db.rpc('btb_research_apply',{'p_id':item['id'] if item else None,'p_result':result,'p_expected_updated_at':item['updated_at'] if item else None})
@@ -129,7 +139,7 @@ def run(dry_run=False):
   incoming,leads,discovery_stats=discover_triangle(fetcher,now,known=known|set(found))
   for candidate in incoming:
    data=candidate['candidate']
-   key=(canonical_application(data['application_url']),data['starts_on'])
+   key=(canonical_application(data['application_url']) or data['application_url'],data['starts_on'])
    if key in known or key in found:continue
    apply(None,candidate)
   if dry_run:
