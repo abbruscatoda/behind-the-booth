@@ -67,6 +67,24 @@ class SeasonalTests(unittest.TestCase):
   self.assertIn('$260',data['fee_notes'])
   self.assertIn('$30 per day',data['fee_notes'])
 
+ def test_official_footer_address_counts_as_market_confirmation(self):
+  fetch=Fetch()
+  # Squarespace often puts the only street address in a footer excluded
+  # by visible_text(), even though it is visible to human visitors.
+  fetch.pages[seasonal.FVG_ROOT]=FVG_MAIN.replace(
+   '<p>Located at the FV Chamber of Commerce, 121 N Main Street, Fuquay-Varina NC</p>',
+   '<footer>Located at the FV Chamber of Commerce, 121 N Main Street, Fuquay-Varina NC</footer>')
+  result=seasonal.check_provider(seasonal.PROVIDERS[0],fetch,NOW)
+  self.assertEqual(result['decision'],'publish')
+
+ def test_wrong_footer_address_blocks_market(self):
+  fetch=Fetch()
+  fetch.pages[seasonal.WW_VENDOR]=WW_VENDOR.replace(
+   '<p>Physical: 101 Town Hall Drive Morrisville NC</p>',
+   '<footer>Physical: 909 Unrelated Street, Morrisville NC</footer>')
+  with self.assertRaises(Uncertain):
+   seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+
  def test_fvg_rejects_conflicting_dates_or_closed_forms(self):
   for bad in ('<p>Saturdays, April 11th to September 4th</p><button>Submit</button>',
               FVG_FORM.replace('<button>Submit</button>',''),
