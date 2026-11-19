@@ -2,12 +2,17 @@ import { deadlineForInput } from "./opportunityDeadline";
 
 type DeadlineDetails = {
  starts_on: string;
+ schedule_type?: string;
  deadline: string | null;
  fee_notes?: string;
  research_coverage?: {deadline?: {status?: string}};
 };
 
 export function opportunityDeadline(item: DeadlineDetails) {
+  if (item.schedule_type === 'recurring_season' && item.deadline === null) return {
+    label: 'Application deadline', value: 'Applications accepted year-round',
+    note: 'Applications currently lead to the organizer’s waiting list, not a guaranteed booth. No application deadline is listed.',sortAt: Infinity,
+  };
   const timestamp = item.deadline ? Date.parse(item.deadline) : NaN;
   if (!Number.isFinite(timestamp)) return {
     label: "Application deadline", value: "Confirm with organizer", note: "Confirm the cutoff for this date with the organizer.", sortAt: Infinity,
