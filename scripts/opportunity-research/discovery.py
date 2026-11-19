@@ -41,6 +41,11 @@ SOURCES = (
  ('YMCA of the Triangle', 'Cary', 'https://www.ymcatriangle.org/events/vendor-market'),
  ('Artspace', 'Raleigh', 'https://artspacenc.org/calls-for-art/'),
  ('Artsplosure', 'Raleigh', 'https://www.artsplosure.org/first-night-raleigh'),
+ ('Wake Forest Farmers Market','Wake Forest','https://wakeforestmarket.org/vendors/become-a-vendor/'),
+ ('Chatham Mills Farmers Market','Pittsboro','https://www.chathammillsfarmersmarket.com/vendors/'),
+ ('Town of Garner','Garner','https://www.garnernc.gov/departments/parks-recreation-and-cultural-resources/events/vendor-interest'),
+ ('Town of Knightdale','Knightdale','https://www.knightdalenc.gov/parks-recreation-and-cultural-programs/festivals-and-events/vendor-interest-form'),
+ ('State Farmers Market','Raleigh','https://www.ncagr.gov/divisions/marketing/farmers-markets-agricultural-centers/state-farmers-market-raleigh/vendor-information'),
 )
 # Four-region search: no account or API key. Results supply *URLs only*, never
 # dates, names, organizer, availability, or prices.
@@ -314,10 +319,16 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
   if not is_application_hint(url,entry.get('title','')):continue
   saved_hints.append(entry)
   raw_leads.setdefault(url,entry)
+ # Every run re-examines all saved and newly found links as organizer groups.
+ # Evidence can be assembled from a dated event on one official page and an
+ # application on another, but the strict form verifier checks the entire
+ # source path before permitting publication.
+ from market_research import investigate_groups
+ grouped_pairs,grouped_stats=investigate_groups(saved_hints+list(raw_leads.values()),fetcher)
  verified_forms=0
  considered_forms=0
  seen_forms=set()
- for lead in (calendar_pairs+saved_hints+list(raw_leads.values()))[:MAX_LEADS+100]:
+ for lead in (grouped_pairs+calendar_pairs+saved_hints+list(raw_leads.values()))[:MAX_LEADS+180]:
   pair=(lead.get('source_url'),lead.get('target_url'))
   if pair in seen_forms:continue
   seen_forms.add(pair)
@@ -341,5 +352,6 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
         'discovery_verified_public_forms':verified_forms,'discovery_unconfirmed_leads':len(leads),
         'previous_leads_rechecked':len(saved_hints),
         'form_leads_considered':considered_forms,
-        'calendar':calendar_stats}
+        'calendar':calendar_stats,
+        'grouped_research':grouped_stats}
  return list(staged.values()),leads,stats
