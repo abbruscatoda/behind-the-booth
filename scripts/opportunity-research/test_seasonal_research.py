@@ -110,7 +110,7 @@ class SeasonalTests(unittest.TestCase):
   fetch.pages[seasonal.WF_ROOT]=WAKE_ROOT
   fetch.pages[seasonal.WF_VENDOR]=WAKE_VENDOR
   fetch.pages[WAKE_FORM]=WAKE_FORM_HTML
-  result=seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+  result=seasonal.check_provider(seasonal.PROVIDERS[2],fetch,NOW)
   self.assertEqual(result['candidate']['schedule_type'],'rolling_market')
   self.assertEqual(result['candidate']['title'],'Wake Forest Farmers Market — Rolling Vendor Applications')
   self.assertEqual(result['application_access'],'readable_first_page')
@@ -128,7 +128,7 @@ class SeasonalTests(unittest.TestCase):
    if url==WAKE_FORM:raise HTTPError(url,401,'Unauthorized',{},None)
    return prior(url)
   fetch.get=blocked
-  result=seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+  result=seasonal.check_provider(seasonal.PROVIDERS[2],fetch,NOW)
   self.assertEqual(result['application_access'],'http_auth_blocked')
   self.assertIsNone(result['application_hash'])
   self.assertFalse(result['form_readable'])
@@ -139,7 +139,7 @@ class SeasonalTests(unittest.TestCase):
   fetch.pages[seasonal.WF_VENDOR]=WAKE_VENDOR
   fetch.pages[WAKE_FORM]=WAKE_FORM_HTML
   with self.assertRaises(Uncertain):
-   seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+   seasonal.check_provider(seasonal.PROVIDERS[2],fetch,NOW)
 
  def test_rolling_market_uses_internal_horizon_not_event_dates(self):
   result=seasonal.check_provider(seasonal.PROVIDERS[1],Fetch(),NOW)
