@@ -1,5 +1,10 @@
 name: Verify vendor opportunities
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/opportunity-research/**'
+      - '.github/workflows/opportunity-research.yml'
   schedule:
    - cron: '17 13,16 * * *'
   workflow_dispatch:
@@ -16,7 +21,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify:
-    if: github.event_name == 'workflow_dispatch' || vars.BTB_RESEARCH_SCHEDULE == 'enabled'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || vars.BTB_RESEARCH_SCHEDULE == 'enabled'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
