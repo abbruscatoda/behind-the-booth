@@ -103,6 +103,13 @@ class SeasonalTests(unittest.TestCase):
   self.assertIsNone(data['deadline'])
   self.assertIn('not scheduled events',data['research_notes'])
 
+ def test_rolling_footer_address_is_valid_official_evidence(self):
+  fetch=Fetch()
+  fetch.pages[seasonal.WW_MAIN if hasattr(seasonal,'WW_MAIN') else seasonal.WW_ROOT]=WW_MAIN.replace('Physical: 101 Town Hall Drive','Physical: Downtown Morrisville')
+  fetch.pages[seasonal.WW_VENDOR]=WW_VENDOR.replace('Physical: 101 Town Hall Drive','<section style="display:none">Physical: 101 Town Hall Drive</section>')
+  result=seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+  self.assertEqual(result['candidate']['venue'],'101 Town Hall Drive')
+
  def test_rolling_market_rejects_inaccessible_form(self):
   fetch=Fetch();fetch.pages.pop(WEST_FORM)
   with self.assertRaises(ValueError):seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
