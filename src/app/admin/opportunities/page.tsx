@@ -72,6 +72,17 @@ export default function AdminOpportunities(){
  let deadline:string;try{deadline=deadlineForSave(draft.deadline,originalDeadline.current);}catch(cause){setError(cause instanceof Error?cause.message:"Choose a valid deadline.");return;}
  if(draft.publication==="published"&&(!confirmed||(!draft.market_id&&!newProfile))){setError("Confirm source verification and choose an existing market or explicitly create a new one.");return;}
  setBusy(true);try{const data={...draft,deadline,market_id:newProfile?"":draft.market_id};const {error}=await createClient().rpc("btb_admin_save_opportunity",{p_id:draft.id??null,p_data:data,p_confirm_verified:confirmed});if(error)throw error;await load();setDraft(blank);setConfirmed(false);setNewProfile(false);originalDeadline.current="";setEditorOpen(false);restoreEditorFocus.current=true;setMessage(draft.automation_hold?"Opportunity saved with a manual hold. The worker will skip this listing until automatic verification is allowed.":"Opportunity saved. Automatic verification is allowed for this listing; supported sources will be checked on a future worker run.");}catch(cause){setError(cause instanceof Error?cause.message:(cause as {message?:string}).message??"Unable to save opportunity.");}finally{setBusy(false);}}
+ const discoveryGroups=Array.from(discoveryLeads.reduce((map,lead)=>{
+  // A lead is a URL, not a dated event. Group its research links by the official
+  // organizer and locality without merging their separate verification states.
+  const name=lead.organizer.trim()||"Unknown organizer";
+  const city=lead.city.trim();
+  const key=`${name.toLocaleLowerCase("en-US")}::${city.toLocaleLowerCase("en-US")}`;
+  const group=map.get(key);
+  if(group)group.leads.push(lead);
+  else map.set(key,{key,name,city,leads:[lead]});
+  return map;
+ },new Map<string,{key:string;name:string;city:string;leads:DiscoveryLead[]}>()).values());
  const input="mt-2 w-full border border-[#252521]/25 bg-[#FFFCF6] px-3 py-3 text-sm outline-none focus:border-[#07472B]";
  function field(key:keyof Draft,label:string,type="text",required=false){return <label className="block text-sm font-semibold">{label}<input className={input} type={type} required={required} value={String(draft[key]??"")} min={type==="number"?"0":undefined} step={type==="number"?"0.01":undefined} onChange={event=>update(key,event.target.value)}/></label>;}
  if(access!=="ready")return <main className="mx-auto max-w-4xl px-6 py-16"><h1 className="heritage-heading text-4xl">Application opportunities</h1><p className="mt-6" role="status">{access==="loading"?"Checking admin access…":error||"Sign in with your administrator account to manage opportunities."}</p><Link href="/login" className="mt-5 inline-block underline">My Account →</Link></main>;
@@ -83,24 +94,32 @@ export default function AdminOpportunities(){
  <section className="mt-12" aria-label="Triangle market discovery leads">
  <h2 className="font-serif text-3xl font-bold">New vendor-application leads</h2>
  <p className="mt-3 text-sm leading-relaxed text-[#55554E]">The worker checks official organizer pages across the Triangle and searches for dated Eventeny events. Strongly verified new events are automatically published with a market profile; links without independently confirmed dates, organizer, and live application details remain here. These are research leads, not confirmed open applications. The worker also follows approved event calendars, researches seasonal and rolling applications, and records a specific reason whenever evidence is insufficient. Automatically verified listings are published without manual approval.</p>
- <p className="mt-3 text-sm font-semibold">{discoveryLeads.length} leads awaiting review</p>
- {discoveryLeads.length>0&&<div className="mt-5 space-y-3">{discoveryLeads.map(lead=><article key={lead.id} className="border border-[#252521]/20 p-4">
-  <h3 className="font-serif text-lg font-bold">{lead.title}</h3>
-  <p className="mt-1 text-sm text-[#55554E]">{lead.organizer} · {lead.city} · Discovered {new Date(lead.first_seen).toLocaleDateString()}</p>
-  {lead.research_reason
-    ? <div className="mt-3 border-l-2 border-[#626C57] pl-3 text-sm">
+ <p className="mt-3 text-sm font-semibold">{discoveryGroups.length} markets with {discoveryLeads.length} application leads awaiting review</p>
+ {discoveryGroups.length>0&&<div className="mt-5 space-y-3">{discoveryGroups.map(group=><article key={group.key} className="border border-[#252521]/20 p-4 sm:p-5">
+  <h3 className="font-serif text-xl font-bold">{group.name}</h3>
+  <p className="mt-1 text-sm text-[#55554E]">{group.city} · {group.leads.length} application {group.leads.length===1?"link":"links"} requiring verification</p>
+  <p className="mt-2 text-sm text-[#55554E]">These are research links for the same market, not separate confirmed events. Distinct dates or application types still require individual verification.</p>
+  <details className="mt-3" open={group.leads.length===1}>
+   <summary className="cursor-pointer py-2 text-sm font-semibold text-[#07472B]">Review {group.leads.length===1?"application lead":`${group.leads.length} application leads`}</summary>
+   <div className="mt-2 divide-y divide-[#252521]/15 border-t border-[#252521]/15">{group.leads.map(lead=><div key={lead.id} className="py-4 first:pt-3 last:pb-1">
+    <h4 className="font-semibold">{lead.title}</h4>
+    <p className="mt-1 text-xs text-[#626C57]">Discovered {new Date(lead.first_seen).toLocaleDateString()}</p>
+    {lead.research_reason
+     ? <div className="mt-2 border-l-2 border-[#626C57] pl-3 text-sm">
         <p className="font-semibold">Research result: {(lead.research_status??"needs_evidence").replaceAll("_"," ")}</p>
         <p className="mt-1 leading-relaxed">{lead.research_reason}</p>
         {lead.last_researched_at&&<p className="mt-1 text-xs text-[#626C57]">Checked {new Date(lead.last_researched_at).toLocaleString("en-US",{timeZone:"America/New_York"})}</p>}
-      </div>
-    :<p className="mt-2 text-sm">{lead.notes}</p>}
-  <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
-   {safeExternalUrl(lead.target_url)&&<a href={lead.target_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#07472B] underline">Open application lead</a>}
-   {safeExternalUrl(lead.source_url)&&<a href={lead.source_url} target="_blank" rel="noopener noreferrer" className="text-[#07472B] underline">Official source</a>}
-   <button type="button" onClick={()=>useLead(lead)} className="font-semibold text-[#07472B] underline">Use in draft editor</button>
-   <button type="button" disabled={busy} onClick={()=>void markLead(lead.id,"resolved")} className="text-[#07472B] underline disabled:opacity-50">Mark reviewed</button>
-   <button type="button" disabled={busy} onClick={()=>void markLead(lead.id,"ignored")} className="text-[#55554E] underline disabled:opacity-50">Ignore</button>
-  </div>
+       </div>
+     : <p className="mt-2 text-sm">{lead.notes}</p>}
+    <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+     {safeExternalUrl(lead.target_url)&&<a href={lead.target_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#07472B] underline">Open application lead</a>}
+     {safeExternalUrl(lead.source_url)&&<a href={lead.source_url} target="_blank" rel="noopener noreferrer" className="text-[#07472B] underline">Official source</a>}
+     <button type="button" onClick={()=>useLead(lead)} className="font-semibold text-[#07472B] underline">Use in draft editor</button>
+     <button type="button" disabled={busy} onClick={()=>void markLead(lead.id,"resolved")} className="text-[#07472B] underline disabled:opacity-50">Mark reviewed</button>
+     <button type="button" disabled={busy} onClick={()=>void markLead(lead.id,"ignored")} className="text-[#55554E] underline disabled:opacity-50">Ignore</button>
+    </div>
+   </div>)}</div>
+  </details>
  </article>)}</div>}
  </section>
  <h2 className="mt-12 font-serif text-3xl font-bold">Research and published listings</h2><p className="mt-3 text-sm leading-relaxed text-[#55554E]">Only new listings and meaningful conflicts belong in Needs Your Decision. Temporary source-access failures for already published opportunities appear under Verification notices instead; they do not by themselves mean an approval was revoked. Organizer identity conflicts, missing application facts, and changed details still need investigation before being dismissed.</p><p className="mt-3 text-sm text-[#626C57]">{items.length} records · {items.filter(needsHumanReview).length} need your decision · {items.filter(isRoutineVerificationNotice).length} routine verification notices. Clear results publish automatically after worker setup.</p><label className="mt-5 block max-w-sm text-sm font-semibold">Show listings<select className={input} value={queue} onChange={event=>setQueue(event.target.value)}><option value="needs_review">Needs Your Decision</option><option value="verification_notices">Verification notices</option><option value="category_followup">Category follow-up</option><option value="verified">Verified</option><option value="held">Manual holds</option><option value="all">All listings</option></select></label>{queue==="verification_notices"&&<p className="mt-4 text-sm text-[#55554E]">These published listings could not be fully rechecked. Previous approval is retained, but application availability has not been freshly confirmed. These notices do not require reapproval. Recheck the official application if time-sensitive.</p>}<div className="mt-6 space-y-3">{items.filter(item=>queue==="all"||(queue==="needs_review"?needsHumanReview(item):queue==="verification_notices"?isRoutineVerificationNotice(item):queue==="category_followup"?!item.automation_hold&&item.publication!=="archived"&&item.review_reason?.startsWith("Category follow-up:"):queue==="held"?item.automation_hold:!item.automation_hold&&item.publication!=="archived"&&item.review_state===queue)).map(item=><article key={item.id} className="border border-[#252521]/20 p-5"><div className="flex flex-wrap items-center justify-between gap-4"><div><h3 className="font-serif text-xl font-bold">{item.title}</h3><p className="mt-2 text-sm">{item.city} · {item.starts_on} · {item.publication} · {item.availability}{item.automation_hold?" · Manual hold — worker skips this listing":" · Automatic checks allowed"}{!item.market_id?" · Market profile not linked":""}</p></div><button onClick={()=>edit(item)} className="min-h-11 font-semibold text-[#07472B] underline">Review / edit →</button></div>{item.review_reason&&<p className="mt-4 border-l-2 border-[#07472B] bg-[#E9E7DA] p-3 text-sm">{item.review_reason}</p>}<p className="mt-3 text-xs text-[#626C57]">{item.last_checked_at?`Last worker check: ${new Date(item.last_checked_at).toLocaleString()}`:"No worker check yet"}{item.verification_policy?` · ${item.verification_policy}`:""}</p></article>)}</div>

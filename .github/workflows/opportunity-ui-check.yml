@@ -3,12 +3,14 @@ on:
   pull_request:
     paths:
       - 'src/components/OpportunityBoard.tsx'
+      - 'src/app/admin/opportunities/page.tsx'
       - 'src/lib/opportunities.ts'
       - 'src/lib/opportunityPresentation.ts'
       - '.github/workflows/opportunity-ui-check.yml'
   push:
     paths:
       - 'src/components/OpportunityBoard.tsx'
+      - 'src/app/admin/opportunities/page.tsx'
       - 'src/lib/opportunities.ts'
       - 'src/lib/opportunityPresentation.ts'
       - '.github/workflows/opportunity-ui-check.yml'
