@@ -14,6 +14,8 @@ CALENDARS=(
  ('The Night Market Company','https://thenightmarketcompany.com/','https://thenightmarketcompany.com/'),
  ('Geek and Grub','https://www.geekandgrubmarket.com/vendorapplication','https://www.geekandgrubmarket.com/upcoming-events'),
  ('Western Wake Farmers Market','https://westernwakefarmersmarket.org/','https://westernwakefarmersmarket.org/events'),
+ ('Shop Local Raleigh','https://shoplocalraleigh.org/vendor-information/','https://shoplocalraleigh.org/events/'),
+ ('Chapel Hill Farmers Market','https://www.thechapelhillfarmersmarket.com/','https://www.thechapelhillfarmersmarket.com/events.html'),
 )
 MAX_CALENDAR_EVENT_PAGES=28
 MAX_CALENDAR_FORMS=30
