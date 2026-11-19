@@ -73,6 +73,22 @@ class CalendarResearchTests(unittest.TestCase):
   self.assertEqual(stats['calendar']['calendar_form_pairs'],1)
   self.assertEqual(stats['calendar']['calendar_event_pages_inspected'],1)
 
+ def test_nested_calendar_index_can_publish_verified_form(self):
+  index='https://www.trianglepopup.com/events/holiday'
+  pages=Pages(calendar='<a href="'+index+'">Holiday events</a>')
+  pages.pages[index]='<a href="'+EVENT+'">Raleigh holiday artisan market</a>'
+  found,_,stats=self.discover(pages)
+  self.assertEqual(len(found),1)
+  self.assertEqual(found[0]['decision'],'publish')
+  self.assertEqual(stats['calendar']['calendar_indexes_inspected'],1)
+
+ def test_nested_calendar_unlinked_event_cannot_publish(self):
+  index='https://www.trianglepopup.com/events/holiday'
+  pages=Pages(calendar='<a href="'+index+'">Holiday events</a>')
+  pages.pages[index]='<a href="https://www.trianglepopup.com/events/other">Different event</a>'
+  with patch('calendar_research.CALENDARS',(CONFIG,)):
+   self.assertIsNone(verify_public_form(lead(),pages,NOW))
+
  def test_calendar_must_link_exact_event_page(self):
   pages=Pages(calendar='<a href="https://www.trianglepopup.com/events/other">Other Market</a>')
   with patch('calendar_research.CALENDARS',(CONFIG,)):
