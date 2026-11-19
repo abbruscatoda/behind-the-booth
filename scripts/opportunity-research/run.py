@@ -168,7 +168,8 @@ def run(dry_run=False):
    if key in known or key in found:continue
    apply(None,candidate)
   from recurring_market import discover_recurring
-  for candidate in discover_recurring(fetcher,now):
+  recurring_diagnostics=[]
+  for candidate in discover_recurring(fetcher,now,diagnostics=recurring_diagnostics):
    data=candidate['candidate']
    key=(data['application_url'],data['starts_on'])
    if key not in known:
@@ -183,6 +184,7 @@ def run(dry_run=False):
    counts['discovery_leads_seen']=saved.get('saved',0)
   if fetcher.requests>=fetcher.limit:
    problems.append('Source request budget reached. Some checks may be deferred or need review.')
+  discovery_stats['recurring_verification_notes']=recurring_diagnostics[:8]
   summary={'dry_run':dry_run,'counts':dict(counts),'issues':problems[:12],'source_requests':fetcher.requests,'discovery':discovery_stats}
   summary['failed']=bool(problems)
   if not dry_run:db.rpc('btb_research_run',{'p_id':run_id,'p_summary':summary})
