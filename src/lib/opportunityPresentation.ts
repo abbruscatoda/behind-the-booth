@@ -13,6 +13,14 @@ export function opportunityDeadline(item: DeadlineDetails) {
     label: 'Application deadline', value: 'Applications accepted year-round',
     note: 'Applications currently lead to the organizer’s waiting list, not a guaranteed booth. No application deadline is listed.',sortAt: Infinity,
   };
+  if (item.schedule_type === 'rolling_market' && item.deadline === null) return {
+    label: 'Application window', value: 'Rolling applications',
+    note: 'This is an ongoing market, not a confirmed individual date or guaranteed booth. Confirm placement with the organizer.',sortAt: Infinity,
+  };
+  if (item.schedule_type === 'seasonal_application' && item.deadline === null) return {
+    label: 'Application deadline', value: 'No deadline published',
+    note: 'The organizer confirms seasonal applications are currently accepted. A specific submission cutoff has not been published; availability can change.',sortAt: Infinity,
+  };
   const timestamp = item.deadline ? Date.parse(item.deadline) : NaN;
   if (!Number.isFinite(timestamp)) return {
     label: "Application deadline", value: "Confirm with organizer", note: "Confirm the cutoff for this date with the organizer.", sortAt: Infinity,
