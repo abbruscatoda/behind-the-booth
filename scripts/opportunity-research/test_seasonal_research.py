@@ -1,5 +1,6 @@
 """Evidence-gated seasonal market publishing and diagnostic regression tests."""
 import unittest
+from urllib.error import HTTPError
 from datetime import datetime,timezone
 from unittest.mock import patch
 from verifier import Document,Uncertain
@@ -116,6 +117,43 @@ class SeasonalTests(unittest.TestCase):
   fetch.pages[seasonal.WW_ROOT]=WW_MAIN.replace('101 Town Hall Drive','909 Unknown Place')
   fetch.pages[seasonal.WW_VENDOR]=WW_VENDOR.replace('101 Town Hall Drive','909 Unknown Place')
   with self.assertRaises(Uncertain):
+   seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+
+ def test_official_rolling_source_can_publish_if_google_form_returns_401(self):
+  fetch=Fetch()
+  original=fetch.get
+  def blocked(url):
+   if url==WEST_FORM:raise HTTPError(url,401,'Unauthorized',{},None)
+   return original(url)
+  fetch.get=blocked
+  result=seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+  self.assertEqual(result['decision'],'publish')
+  self.assertEqual(result['application_access'],'http_auth_blocked')
+  self.assertFalse(result['form_readable'])
+  self.assertFalse(result['form_complete'])
+  self.assertIsNone(result['application_hash'])
+  self.assertIn('blocked automated verification',result['candidate']['research_notes'])
+
+ def test_unlinked_rolling_form_cannot_publish_with_401(self):
+  fetch=Fetch()
+  fetch.pages[seasonal.WW_VENDOR]=WW_VENDOR.replace(WEST_FORM,'https://forms.gle/ZZZZZZZZZZZ')
+  with self.assertRaises((Uncertain,ValueError)):
+   seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+
+ def test_missing_rolling_claim_cannot_publish_if_form_returns_401(self):
+  fetch=Fetch()
+  fetch.pages[seasonal.WW_VENDOR]=WW_VENDOR.replace('Applications are accepted on a rolling basis.','Applications may open soon.')
+  with self.assertRaises(Uncertain):
+   seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+
+ def test_http_500_is_not_accepted_as_form_auth_block(self):
+  fetch=Fetch()
+  original=fetch.get
+  def broken(url):
+   if url==WEST_FORM:raise HTTPError(url,500,'Server error',{},None)
+   return original(url)
+  fetch.get=broken
+  with self.assertRaises(HTTPError):
    seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
 
  def test_rolling_market_rejects_inaccessible_form(self):
