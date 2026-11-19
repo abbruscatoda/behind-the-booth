@@ -92,6 +92,12 @@ class RecurringWaitlistTests(unittest.TestCase):
     with self.assertRaises(Uncertain):
      recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(vendor=changed),NOW)
 
+ def test_collapsed_official_visitor_faq_still_confirms_market_address(self):
+  accordion=VISIT.replace('The Farmers Market is located at 300 W. Ballentine St.,',
+   '<span style="display:none">The Farmers Market is located at 300 W. Ballentine St.,</span>')
+  result=recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(visit=accordion),NOW)
+  self.assertEqual(result['candidate']['venue'],'300 W. Ballentine St.')
+
  def test_visitor_page_must_confirm_actual_market_address(self):
   for visit in (VISIT.replace('300 W. Ballentine St.','128 S. Main St.'),
                 VISIT.replace('Now open every Saturday year-round','Hours to be announced'),
