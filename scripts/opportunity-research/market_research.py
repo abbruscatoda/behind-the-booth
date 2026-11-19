@@ -46,8 +46,8 @@ def investigate_groups(leads,fetcher):
    skipped.append(organizer+': official organizer root unavailable')
    continue
   root_links=set(root_doc.root.links(root))
-  forms=set(calendar_form_links(root_doc,root))
-  event_urls=set(calendar_event_pages(root_doc,root))
+  form_routes={form:root for form in calendar_form_links(root_doc,root)}
+  event_routes={event:root for event in calendar_event_pages(root_doc,root)}
   # Saved links alone never authorize research. The current organizer root
   # must still link to the exact lead target.
   hubs=set()
@@ -55,7 +55,7 @@ def investigate_groups(leads,fetcher):
    target=lead['target_url']
    if target not in root_links:continue
    if same_organizer_host(target,root):hubs.add(target)
-   elif target in calendar_form_links_from_url(target):forms.add(target)
+   elif target in calendar_form_links_from_url(target):form_routes[target]=root
   hubs.update(calendar_index_pages(root_doc,root))
   for hub in sorted(hubs)[:MAX_HUBS_PER_GROUP]:
    if fetcher.requests>=fetcher.limit-RESERVE_REQUESTS:break
@@ -63,26 +63,28 @@ def investigate_groups(leads,fetcher):
     doc,_=fetcher.get(hub)
    except Exception:continue
    inspected_hubs+=1
-   event_urls.update(calendar_event_pages(doc,hub))
-   # Forms found deeper in a hub carry the exact root -> hub -> form path.
+   for event in calendar_event_pages(doc,hub):
+    event_routes.setdefault(event,hub)
    for form in calendar_form_links(doc,hub):
-    if form not in forms:forms.add(form)
+    form_routes.setdefault(form,hub)
    # An event linked from a hub is valid only if that hub remains linked
    # from the organizer root, rechecked by calendar_event_provenance.
-  for event in sorted(event_urls)[:MAX_EVENTS_PER_GROUP]:
+  for event in sorted(event_routes)[:MAX_EVENTS_PER_GROUP]:
    if len(pairs)>=MAX_PAIRS or fetcher.requests>=fetcher.limit-RESERVE_REQUESTS:break
    if not same_organizer_host(event,root):continue
    try:
     doc,_=fetcher.get(event)
    except Exception:continue
    event_pages+=1
-   for form in sorted(forms|calendar_form_links(doc,event)):
+   for form in sorted(set(form_routes)|calendar_form_links(doc,event)):
     if len(pairs)>=MAX_PAIRS:break
     # The strict verifier reconfirms root-to-event provenance and form
     # linkage, organizer identity, exact date, cutoff and submission control.
     pair=(event,form)
     pairs[pair]={'source_url':event,'target_url':form,
                  'organizer_root':root,'calendar_url':root,
+                 'event_index_url':event_routes[event],
+                 'application_index_url':form_routes.get(form,event),
                  'organizer':organizer,'city':city,
                  'grouped_research':True}
  return list(pairs.values()),{
