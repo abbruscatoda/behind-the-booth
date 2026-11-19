@@ -80,6 +80,7 @@ class RecurringWaitlistTests(unittest.TestCase):
  def test_closed_waitlist_or_changed_fee_halts_publication(self):
   for changed in [VENDOR.replace('our waiting list','closed applications'),
                   VENDOR.replace('Application Fee $20','Application Fee $35'),
+                  VENDOR.replace('seeking farmers and producers from across North Carolina','seeking all types of temporary service businesses'),
                   VENDOR.replace('Weekly Vendor (50 dates) $442','Weekly Vendor (50 dates) $500')]:
    with self.subTest(fragment=changed[-120:]):
     with self.assertRaises(Uncertain):
