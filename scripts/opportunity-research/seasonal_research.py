@@ -144,7 +144,7 @@ def _ww(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
  if not year1<=today.year<=year2:raise Uncertain('The published rolling intake season is no longer current.')
  # Squarespace may put the physical address in a collapsed footer; Node.text
  # skips scripts and styles while retaining the organizer-authored footer text.
- official_location=main.root.text()+' '+vendor.root.text()
+ official_location=root.root.text()+' '+vendor.root.text()
  if not re.search(r'101\s+Town\s+Hall\s+Drive',official_location,re.I):
   raise Uncertain('No confirmed market address on an official organizer page.')
  applicants=links_labeled(vendor,provider['vendor_url'],re.compile(r'^(?:Apply Online|Regular Vendor Application)$',re.I))
