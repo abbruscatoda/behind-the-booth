@@ -29,9 +29,17 @@ CALENDAR_ROUTES={
    'https://westernwakefarmersmarket.org/events/'
 }
 
+def permitted_calendar_event(source_url,root,calendar):
+ prefix=CALENDAR_ROUTES.get((root,calendar))
+ if not prefix or source_url in {root,calendar}:return False
+ if not source_url.startswith(prefix):return False
+ if (root,calendar)==('https://thenightmarketcompany.com/','https://thenightmarketcompany.com/'):
+  return bool(re.fullmatch(r'https://thenightmarketcompany[.]com/(?:events|event|markets)/[A-Za-z0-9_%/-]+',source_url))
+ return bool(re.fullmatch(re.escape(prefix)+r'[A-Za-z0-9_%/-]+',source_url))
+
 def calendar_provenance(source_url):
- for (root,calendar),prefix in CALENDAR_ROUTES.items():
-  if source_url.startswith(prefix) and source_url!=calendar and source_url!=root:
+ for root,calendar in CALENDAR_ROUTES:
+  if permitted_calendar_event(source_url,root,calendar):
    return root,calendar
  return None
 
@@ -58,8 +66,7 @@ def verify_public_form(lead,fetcher,now=None):
  if not supported_form(app_url):return None
  from_calendar=source_url!=curated_root
  if from_calendar:
-  if (curated_root,linking_page) not in CALENDAR_ROUTES:return None
-  if not source_url.startswith(CALENDAR_ROUTES[(curated_root,linking_page)]):return None
+  if not permitted_calendar_event(source_url,curated_root,linking_page):return None
  organizer_label=next((organizer for organizer,_,url in SOURCES if url==curated_root),None)
  if not organizer_label:return None
  # An organizer's date-specific event page must be reached from an approved
