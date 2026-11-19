@@ -14,7 +14,8 @@ from calendar_research import (calendar_event_pages,calendar_index_pages,
 MAX_GROUPS=30
 MAX_HUBS_PER_GROUP=8
 MAX_EVENTS_PER_GROUP=12
-MAX_PAIRS=100
+MAX_PAIRS=240
+MAX_PAIRS_PER_GROUP=16
 RESERVE_REQUESTS=28
 
 def investigate_groups(leads,fetcher):
@@ -71,29 +72,40 @@ def investigate_groups(leads,fetcher):
     form_routes.setdefault(form,hub)
    # An event linked from a hub is valid only if that hub remains linked
    # from the organizer root, rechecked by calendar_event_provenance.
+  # Collect the dated event pages first, then prioritize applications
+  # directly linked from each event. Generic organizer-wide forms are used
+  # only as a fallback and still must match the event in the verifier.
+  event_docs=[]
   for event in sorted(event_routes)[:MAX_EVENTS_PER_GROUP]:
-   if len(pairs)>=MAX_PAIRS or getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',100000)-RESERVE_REQUESTS:break
+   if getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',100000)-RESERVE_REQUESTS:break
    if not same_organizer_host(event,root):continue
-   try:
-    doc,_=fetcher.get(event)
+   try:doc,_=fetcher.get(event)
    except Exception:continue
    event_pages+=1
-   for form in sorted(set(form_routes)|calendar_form_links(doc,event)):
-    if len(pairs)>=MAX_PAIRS:break
-    # The strict verifier reconfirms root-to-event provenance and form
-    # linkage, organizer identity, exact date, cutoff and submission control.
-    pair=(event,form)
-    pairs[pair]={'source_url':event,'target_url':form,
-                 'organizer_root':root,'calendar_url':root,
-                 'event_index_url':event_routes[event],
-                 'application_index_url':form_routes.get(form,event),
-                 'organizer':organizer,'city':city,
-                 'grouped_research':True}
+   event_docs.append((event,calendar_form_links(doc,event)))
+  group_count=0
+  for direct_only in (True,False):
+   if group_count>=MAX_PAIRS_PER_GROUP or len(pairs)>=MAX_PAIRS:break
+   for event,direct_forms in event_docs:
+    if group_count>=MAX_PAIRS_PER_GROUP or len(pairs)>=MAX_PAIRS:break
+    candidates=direct_forms if direct_only else set(form_routes)-direct_forms
+    for form in sorted(candidates):
+     if group_count>=MAX_PAIRS_PER_GROUP or len(pairs)>=MAX_PAIRS:break
+     pair=(event,form)
+     if pair in pairs:continue
+     pairs[pair]={'source_url':event,'target_url':form,
+                  'organizer_root':root,'calendar_url':root,
+                  'event_index_url':event_routes[event],
+                  'application_index_url':event if direct_only else form_routes[form],
+                  'organizer':organizer,'city':city,
+                  'grouped_research':True}
+     group_count+=1
  return list(pairs.values()),{
   'grouped_organizers_researched':investigated,
   'grouped_hubs_inspected':inspected_hubs,
   'grouped_event_pages_inspected':event_pages,
   'grouped_application_event_pairs':len(pairs),
+  'grouped_pair_budget_exhausted':len(pairs)>=MAX_PAIRS,
   'grouped_research_warnings':skipped[:8]}
 
 def calendar_form_links_from_url(url):
