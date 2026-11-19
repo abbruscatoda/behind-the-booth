@@ -25,12 +25,12 @@ PROVIDERS=(
  {'slug':'fuquay-varina-growers-market','name':'Fuquay-Varina Growers Market',
   'organizer':'Fuquay-Varina Growers Market','city':'Fuquay-Varina',
   'market_url':FVG_ROOT,'vendor_url':FVG_VENDOR,'kind':'seasonal'},
- {'slug':'wake-forest-farmers-market','name':'Wake Forest Farmers Market',
-  'organizer':'Wake Forest Farmers Market','city':'Wake Forest',
-  'market_url':WF_ROOT,'vendor_url':WF_VENDOR,'kind':'embedded_year_round'},
  {'slug':'western-wake-farmers-market','name':'Western Wake Farmers Market',
   'organizer':'Western Wake Farmers Market','city':'Morrisville',
   'market_url':WW_ROOT,'vendor_url':WW_VENDOR,'kind':'rolling'},
+ {'slug':'wake-forest-farmers-market','name':'Wake Forest Farmers Market',
+  'organizer':'Wake Forest Farmers Market','city':'Wake Forest',
+  'market_url':WF_ROOT,'vendor_url':WF_VENDOR,'kind':'embedded_year_round'},
 )
 CLOSED=r'no longer accepting|applications? (?:are |have )?closed|fully booked|sold out|submissions? (?:are |is )?closed'
 MONTHS={'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12}
