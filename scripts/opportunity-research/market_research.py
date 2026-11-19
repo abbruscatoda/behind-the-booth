@@ -58,7 +58,7 @@ def investigate_groups(leads,fetcher):
    elif target in calendar_form_links_from_url(target):form_routes[target]=root
   hubs.update(calendar_index_pages(root_doc,root))
   for hub in sorted(hubs)[:MAX_HUBS_PER_GROUP]:
-   if fetcher.requests>=fetcher.limit-RESERVE_REQUESTS:break
+   if getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',100000)-RESERVE_REQUESTS:break
    try:
     doc,_=fetcher.get(hub)
    except Exception:continue
@@ -70,7 +70,7 @@ def investigate_groups(leads,fetcher):
    # An event linked from a hub is valid only if that hub remains linked
    # from the organizer root, rechecked by calendar_event_provenance.
   for event in sorted(event_routes)[:MAX_EVENTS_PER_GROUP]:
-   if len(pairs)>=MAX_PAIRS or fetcher.requests>=fetcher.limit-RESERVE_REQUESTS:break
+   if len(pairs)>=MAX_PAIRS or getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',100000)-RESERVE_REQUESTS:break
    if not same_organizer_host(event,root):continue
    try:
     doc,_=fetcher.get(event)
