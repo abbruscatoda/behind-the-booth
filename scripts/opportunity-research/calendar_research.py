@@ -66,6 +66,10 @@ def discover_calendars(fetcher):
    continue
   try:
    cal,_=fetcher.get(calendar)
+   root_doc,_=fetcher.get(root)
+   # Root-level applications may cover an explicitly identified date, but
+   # the subsequent verifier must prove that exact date in the actual form.
+   organizer_forms=calendar_form_links(root_doc,root)
    for event_url in sorted(calendar_event_pages(cal,calendar)):
     if len(visited)>=MAX_CALENDAR_EVENT_PAGES:break
     if event_url in visited:continue
@@ -82,7 +86,7 @@ def discover_calendars(fetcher):
      # Form URL may be linked either on the event page or organizer's
      # official application page, but organizer identity and date must be
      # independently confirmed by the later public-form verifier.
-     for app in calendar_form_links(event_page,event_url):
+     for app in calendar_form_links(event_page,event_url)|organizer_forms:
       if len(form_leads)>=MAX_CALENDAR_FORMS:break
       if supported_form(app):
        key=(event_url,app)
