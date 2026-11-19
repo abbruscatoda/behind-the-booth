@@ -107,3 +107,30 @@ search hints for Raleigh, Durham, Cary/Apex, and Chapel Hill/Carrboro.
   `scripts/opportunity-research/sql/20261118_verified_public_form_auto_publish.sql`.
   Previously published form-backed events are rechecked against the same
   evidence, with quality regressions held for review.
+
+
+### Recurring farmers market waitlists
+
+A recurring vendor market may accept applications all year without promising an
+available booth or a deadline. The worker has a separately scoped
+`recurring-official-waitlist-v1` verifier in
+`scripts/opportunity-research/recurring_market.py`. Its first reviewed
+provider is the **Town of Holly Springs**. It independently checks the town's
+market and vendor pages, season dates (May 2026–April 2027), food-only
+eligibility, $20 application fee, explicit year-round waiting list and exact
+municipally linked ManageMyMarket registration URL. The provider does **not**
+log in or claim to verify individual applicant account access.
+
+When the evidence passes, the worker reuses the existing official market
+profile, creates a **recurring season** occurrence, and publishes a **waitlist
+only** application with a null deadline through the dedicated
+research-secret-gated `btb_research_publish_recurring` RPC. Public display
+uses `schedule_type=recurring_season` so a season is not presented as a
+single guaranteed event date. Ongoing runs recheck the same official sources.
+If key source claims disappear or conflict, the existing listing is retained
+for investigation rather than silently changed or incorrectly marked open.
+The provider registry is intentionally conservative: other markets require
+their own verified official-source adapter and tests before auto-publication.
+
+Database migration:
+`scripts/opportunity-research/sql/20261118_recurring_market_waitlist.sql`.
