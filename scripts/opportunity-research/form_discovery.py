@@ -42,10 +42,14 @@ def verify_public_form(lead,fetcher,now=None):
  organizer_root=lead.get('organizer_root') or source_url
  calendar_url=lead.get('calendar_url')
  if calendar_url:
-  # Only configured official calendars may establish event-page provenance.
   from calendar_research import CALENDARS
-  organizer_label=next((organizer for organizer,root,calendar in CALENDARS
-     if root==organizer_root and calendar==calendar_url),None)
+  if lead.get('grouped_research'):
+   # Curated organizer roots, never incoming arbitrary websites.
+   organizer_label=next((organizer for organizer,_,root in SOURCES
+      if root==organizer_root and calendar_url==organizer_root),None)
+  else:
+   organizer_label=next((organizer for organizer,root,calendar in CALENDARS
+      if root==organizer_root and calendar==calendar_url),None)
   if not organizer_label or not valid_url(source_url):return None
   if urlparse(source_url).hostname!=urlparse(calendar_url).hostname:return None
  else:
@@ -53,15 +57,34 @@ def verify_public_form(lead,fetcher,now=None):
  if not organizer_label:return None
  try:
   if calendar_url:
-   from calendar_research import calendar_event_provenance
-   if not calendar_event_provenance(fetcher,calendar_url,source_url):return None
+   from calendar_research import calendar_event_provenance,calendar_event_pages,same_organizer_host
    root_doc,_=fetcher.get(organizer_root)
+   if lead.get('grouped_research'):
+    event_index=lead.get('event_index_url')
+    if event_index==organizer_root:
+     if source_url not in calendar_event_pages(root_doc,organizer_root):return None
+    else:
+     if not same_organizer_host(event_index or '',organizer_root):return None
+     if event_index not in root_doc.root.links(organizer_root):return None
+     index_doc,_=fetcher.get(event_index)
+     if source_url not in calendar_event_pages(index_doc,event_index):return None
+   elif not calendar_event_provenance(fetcher,calendar_url,source_url):return None
   source,source_hash=fetcher.get(source_url)
   if app_url not in source.root.links(source_url):
-   # Some organizers put the form on a separate official application
-   # page. Never trust a form linked by an unrelated host.
+   # The application must be linked by the official organizer directly or
+   # via a currently linked same-host application page, not just discovered
+   # somewhere on the internet.
    if not calendar_url:return None
-   if app_url not in root_doc.root.links(organizer_root):return None
+   if lead.get('grouped_research'):
+    app_index=lead.get('application_index_url')
+    if app_index==organizer_root:
+     if app_url not in root_doc.root.links(organizer_root):return None
+    else:
+     if not same_organizer_host(app_index or '',organizer_root):return None
+     if app_index not in root_doc.root.links(organizer_root):return None
+     app_index_doc,_=fetcher.get(app_index)
+     if app_url not in app_index_doc.root.links(app_index):return None
+   elif app_url not in root_doc.root.links(organizer_root):return None
   events=list(source.events())
   if len(events)!=1:return None
   event=events[0]
