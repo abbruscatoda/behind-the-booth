@@ -7,7 +7,7 @@ source patterns, not with guessed recurrence or generic registration links.
 """
 from __future__ import annotations
 from datetime import datetime,date,timezone
-from urllib.parse import urljoin
+from urllib.parse import urljoin,urlparse,parse_qs
 import re
 from verifier import Uncertain,valid_url,clean
 from category_rules import visible_text
@@ -33,6 +33,30 @@ def _linked(doc,base,target):
   urljoin(base,url) for url in doc.root.links(base)
  }
 
+def official_registration_link(doc,base,provider):
+ """Canonicalize only an exact, organizer-linked ManageMyMarket registration.
+
+ Reject other organizations, login/prefill URLs and user-supplied registration
+ destinations. A municipality may link HTTP or www variants; we always
+ publish its exact expected HTTPS registration URL.
+ """
+ expected=urlparse(provider['application_url'])
+ expected_id=parse_qs(expected.query).get('orgID',[''])[0]
+ for url in doc.root.links(base):
+  try:
+   p=urlparse(url)
+   query=parse_qs(p.query)
+   if (p.scheme in ('http','https')
+    and p.hostname in ('managemymarket.com','www.managemymarket.com')
+    and p.path.lower() in ('/vendorregister.aspx','/landing.aspx')
+    and set(query)=={'orgID'} and query['orgID']==[expected_id]
+    and expected_id.isdigit() and not p.username and not p.password
+    and p.port in (None,80,443) and not p.fragment):
+    return provider['application_url']
+  except ValueError:
+   continue
+ return None
+
 def check_recurring_provider(provider,fetcher,now=None):
  now=now or datetime.now(timezone.utc)
  from zoneinfo import ZoneInfo
@@ -43,8 +67,9 @@ def check_recurring_provider(provider,fetcher,now=None):
  # necessarily showing a direct vendor link on every market landing page.
  if not _linked(vendor,provider['vendor_url'],provider['market_url']):
   raise Uncertain('Official vendor page is not linked back to this farmers market.')
- if not _linked(vendor,provider['vendor_url'],provider['application_url']):
-  raise Uncertain('Official vendor page no longer links the configured vendor application.')
+ if official_registration_link(vendor,provider['vendor_url'],provider) is None:
+  # Keep the official third-party link bound to the exact market account.
+  raise Uncertain('Official vendor page does not link the approved ManageMyMarket organization registration.')
  if not valid_url(provider['vendor_url']):raise Uncertain('Untrusted official vendor page.')
  main_text=visible_text(main.root)
  text=visible_text(vendor.root)
