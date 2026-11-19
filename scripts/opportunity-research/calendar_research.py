@@ -100,7 +100,6 @@ def discover_calendars(fetcher):
    event_urls=set(calendar_event_pages(cal,calendar))
    # A current organizer index may lead to individual dated market pages.
    for index_url in sorted(calendar_index_pages(cal,calendar))[:MAX_CALENDAR_INDEX_PAGES]:
-    if index_url in event_urls:continue
     try:
      index_doc,_=fetcher.get(index_url)
      indexes_inspected+=1
