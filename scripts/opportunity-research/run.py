@@ -22,7 +22,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_publish_discovery','btb_research_publish_form'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -144,7 +144,10 @@ def run(dry_run=False):
   # opportunities are published only through the dedicated, guarded RPC after
   # both Eventeny identities, dates, application status and receipts match.
   # Inconclusive organizer links remain private admin research leads.
-  incoming,leads,discovery_stats=discover_triangle(fetcher,now,known=known|set(found))
+  # The backlog RPC is read-only and worker-secret guarded. Keep --dry-run
+  # limited to the existing context call for compatibility with strict tests.
+  backlog=[] if dry_run else db.rpc('btb_research_discovery_backlog')
+  incoming,leads,discovery_stats=discover_triangle(fetcher,now,known=known|set(found),backlog=backlog)
   for candidate in incoming:
    data=candidate['candidate']
    key=(canonical_application(data['application_url']) or data['application_url'],data['starts_on'])

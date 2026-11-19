@@ -205,7 +205,7 @@ def _stage_event(source,app,fetcher,now):
  result['reason']='Organizer account, dated event and enabled vendor application independently verified for automated publication.'
  return result
 
-def discover_triangle(fetcher,now=None,include_search=True,known=None,include_calendars=True):
+def discover_triangle(fetcher,now=None,include_search=True,known=None,include_calendars=True,backlog=None):
  """Returns (unpublished candidates, form leads, diagnostics).
 
  Errors on optional outside pages do not erase validated listings or turn
@@ -218,10 +218,12 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
  events=set()
  apps=set()
  raw_leads={}
+ root_docs={}
  failures=[]
  for organizer,city,root in SOURCES:
   try:
    doc,_=fetcher.get(root)
+   root_docs[root]=doc
    es,aa,links=extract_links(doc,root)
    events.update(es);apps.update(aa)
    for url,label in links:
@@ -298,13 +300,28 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
     if len(staged)>=MAX_NEW_DRAFTS:break
   except Exception:
    continue
- # A public Jotform/Google Form can qualify too, but only when it
- # independently matches a single dated official organizer event and exposes
- # a live Submit control plus an exact future deadline. Generic seasonal
- # forms are deliberately left as private leads.
+ # Previously saved applications are re-researched even when they
+ # were outside the earlier per-run discovery slice. A saved URL alone is
+ # never evidence: the currently fetched official organizer root must still
+ # link to the exact application before it may be considered.
  from form_discovery import verify_public_form
+ saved_hints=[]
+ for entry in (backlog or [])[:80]:
+  source=entry.get('source_url')
+  url=entry.get('target_url')
+  doc=root_docs.get(source)
+  if not doc or url not in doc.root.links(source):continue
+  if not is_application_hint(url,entry.get('title','')):continue
+  saved_hints.append(entry)
+  raw_leads.setdefault(url,entry)
  verified_forms=0
- for lead in (calendar_pairs+list(raw_leads.values()))[:MAX_LEADS+30]:
+ considered_forms=0
+ seen_forms=set()
+ for lead in (calendar_pairs+saved_hints+list(raw_leads.values()))[:MAX_LEADS+100]:
+  pair=(lead.get('source_url'),lead.get('target_url'))
+  if pair in seen_forms:continue
+  seen_forms.add(pair)
+  considered_forms+=1
   if len(staged)>=MAX_NEW_DRAFTS:break
   result=verify_public_form(lead,fetcher,now)
   if not result:continue
@@ -322,5 +339,7 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
         'discovery_followed_organizer_pages':len(followed),
         'discovery_verified_candidates':len(staged),
         'discovery_verified_public_forms':verified_forms,'discovery_unconfirmed_leads':len(leads),
+        'previous_leads_rechecked':len(saved_hints),
+        'form_leads_considered':considered_forms,
         'calendar':calendar_stats}
  return list(staged.values()),leads,stats
