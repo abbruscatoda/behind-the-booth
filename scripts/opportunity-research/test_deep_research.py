@@ -36,6 +36,16 @@ class DiagnosticsTests(unittest.TestCase):
   self.assertEqual(research.diagnose_one(lead(),pages)['status'],'unlinked')
   self.assertEqual(pages.requests,1)
 
+ def test_official_vendor_application_landing_page_is_not_dismissed_as_self_link(self):
+  url='https://www.geekandgrubmarket.com/vendorapplication'
+  class SelfPage:
+   def get(self,target):
+    self_target=target
+    if target!=url:raise ValueError('Unexpected source')
+    return Document('<h1>Vendor Application</h1><p>Apply for Geek and Grub markets</p>'),'a'*64
+  result=research.diagnose_one({'title':'Vendor Application','target_url':url,'source_url':url},SelfPage())
+  self.assertEqual(result['status'],'missing_event')
+
  def test_gated_form_is_identified(self):
   pages=Pages(reason='You need permission to continue.')
   self.assertEqual(research.diagnose_one(lead(),pages)['status'],'form_gated')
