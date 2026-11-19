@@ -70,7 +70,8 @@ def verify_public_form(lead,fetcher,now=None):
      if source_url not in calendar_event_pages(index_doc,event_index):return None
    elif not calendar_event_provenance(fetcher,calendar_url,source_url):return None
   source,source_hash=fetcher.get(source_url)
-  if app_url not in source.root.links(source_url):
+  from calendar_research import calendar_form_links
+  if app_url not in calendar_form_links(source,source_url):
    # The application must be linked by the official organizer directly or
    # via a currently linked same-host application page, not just discovered
    # somewhere on the internet.
@@ -78,12 +79,12 @@ def verify_public_form(lead,fetcher,now=None):
    if lead.get('grouped_research'):
     app_index=lead.get('application_index_url')
     if app_index==organizer_root:
-     if app_url not in root_doc.root.links(organizer_root):return None
+     if app_url not in calendar_form_links(root_doc,organizer_root):return None
     else:
      if not same_organizer_host(app_index or '',organizer_root):return None
      if app_index not in root_doc.root.links(organizer_root):return None
      app_index_doc,_=fetcher.get(app_index)
-     if app_url not in app_index_doc.root.links(app_index):return None
+     if app_url not in calendar_form_links(app_index_doc,app_index):return None
    elif app_url not in root_doc.root.links(organizer_root):return None
   events=list(source.events())
   if len(events)!=1:return None
