@@ -29,6 +29,20 @@ PROVIDERS=(
 CLOSED=r'no longer accepting|applications? (?:are |have )?closed|fully booked|sold out|submissions? (?:are |is )?closed'
 MONTHS={'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12}
 
+def official_location_text(doc):
+ """Read market address in visible content or organizer-owned footer/address.
+
+ The generic visible-text helper intentionally excludes footer HTML; on
+ Squarespace sites the only physical address often appears in that footer.
+ We inspect the official document's footer/address nodes, not script text,
+ third-party listings or a municipality's unrelated postal address.
+ """
+ chunks=[visible_text(doc.root)]
+ for node in doc.root.walk():
+  if node.tag in {'footer','address'}:
+   chunks.append(' '.join(node.text().split()))
+ return ' '.join(chunks)
+
 def links_labeled(doc,base,match):
  found=[]
  for node in doc.root.walk():
@@ -86,7 +100,7 @@ def _fvg(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
  season=_month_day(text,r'\b(April|May)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(?:through|to|-)\s+(September|October)\s+(\d{1,2})(?:st|nd|rd|th)?',year)
  if not re.search(rf'{year}\s+Regular Season:\s*Apr\s+{season[0].day}\s*[-–]\s*Sep\s+{season[1].day}',market,re.I):
   raise Uncertain('Market calendar does not independently match the vendor season.')
- if not re.search(r'121\s+N\.?\s+Main\s+St',text,re.I) or not re.search(r'121\s+N\.?\s+Main\s+St',market,re.I):
+ if not re.search(r'121\s+N\.?\s+Main\s+St',official_location_text(vendor),re.I) or not re.search(r'121\s+N\.?\s+Main\s+St',official_location_text(root),re.I):
   raise Uncertain('The official market location is not confirmed by both pages.')
  applicants=links_labeled(vendor,provider['vendor_url'],re.compile(r'^New Vendor Application$',re.I))
  if len(applicants)!=1 or not re.fullmatch(r'https://form\.jotform\.com/\d{10,20}',applicants[0]):
@@ -141,7 +155,7 @@ def _ww(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
  if year2!=year1+1:raise Uncertain('Rolling intake period has conflicting years.')
  today=now.astimezone(ZoneInfo('America/New_York')).date()
  if not year1<=today.year<=year2:raise Uncertain('The published rolling intake season is no longer current.')
- if not re.search(r'101\s+Town\s+Hall\s+Drive',market,re.I) or not re.search(r'101\s+Town\s+Hall\s+Drive',text,re.I):
+ if not re.search(r'101\s+Town\s+Hall\s+Drive',official_location_text(root),re.I) or not re.search(r'101\s+Town\s+Hall\s+Drive',official_location_text(vendor),re.I):
   raise Uncertain('Current official market address is incomplete.')
  applicants=links_labeled(vendor,provider['vendor_url'],re.compile(r'^(?:Apply Online|Regular Vendor Application)$',re.I))
  if len(set(applicants))!=1 or not re.fullmatch(r'https://forms\.gle/[A-Za-z0-9_-]{6,60}',applicants[0]):
