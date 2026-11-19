@@ -71,7 +71,7 @@ class RecurringWaitlistTests(unittest.TestCase):
 
  def test_past_season_must_not_remain_open(self):
   with self.assertRaises(Uncertain):
-   recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(),datetime(2027,5,1,tzinfo=timezone.utc))
+   recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(),datetime(2027,5,2,tzinfo=timezone.utc))
 
  def test_provider_never_requests_unverified_manage_my_market_accounts(self):
   f=MockFetcher()
