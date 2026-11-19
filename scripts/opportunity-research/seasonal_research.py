@@ -177,9 +177,11 @@ def check_provider(provider,fetcher,now=None):
  if not valid_url(provider['market_url']) or not valid_url(provider['vendor_url']):
   raise Uncertain('Untrusted organizer page.')
  if provider['market_url']!=provider['vendor_url'] and provider['vendor_url'] not in main.root.links(provider['market_url']):
-  # For sites with a shared navigation link rather than direct root link,
-  # the page must still be discoverable from the official market root.
-  raise Uncertain('Vendor application page is not linked from the market root.')
+  # Some organizers omit a navigation link but host a vendor page on the
+  # same canonical domain. Those pages must separately pass explicit market
+  # name, address, seasonal dates and form-link checks below.
+  if urlparse(provider['vendor_url']).hostname!=urlparse(provider['market_url']).hostname:
+   raise Uncertain('Vendor page is not linked by the official market.')
  if provider['kind']=='seasonal':
   candidate,form_hash=_fvg(provider,main,main_hash,vendor,vendor_hash,fetcher,now)
  elif provider['kind']=='rolling':
