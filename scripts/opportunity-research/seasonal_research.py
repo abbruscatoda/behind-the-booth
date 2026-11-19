@@ -8,6 +8,7 @@ from datetime import datetime,date,timezone
 from zoneinfo import ZoneInfo
 from urllib.parse import urlparse,urljoin
 import re
+from urllib.error import HTTPError
 from verifier import Uncertain,valid_url,clean
 from category_rules import visible_text
 from google_forms import read_public_form
@@ -161,10 +162,21 @@ def _ww(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
  applicants=links_labeled(vendor,provider['vendor_url'],re.compile(r'^(?:Apply Online|Regular Vendor Application)$',re.I))
  if len(set(applicants))!=1 or not re.fullmatch(r'https://forms\.gle/[A-Za-z0-9_-]{6,60}',applicants[0]):
   raise Uncertain('Exact official regular-vendor application could not be isolated.')
- form,form_hash=fetcher.get(applicants[0])
- ft=_form_readable(form)
- if not re.search(r'vendor|Western Wake|WWFM',ft,re.I):
-  raise Uncertain('Public Google Form is not identifiable as a market application.')
+ # Google Forms can return 401/403 to server-side verification even while the
+ # organizer explicitly advertises the linked rolling application. Distinguish
+ # official-source evidence from a verified readable form: never claim to have
+ # inspected a submission control we could not access.
+ form_hash=None
+ form_access='http_auth_blocked'
+ try:
+  form,form_hash=fetcher.get(applicants[0])
+ except HTTPError as error:
+  if error.code not in (401,403):raise
+ else:
+  ft=_form_readable(form)
+  if not re.search(r'vendor|Western Wake|WWFM',ft,re.I):
+   raise Uncertain('Public Google Form is not identifiable as a market application.')
+  form_access='readable_verified'
  # Year-round markets have no single season day; these dates are explicitly
  # an internal coverage horizon, never shown as event/attendance dates.
  horizon_start=date(year1,1,1);horizon_end=date(year2,12,31)
@@ -180,9 +192,9 @@ def _ww(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
   'booth_fee':None,'application_fee':None,'deposit':None,'categories':[],
   'fee_notes':'A nonrefundable application fee is required; the organizer publishes separate fee schedules that vary by attendance arrangement. Exact cost not verified.',
   'eligibility':'Regular vendor application is accepted on a rolling basis. Applicants must follow published market rules and meet the organizer\'s vendor-selection requirements.',
-  'research_notes':f'Year-round Saturday market; official {year1}/{year2} rolling vendor intake. Dates stored internally represent a coverage window, not scheduled events. No specific booth availability, individual attendance dates, or submission cutoff is guaranteed.'
+  'research_notes':f'Year-round Saturday market; official {year1}/{year2} rolling vendor intake. Dates stored internally represent a coverage window, not scheduled events. No specific booth availability, individual attendance dates, or submission cutoff is guaranteed. '+('The organizer links to a Google application that blocked automated verification; confirm the form can be submitted before applying.' if form_access=='http_auth_blocked' else 'Public vendor form and Submit control were independently readable.')
  }
- return candidate,form_hash
+ return candidate,form_hash,form_access
 
 def check_provider(provider,fetcher,now=None):
  now=now or datetime.now(timezone.utc)
@@ -199,14 +211,16 @@ def check_provider(provider,fetcher,now=None):
    raise Uncertain('Vendor page is not linked by the official market.')
  if provider['kind']=='seasonal':
   candidate,form_hash=_fvg(provider,main,main_hash,vendor,vendor_hash,fetcher,now)
+  form_access='readable_verified'
  elif provider['kind']=='rolling':
-  candidate,form_hash=_ww(provider,main,main_hash,vendor,vendor_hash,fetcher,now)
+  candidate,form_hash,form_access=_ww(provider,main,main_hash,vendor,vendor_hash,fetcher,now)
  else:raise Uncertain('Unsupported seasonal provider type.')
  return {'decision':'publish','policy':POLICY,'candidate':candidate,
   'checked_at':now.isoformat(),'source_hash':vendor_hash,
   'market_source_hash':main_hash,'application_hash':form_hash,
-  'form_complete':True,'form_readable':True,
-  'evidence':'Official market and vendor pages independently agree on active intake, location, participating season or rolling schedule, and an exact linked readable application with Submit.',
+  'form_complete':form_access=='readable_verified','form_readable':form_access=='readable_verified',
+  'application_access':form_access,
+  'evidence':('Official market and vendor pages independently confirm rolling applications, matching identity, location, season, and an exact linked regular-vendor Google Form; Google returned HTTP 401/403 and submission was NOT independently verified.' if form_access=='http_auth_blocked' else 'Official market and vendor pages independently agree on active intake, location, participating season or rolling schedule, and an exact linked readable application with Submit.'),
   'reason':'Organizer-verified seasonal or rolling vendor intake, not guaranteed individual market dates.'}
 
 def discover_seasonal(fetcher,now=None,diagnostics=None):
