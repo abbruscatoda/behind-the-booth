@@ -29,6 +29,19 @@ PROVIDERS=(
 CLOSED=r'no longer accepting|applications? (?:are |have )?closed|fully booked|sold out|submissions? (?:are |is )?closed'
 MONTHS={'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12}
 
+def location_text_from_organizer(doc):
+ """Market address in official visible content, footer or address elements.
+
+ Generic visible_text excludes HTML footers; Squarespace puts the physical
+ market address there. Do not search script, hidden form fields or third-party
+ pages to infer market locations.
+ """
+ chunks=[visible_text(doc.root)]
+ for node in doc.root.walk():
+  if node.tag in {'footer','address'}:
+   chunks.append(' '.join(node.text().split()))
+ return ' '.join(chunks)
+
 def links_labeled(doc,base,match):
  found=[]
  for node in doc.root.walk():
@@ -142,8 +155,8 @@ def _ww(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
  if year2!=year1+1:raise Uncertain('Rolling intake period has conflicting years.')
  today=now.astimezone(ZoneInfo('America/New_York')).date()
  if not year1<=today.year<=year2:raise Uncertain('The published rolling intake season is no longer current.')
- if not (re.search(r'101\s+Town\s+Hall\s+Drive',market,re.I) or
-         re.search(r'101\s+Town\s+Hall\s+Drive',text,re.I)):
+ if not (re.search(r'101\s+Town\s+Hall\s+Drive',location_text_from_organizer(root),re.I) or
+         re.search(r'101\s+Town\s+Hall\s+Drive',location_text_from_organizer(vendor),re.I)):
   raise Uncertain('No confirmed market address on an official organizer page.')
  applicants=links_labeled(vendor,provider['vendor_url'],re.compile(r'^(?:Apply Online|Regular Vendor Application)$',re.I))
  if len(set(applicants))!=1 or not re.fullmatch(r'https://forms\.gle/[A-Za-z0-9_-]{6,60}',applicants[0]):

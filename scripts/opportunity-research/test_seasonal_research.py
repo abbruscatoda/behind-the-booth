@@ -103,6 +103,21 @@ class SeasonalTests(unittest.TestCase):
   self.assertIsNone(data['deadline'])
   self.assertIn('not scheduled events',data['research_notes'])
 
+ def test_western_wake_address_in_official_footer(self):
+  fetch=Fetch()
+  fetch.pages[seasonal.WW_ROOT]=WW_MAIN.replace(
+   '<p>Physical: 101 Town Hall Drive Morrisville NC</p>',
+   '<footer>Physical: 101 Town Hall Drive Morrisville NC</footer>')
+  result=seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+  self.assertEqual(result['candidate']['schedule_type'],'rolling_market')
+
+ def test_western_wake_wrong_footer_address_still_rejected(self):
+  fetch=Fetch()
+  fetch.pages[seasonal.WW_ROOT]=WW_MAIN.replace('101 Town Hall Drive','909 Unknown Place')
+  fetch.pages[seasonal.WW_VENDOR]=WW_VENDOR.replace('101 Town Hall Drive','909 Unknown Place')
+  with self.assertRaises(Uncertain):
+   seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+
  def test_rolling_market_rejects_inaccessible_form(self):
   fetch=Fetch();fetch.pages.pop(WEST_FORM)
   with self.assertRaises(ValueError):seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
