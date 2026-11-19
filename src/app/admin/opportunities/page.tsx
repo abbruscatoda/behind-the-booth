@@ -12,7 +12,7 @@ type Draft={research_suggestions?:ResearchSuggestions;id?:string;title:string;or
 const blank:Draft={title:"",organizer:"",city:"",state:"NC",venue:"",starts_on:"",ends_on:"",deadline:"",application_url:"",source_url:"",categories:[],booth_fee:"",application_fee:"",deposit:"",fee_notes:"",eligibility:"",research_notes:"",market_id:"",availability:"needs_recheck",publication:"draft",new_market_name:"",new_market_slug:"",new_market_description:"",automation_hold:false};
 type ResearchStatus={enabled:boolean;worker_configured:boolean;runs:{id:string;started_at:string;finished_at:string|null;summary:{failed?:boolean;counts?:Record<string,number>;issues?:string[];discovery?:{discovery_sources:number;discovery_event_urls:number;discovery_verified_candidates:number;discovery_verified_public_forms?:number;discovery_followed_organizer_pages?:number;discovery_unconfirmed_leads:number;optional_source_failures?:string[];calendar?:{calendar_sources:number;calendar_event_pages_inspected:number;calendar_eventeny_urls:number;calendar_form_pairs:number;calendar_source_failures?:string[]}}}|null}[];audit:{id:number;opportunity_id:string|null;title:string|null;created_at:string;action:string;reason:string;evidence?:{source_url?:string;excerpt?:string}}[]};
 type Market={id:string;name:string;city:string;organizer:string|null};
-type DiscoveryLead={id:string;target_url:string;source_url:string;title:string;organizer:string;city:string;notes:string;first_seen:string;last_seen:string;review_state:string};
+type DiscoveryLead={id:string;target_url:string;source_url:string;title:string;organizer:string;city:string;notes:string;first_seen:string;last_seen:string;review_state:string;research_status?:string;research_reason?:string;last_researched_at?:string|null};
 // A source outage is not a request to reapprove an otherwise published listing.
 // Keep all organizer, date, application and source-content conflicts in the action queue.
 function isRoutineVerificationNotice(item:Draft):boolean {
@@ -82,12 +82,18 @@ export default function AdminOpportunities(){
 
  <section className="mt-12" aria-label="Triangle market discovery leads">
  <h2 className="font-serif text-3xl font-bold">New vendor-application leads</h2>
- <p className="mt-3 text-sm leading-relaxed text-[#55554E]">The worker checks official organizer pages across the Triangle and searches for dated Eventeny events. Strongly verified new events are automatically published with a market profile; links without independently confirmed dates, organizer, and live application details remain here. These are research leads, not confirmed open applications. The worker now also follows supported official event calendars to connect application links with exact dated events where both sources confirm eligibility.</p>
+ <p className="mt-3 text-sm leading-relaxed text-[#55554E]">The worker checks official organizer pages across the Triangle and searches for dated Eventeny events. Strongly verified new events are automatically published with a market profile; links without independently confirmed dates, organizer, and live application details remain here. These are research leads, not confirmed open applications. The worker also follows approved event calendars, researches seasonal and rolling applications, and records a specific reason whenever evidence is insufficient. Automatically verified listings are published without manual approval.</p>
  <p className="mt-3 text-sm font-semibold">{discoveryLeads.length} leads awaiting review</p>
  {discoveryLeads.length>0&&<div className="mt-5 space-y-3">{discoveryLeads.map(lead=><article key={lead.id} className="border border-[#252521]/20 p-4">
   <h3 className="font-serif text-lg font-bold">{lead.title}</h3>
   <p className="mt-1 text-sm text-[#55554E]">{lead.organizer} · {lead.city} · Discovered {new Date(lead.first_seen).toLocaleDateString()}</p>
-  <p className="mt-2 text-sm">{lead.notes}</p>
+  {lead.research_reason
+    ? <div className="mt-3 border-l-2 border-[#626C57] pl-3 text-sm">
+        <p className="font-semibold">Research result: {(lead.research_status??"needs_evidence").replaceAll("_"," ")}</p>
+        <p className="mt-1 leading-relaxed">{lead.research_reason}</p>
+        {lead.last_researched_at&&<p className="mt-1 text-xs text-[#626C57]">Checked {new Date(lead.last_researched_at).toLocaleString("en-US",{timeZone:"America/New_York"})}</p>}
+      </div>
+    :<p className="mt-2 text-sm">{lead.notes}</p>}
   <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
    {safeExternalUrl(lead.target_url)&&<a href={lead.target_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#07472B] underline">Open application lead</a>}
    {safeExternalUrl(lead.source_url)&&<a href={lead.source_url} target="_blank" rel="noopener noreferrer" className="text-[#07472B] underline">Official source</a>}

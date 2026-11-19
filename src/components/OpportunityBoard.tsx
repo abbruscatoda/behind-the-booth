@@ -68,8 +68,10 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
      </div>
      <h2 className="mt-4 font-serif text-2xl font-bold sm:text-3xl"><Link href={`/markets/${item.market_slug}`} className="text-inherit hover:text-[#07472B] hover:underline underline-offset-4">{item.title}</Link></h2>
      <p className="mt-2 text-sm font-semibold text-[#07472B]">{item.organizer}</p>
-     <p className="mt-3 text-base font-semibold">{item.schedule_type==="recurring_season"?"Market season: ":""}{formatAttendanceDate(item.starts_on)}{item.ends_on!==item.starts_on?` – ${formatAttendanceDate(item.ends_on)}`:""}</p>
-     {item.schedule_type==="recurring_season"&&<p className="mt-1 text-xs text-[#626C57]">Recurring Saturday market. Individual dates may be excluded for holidays or town events; verify attendance with the organizer.</p>}
+     <p className="mt-3 text-base font-semibold">{item.schedule_type==="rolling_market"
+  ?"Year-round farmers market · rolling vendor applications"
+  :<>{["recurring_season","seasonal_application"].includes(item.schedule_type??"")?"Market season: ":""}{formatAttendanceDate(item.starts_on)}{item.ends_on!==item.starts_on?` – ${formatAttendanceDate(item.ends_on)}`:""}</>}</p>
+     {["recurring_season","seasonal_application","rolling_market"].includes(item.schedule_type??"")&&<p className="mt-1 text-xs text-[#626C57]">Recurring market application. Participation on individual market dates and booth assignment are not guaranteed; check with the organizer.</p>}
      <p className="mt-1 text-sm text-[#55554E]">{item.venue} · {item.city}, {item.state}</p>
      <p className="mt-3 text-sm"><strong>{deadline.label}:</strong> {deadline.value}</p>
      <p className="mt-2 text-sm"><strong>Listed categories:</strong> {categoryText}</p>
