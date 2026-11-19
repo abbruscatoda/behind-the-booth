@@ -53,9 +53,8 @@ def verify_public_form(lead,fetcher,now=None):
  if not organizer_label:return None
  try:
   if calendar_url:
-   from calendar_research import calendar_event_pages
-   calendar,_=fetcher.get(calendar_url)
-   if source_url not in calendar_event_pages(calendar,calendar_url):return None
+   from calendar_research import calendar_event_provenance
+   if not calendar_event_provenance(fetcher,calendar_url,source_url):return None
    root_doc,_=fetcher.get(organizer_root)
   source,source_hash=fetcher.get(source_url)
   if app_url not in source.root.links(source_url):
