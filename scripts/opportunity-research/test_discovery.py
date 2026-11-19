@@ -37,7 +37,7 @@ class DiscoveryTests(unittest.TestCase):
  def test_new_triangle_application_qualifies_for_safe_auto_publication(self):
   pages=Pages()
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
-   candidates,leads,stats=discovery.discover_triangle(pages,NOW,include_search=False)
+   candidates,leads,stats=discovery.discover_triangle(pages,NOW,include_search=False,include_calendars=False)
   self.assertEqual(len(candidates),1)
   self.assertEqual(candidates[0]['decision'],'publish')
   self.assertEqual(candidates[0]['policy'],'triangle-eventeny-auto-v1')
@@ -49,7 +49,7 @@ class DiscoveryTests(unittest.TestCase):
  def test_real_worker_uses_guarded_autopublisher_for_new_verified_event(self):
   pages=Pages()
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
-   found,_,_=discovery.discover_triangle(pages,NOW,include_search=False)
+   found,_,_=discovery.discover_triangle(pages,NOW,include_search=False,include_calendars=False)
   calls=[]
   class FakeDB:
    def rpc(self,name,body=None):
@@ -72,7 +72,7 @@ class DiscoveryTests(unittest.TestCase):
  def test_known_opportunity_does_not_consume_new_draft_slot(self):
   pages=Pages()
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
-   found,_,stats=discovery.discover_triangle(pages,NOW,include_search=False,known={(APP,'2026-11-29')})
+   found,_,stats=discovery.discover_triangle(pages,NOW,include_search=False,include_calendars=False,known={(APP,'2026-11-29')})
   self.assertEqual(found,[])
   self.assertEqual(stats['discovery_verified_candidates'],0)
 
@@ -85,19 +85,19 @@ class DiscoveryTests(unittest.TestCase):
   pages.docs[SOURCE]=source
   pages.docs[APP]=app
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
-   candidates,_,_=discovery.discover_triangle(pages,NOW,include_search=False)
+   candidates,_,_=discovery.discover_triangle(pages,NOW,include_search=False,include_calendars=False)
   self.assertEqual(candidates,[])
 
  def test_event_must_link_this_exact_vendor_application(self):
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
-   candidates,leads,stats=discovery.discover_triangle(Pages(missing_app_link=True),NOW,include_search=False)
+   candidates,leads,stats=discovery.discover_triangle(Pages(missing_app_link=True),NOW,include_search=False,include_calendars=False)
   self.assertEqual(candidates,[])
 
  def test_unconfirmed_google_application_becomes_lead_not_published_listing(self):
   form='https://docs.google.com/forms/d/e/1FAIpQLScPXt0euH9ziXcAR3tA9BkXTQ4qtnTK9V6aqttIYbxlittBlA/viewform'
   pages=Pages();pages.docs[SEED]='<a href="'+form+'">Vendor Application</a>'
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
-   candidates,leads,_=discovery.discover_triangle(pages,NOW,include_search=False)
+   candidates,leads,_=discovery.discover_triangle(pages,NOW,include_search=False,include_calendars=False)
   self.assertEqual(candidates,[])
   self.assertEqual(len(leads),1)
   self.assertEqual(leads[0]['target_url'],form)
@@ -106,7 +106,7 @@ class DiscoveryTests(unittest.TestCase):
   pages=Pages()
   pages.docs[SEED]='<a href="https://other.example/vendor-application">Apply</a>'
   with patch.object(discovery,'SOURCES',[('Geek and Grub','Durham',SEED)]):
-   _,leads,_=discovery.discover_triangle(pages,NOW,include_search=False)
+   _,leads,_=discovery.discover_triangle(pages,NOW,include_search=False,include_calendars=False)
   self.assertEqual(pages.calls,[SEED])
   self.assertEqual(len(leads),1)
 
@@ -153,7 +153,7 @@ class DiscoveryTests(unittest.TestCase):
   pages=Pages()
   pages.docs[SEED]='<a href="'+form+'">Call for Holiday Mini Mall Vendors</a>'
   with patch.object(discovery,'SOURCES',[('Artspace','Raleigh',SEED)]):
-   _,leads,_=discovery.discover_triangle(pages,NOW,include_search=False,known={(form,'2026-12-13')})
+   _,leads,_=discovery.discover_triangle(pages,NOW,include_search=False,include_calendars=False,known={(form,'2026-12-13')})
   self.assertEqual(leads,[])
 
  def test_ssrf_and_hidden_urls_rejected(self):
@@ -166,7 +166,7 @@ class DiscoveryTests(unittest.TestCase):
  def test_soft_source_outage_does_not_stop_other_sources(self):
   pages=Pages()
   with patch.object(discovery,'SOURCES',[('Missing','Cary','https://www.caryfarmersmarket.com/vendor-application/'),('Geek and Grub','Durham',SEED)]):
-   found,_,stats=discovery.discover_triangle(pages,NOW,include_search=False)
+   found,_,stats=discovery.discover_triangle(pages,NOW,include_search=False,include_calendars=False)
   self.assertEqual(len(found),1)
   self.assertEqual(len(stats['optional_source_failures']),1)
 
