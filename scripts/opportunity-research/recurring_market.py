@@ -14,6 +14,7 @@ from category_rules import visible_text
 
 HOLLY_MARKET='https://www.hollyspringsnc.gov/319/Farmers-Market'
 HOLLY_VENDOR='https://www.hollyspringsnc.gov/1824/Become-a-Vendor'
+HOLLY_VISIT='https://www.hollyspringsnc.gov/574/Plan-Your-Visit'
 HOLLY_APPLICATION='https://managemymarket.com/VendorRegister.aspx?orgID=933'
 POLICY='recurring-official-waitlist-v1'
 
@@ -23,7 +24,7 @@ PROVIDERS=(
  {'market_name':'Holly Springs Farmers Market',
   'organizer':'Town of Holly Springs','city':'Holly Springs',
   'market_slug':'holly-springs-farmers-market',
-  'market_url':HOLLY_MARKET,'vendor_url':HOLLY_VENDOR,
+  'market_url':HOLLY_MARKET,'vendor_url':HOLLY_VENDOR,'visit_url':HOLLY_VISIT,
   'application_url':HOLLY_APPLICATION,
   'provider':'ManageMyMarket'},
 )
@@ -103,8 +104,17 @@ def check_recurring_provider(provider,fetcher,now=None):
   raise Uncertain('Official eligibility no longer identifies North Carolina farmers and producers.')
  if not re.search(r'liability insurance',text,re.I) or not re.search(r'tax ID',text,re.I):
   raise Uncertain('Vendor requirements incomplete.')
- if not re.search(r'300 W\.? Ballentine St\.?',main_text,re.I):
-  raise Uncertain('Official venue address not confirmed.')
+ # The municipality maintains a separate, authoritative visitor page
+ # for the location and schedule. A page's footer can be its Town Hall
+ # address; verify the MARKET address, not the municipal mailing address.
+ visit,visit_hash=fetcher.get(provider['visit_url'])
+ if not _linked(visit,provider['visit_url'],provider['market_url']):
+  raise Uncertain('Official visitor page does not identify the same farmers market.')
+ visit_text=visible_text(visit.root)
+ if not re.search(r'farmers market is located at\s+300\s+W\.?\s+Ballentine\s+St\.?',visit_text,re.I):
+  raise Uncertain('Official visitor page no longer confirms the market street address.')
+ if not re.search(r'now open every Saturday year-round',visit_text,re.I):
+  raise Uncertain('Official year-round market schedule was not confirmed.')
  # Never claim that an individual Saturday is scheduled: exceptions are
  # published without all exact excluded dates. This is a seasonal listing.
  price_notes=(
@@ -135,7 +145,7 @@ def check_recurring_provider(provider,fetcher,now=None):
  }
  return {'decision':'publish','policy':POLICY,'candidate':data,
   'checked_at':now.isoformat(),'source_hash':vendor_hash,
-  'market_source_hash':main_hash,
+  'market_source_hash':main_hash,'visit_source_hash':visit_hash,
   'evidence':'Official municipality market page links to vendor page which explicitly confirms year-round waitlist applications, season dates, fees, eligibility and exact ManageMyMarket application.',
   'reason':'Official municipal organizer confirms current-season waitlist applications without a cutoff; not represented as an open booth.'}
 
