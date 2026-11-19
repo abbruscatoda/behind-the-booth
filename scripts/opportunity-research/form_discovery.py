@@ -93,7 +93,7 @@ def verify_public_form(lead,fetcher,now=None):
    # explicit closure of the organizer's applications for this event year.
    root_text=visible_text(root_doc.root)
    closed_years={int(y) for y in re.findall(
-     r'\\b(?:all\\s+)?(20\\d{2})\\s+(?:vendor\\s+)?applications\\s+(?:have\\s+)?closed\\b',
+     r'\b(?:all\s+)?(20\d{2})\s+(?:vendor\s+)?applications\s+(?:have\s+)?closed\b',
      root_text,re.I)}
    if starts.year in closed_years:return None
 
