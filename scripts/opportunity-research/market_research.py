@@ -36,7 +36,9 @@ def investigate_groups(leads,fetcher):
  event_pages=0
  inspected_hubs=0
  skipped=[]
- for root in sorted(groups)[:MAX_GROUPS]:
+ # Backlog arrival order is least-recently-researched first, preventing
+ # older organizers from being starved by alphabetical source ordering.
+ for root in list(groups)[:MAX_GROUPS]:
   if getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',100000)-RESERVE_REQUESTS:break
   organizer,city=trusted[root]
   investigated+=1
