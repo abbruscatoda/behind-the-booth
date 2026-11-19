@@ -142,8 +142,10 @@ def _ww(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
  if year2!=year1+1:raise Uncertain('Rolling intake period has conflicting years.')
  today=now.astimezone(ZoneInfo('America/New_York')).date()
  if not year1<=today.year<=year2:raise Uncertain('The published rolling intake season is no longer current.')
- if not (re.search(r'101\s+Town\s+Hall\s+Drive',market,re.I) or
-         re.search(r'101\s+Town\s+Hall\s+Drive',text,re.I)):
+ # Squarespace may put the physical address in a collapsed footer; Node.text
+ # skips scripts and styles while retaining the organizer-authored footer text.
+ official_location=main.root.text()+' '+vendor.root.text()
+ if not re.search(r'101\s+Town\s+Hall\s+Drive',official_location,re.I):
   raise Uncertain('No confirmed market address on an official organizer page.')
  applicants=links_labeled(vendor,provider['vendor_url'],re.compile(r'^(?:Apply Online|Regular Vendor Application)$',re.I))
  if len(set(applicants))!=1 or not re.fullmatch(r'https://forms\.gle/[A-Za-z0-9_-]{6,60}',applicants[0]):
