@@ -60,6 +60,15 @@ search hints for Raleigh, Durham, Cary/Apex, and Chapel Hill/Carrboro.
   private **New vendor-application leads** queue on
   `/admin/opportunities`. Admins can open the official source, use the
   draft editor, mark reviewed, or ignore a lead.
+- The worker also loads unresolved application leads saved on earlier runs via a
+  private, research-secret-authorized Supabase RPC. Those leads are
+  re-evaluated even when they would otherwise fall outside the current
+  discovery slice. Crucially, the currently fetched official source must
+  still link to the exact application; old or untrusted URLs are not evidence
+  of an open market. The existing dated organizer-calendar verifier then
+  attempts to match each form to a real upcoming event before automatic
+  publication. The backlog RPC is versioned in
+  `scripts/opportunity-research/sql/20261118_discovery_backlog_rpc.sql`.
 - A discovery-source failure does not invalidate or unpublish existing
   previously approved listings. Optional search feeds may be unavailable
   or incomplete, so this system is not an exhaustive list of every
