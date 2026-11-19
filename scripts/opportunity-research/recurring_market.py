@@ -39,8 +39,10 @@ def check_recurring_provider(provider,fetcher,now=None):
  today=now.astimezone(ZoneInfo('America/New_York')).date()
  main,main_hash=fetcher.get(provider['market_url'])
  vendor,vendor_hash=fetcher.get(provider['vendor_url'])
- if not _linked(main,provider['market_url'],provider['vendor_url']):
-  raise Uncertain('Main official market page no longer links its vendor information.')
+ # CivicPlus places the market breadcrumb on the vendor page rather than
+ # necessarily showing a direct vendor link on every market landing page.
+ if not _linked(vendor,provider['vendor_url'],provider['market_url']):
+  raise Uncertain('Official vendor page is not linked back to this farmers market.')
  if not _linked(vendor,provider['vendor_url'],provider['application_url']):
   raise Uncertain('Official vendor page no longer links the configured vendor application.')
  if not valid_url(provider['vendor_url']):raise Uncertain('Untrusted official vendor page.')
