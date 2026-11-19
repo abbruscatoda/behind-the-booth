@@ -134,3 +134,32 @@ their own verified official-source adapter and tests before auto-publication.
 
 Database migration:
 `scripts/opportunity-research/sql/20261118_recurring_market_waitlist.sql`.
+
+### Deep-dive research and seasonal applications (2026-11-18)
+
+The worker rechecks existing organizer leads and now produces a **separate,
+specific research diagnosis** for each unresolved lead (closed intake,
+invitation-only, ongoing/seasonal intake, unlinked application, blocked form,
+multi-date form, etc.). Diagnoses are stored in the private
+`btb_private.triangle_discovery_leads` table and displayed on the admin
+opportunity page. A diagnosis is not evidence that an application is open.
+
+The new `seasonal_research.py` adapter demonstrates a reusable source-bound
+approach for Fuquay-Varina Growers Market and Western Wake Farmers Market:
+fetch organizer homepage + vendor information + exact, public application;
+verify the same market identity, location, intake period, application state,
+and form Submit control; then submit a bounded evidence receipt to the
+worker-secret-guarded `btb_research_publish_seasonal` RPC. The publisher
+deduplicates and protects hidden/held records and retains reviewable audit
+history. There are separate display types for dated seasons and year-round
+rolling markets. The *internal* coverage dates for rolling markets are not
+claimed to be actual attendance dates.
+
+Unknown prices, unknown deadlines, waitlists and restricted vendor categories
+must not be fabricated or silently relabeled as open. This adapter does not
+authorize publishing arbitrary organizer pages, sign-in-only forms, closed
+applications or unverified dates. Extend `PROVIDERS` and the SQL publisher
+allowlist **together** with evidence-focused regression tests as more
+organizers are confirmed. Relevant database migrations:
+`scripts/opportunity-research/sql/20261118_seasonal_official_publish.sql` and
+`scripts/opportunity-research/sql/20261118_deep_lead_diagnostics.sql`.
