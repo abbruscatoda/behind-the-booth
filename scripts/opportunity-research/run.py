@@ -117,7 +117,11 @@ def run(dry_run=False):
   found={(r['candidate']['application_url'],r['candidate']['starts_on']):r for r in results}
   known={(canonical_application(i['application_url']) or i['application_url'],i['starts_on']) for i in context['items']}
   def apply(item,result):
-   result=add_review_suggestions(item,apply_quality_gate(item,result))
+   # Seasonal waitlists use a separate, tightly scoped official-source
+   # verification policy. The dated-event quality gate expects an exact
+   # event deadline and must not silently downgrade a verified waitlist.
+   if result.get('policy')!='recurring-official-waitlist-v1':
+    result=add_review_suggestions(item,apply_quality_gate(item,result))
    if defer_inconclusive_review(item,result):
     counts['deferred_inconclusive']+=1
     print(json.dumps({'title':item['title'],'action':'deferred_inconclusive','reason':'Previously published listing retained; inaccessible source is not evidence of a change.'},ensure_ascii=False))
