@@ -114,13 +114,15 @@ def check_recurring_provider(provider,fetcher,now=None):
   'evidence':'Official municipality market page links to vendor page which explicitly confirms year-round waitlist applications, season dates, fees, eligibility and exact ManageMyMarket application.',
   'reason':'Official municipal organizer confirms current-season waitlist applications without a cutoff; not represented as an open booth.'}
 
-def discover_recurring(fetcher,now=None):
+def discover_recurring(fetcher,now=None,diagnostics=None):
  found=[]
  for provider in PROVIDERS:
   try:found.append(check_recurring_provider(provider,fetcher,now))
-  except (Uncertain,ValueError,TypeError,KeyError,IndexError):
-   continue
+  except Uncertain as error:
+   # Only raise statements authored in this module. Never log arbitrary
+   # webpage text, credentials, source contents, or application responses.
+   if diagnostics is not None:diagnostics.append(provider['market_slug']+': '+str(error)[:180])
   except Exception:
    # Other verified publications must not be altered by website outages.
-   continue
+   if diagnostics is not None:diagnostics.append(provider['market_slug']+': official source unavailable or parser failed')
  return found
