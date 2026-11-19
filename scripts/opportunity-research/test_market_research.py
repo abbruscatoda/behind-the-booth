@@ -62,6 +62,23 @@ class GroupInvestigationTests(unittest.TestCase):
   self.assertFalse(pairs)
   self.assertEqual(verified,[])
 
+ def test_embedded_vendor_form_is_verified_from_official_hub(self):
+  fetch=Fetch();fetch.pages[HUB]='<h1>Vendor Application</h1><iframe src="'+FORM+'"></iframe>'
+  _,_,verified=self.discover(fetch)
+  self.assertEqual(len(verified),1)
+  self.assertEqual(verified[0]['candidate']['application_url'],FORM)
+
+ def test_embedded_form_prefill_is_rejected(self):
+  from calendar_research import calendar_form_links
+  html='<iframe src="'+FORM+'?prefill=private"></iframe>'
+  self.assertEqual(calendar_form_links(Document(html),HUB),set())
+
+ def test_google_form_embed_query_is_normalized(self):
+  from calendar_research import calendar_form_links
+  form='https://docs.google.com/forms/d/e/1FAIpQLSfWwZrk_p8ilgzhOq8Ypkd5iad93JXktwbhLUr74wLfEOGwcA/viewform'
+  html='<iframe src="'+form+'?embedded=true"></iframe>'
+  self.assertEqual(calendar_form_links(Document(html),HUB),{form})
+
  def test_wrong_date_in_form_never_publishes(self):
   fetch=Fetch();fetch.pages[FORM]=FORM_HTML.replace('December 13, 2026','December 14, 2026')
   _,_,verified=self.discover(fetch)

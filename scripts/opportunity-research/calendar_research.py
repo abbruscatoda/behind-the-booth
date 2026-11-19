@@ -4,7 +4,7 @@ Calendars identify dated event pages, never prove that vendors can apply.
 Candidate applications go through the existing event/form verification gates.
 Only curated organizer hosts and configured calendar paths are fetched.
 """
-from urllib.parse import urljoin,urlparse
+from urllib.parse import urljoin,urlparse,urlunparse,parse_qsl
 from verifier import valid_url,canonical_event,canonical_application
 from form_discovery import supported_form
 
@@ -66,12 +66,30 @@ def calendar_event_provenance(fetcher,calendar_url,event_url):
   except Exception:continue
  return False
 
+def embedded_form_url(value,base):
+ """Normalize only public, unprefilled iframe URLs (not arbitrary embeds)."""
+ try:
+  url=urljoin(base,value)
+  p=urlparse(url)
+  if p.query:
+   if parse_qsl(p.query,keep_blank_values=True)!=[('embedded','true')]:
+    return None
+   url=urlunparse(p._replace(query=''))
+  return url if supported_form(url) else None
+ except (ValueError,TypeError):
+  return None
+
 def calendar_form_links(doc,base):
+ """Collect linked or explicitly embedded public forms from official pages."""
  links=set()
  for link in doc.root.links(base):
   url=urljoin(base,link)
   if supported_form(url) or canonical_application(url):
    links.add(canonical_application(url) or url)
+ for node in doc.root.walk():
+  if node.tag!='iframe' or not node.attrs.get('src'):continue
+  form=embedded_form_url(node.attrs['src'],base)
+  if form:links.add(form)
  return links
 
 def discover_calendars(fetcher):
