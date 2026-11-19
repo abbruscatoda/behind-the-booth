@@ -37,7 +37,7 @@ def investigate_groups(leads,fetcher):
  inspected_hubs=0
  skipped=[]
  for root in sorted(groups)[:MAX_GROUPS]:
-  if fetcher.requests>=fetcher.limit-RESERVE_REQUESTS:break
+  if getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',100000)-RESERVE_REQUESTS:break
   organizer,city=trusted[root]
   investigated+=1
   try:
