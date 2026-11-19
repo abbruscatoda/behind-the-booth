@@ -71,7 +71,7 @@ def check_provider(provider,fetcher,now=None):
   if 'applications are accepted on a rolling basis' not in vendor_text:
    raise Uncertain('Organizer does not confirm rolling applications.')
   if not re.search(r'(?:vendor applications rolling|applications are open).*?(?:26/27|2026/27|2026-27)',main_text):
-   raise Uncertain('The market is not confirmed accepting this season's vendors.')
+   raise Uncertain("The market is not confirmed accepting this season’s vendors.")
   if 'open saturdays year-round' not in main_text or '101 town hall drive' not in main_text:
    raise Uncertain('Official seasonal schedule or venue missing.')
   start=date(provider['season_year'],*provider['season_start'])
