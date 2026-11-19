@@ -54,6 +54,16 @@ class Fetch:
   if url not in self.pages:raise ValueError('Unlisted source')
   return Document(self.pages[url]),'f'*64
 
+WAKE_FORM='https://docs.google.com/forms/d/e/1FAIpQLSfWwZrk_p8ilgzhOq8Ypkd5iad93JXktwbhLUr74wLfEOGwcA/viewform'
+WAKE_ROOT=('<h1>Wake Forest Farmers Market</h1><p>Join us on Saturdays Year Round</p>'
+ '<a href="'+seasonal.WF_VENDOR+'">Market Vendor Application</a>')
+WAKE_VENDOR=('<h2>Regular Market Vendors</h2>'
+ '<p>If you are interested in becoming a regular Market Vendor, please fill out the following application.</p>'
+ '<iframe src="'+WAKE_FORM+'?embedded=true"></iframe>')
+WAKE_FORM_HTML=('<h1>2026-2027 VENDOR APPLICATION</h1>'
+ '<p>Wake Forest Farmers Market</p><p>$28 nonrefundable application fee</p>'
+ '<p>$35 per-event booth fee</p><button>Next</button>')
+
 class SeasonalTests(unittest.TestCase):
  def test_strong_fvg_evidence_generates_season_and_full_fee_range(self):
   result=seasonal.check_provider(seasonal.PROVIDERS[0],Fetch(),NOW)
@@ -94,6 +104,42 @@ class SeasonalTests(unittest.TestCase):
   fetch=Fetch()
   fetch.pages[seasonal.FVG_VENDOR]=FVG_VENDOR.replace('>New Vendor Application</a>','>Returning Vendor Application</a>')
   with self.assertRaises(Uncertain):seasonal.check_provider(seasonal.PROVIDERS[0],fetch,NOW)
+
+ def test_embedded_year_round_market_uses_official_cross_page_evidence(self):
+  fetch=Fetch()
+  fetch.pages[seasonal.WF_ROOT]=WAKE_ROOT
+  fetch.pages[seasonal.WF_VENDOR]=WAKE_VENDOR
+  fetch.pages[WAKE_FORM]=WAKE_FORM_HTML
+  result=seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+  self.assertEqual(result['candidate']['schedule_type'],'rolling_market')
+  self.assertEqual(result['candidate']['title'],'Wake Forest Farmers Market — Rolling Vendor Applications')
+  self.assertEqual(result['application_access'],'readable_first_page')
+  self.assertFalse(result['form_complete'])
+  self.assertTrue(result['form_readable'])
+  self.assertIn('$28',result['candidate']['fee_notes'])
+
+ def test_embedded_year_round_can_use_exact_official_iframe_when_google_returns_401(self):
+  from urllib.error import HTTPError
+  fetch=Fetch()
+  fetch.pages[seasonal.WF_ROOT]=WAKE_ROOT
+  fetch.pages[seasonal.WF_VENDOR]=WAKE_VENDOR
+  prior=fetch.get
+  def blocked(url):
+   if url==WAKE_FORM:raise HTTPError(url,401,'Unauthorized',{},None)
+   return prior(url)
+  fetch.get=blocked
+  result=seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
+  self.assertEqual(result['application_access'],'http_auth_blocked')
+  self.assertIsNone(result['application_hash'])
+  self.assertFalse(result['form_readable'])
+
+ def test_embedded_market_must_still_link_exact_vendor_page(self):
+  fetch=Fetch()
+  fetch.pages[seasonal.WF_ROOT]=WAKE_ROOT.replace(seasonal.WF_VENDOR,'/outdated')
+  fetch.pages[seasonal.WF_VENDOR]=WAKE_VENDOR
+  fetch.pages[WAKE_FORM]=WAKE_FORM_HTML
+  with self.assertRaises(Uncertain):
+   seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
 
  def test_rolling_market_uses_internal_horizon_not_event_dates(self):
   result=seasonal.check_provider(seasonal.PROVIDERS[1],Fetch(),NOW)
