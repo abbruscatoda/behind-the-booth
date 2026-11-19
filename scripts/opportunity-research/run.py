@@ -32,9 +32,17 @@ class Database:
    raise RuntimeError(f'{name} failed; inspect configuration and the admin run history.') from None
 
 def existing_result(item,found,fetcher,now):
- if item.get('verification_policy')=='triangle-form-auto-v1':
+ if item.get('verification_policy') in ('triangle-form-auto-v1','triangle-form-calendar-v2'):
   from form_discovery import verify_public_form
-  result=verify_public_form({'source_url':item['source_url'],'target_url':item['application_url']},fetcher,now)
+  lead={'source_url':item['source_url'],'target_url':item['application_url']}
+  if item.get('verification_policy')=='triangle-form-calendar-v2':
+   from calendar_research import CALENDARS
+   matching=[(root,cal) for _,root,cal in CALENDARS
+       if urlparse(item['source_url']).hostname==urlparse(cal).hostname]
+   if len(matching)!=1:
+    raise Uncertain('Cannot resolve the trusted official calendar for this market.')
+   lead.update({'organizer_root':matching[0][0],'calendar_url':matching[0][1]})
+  result=verify_public_form(lead,fetcher,now)
   if not result or result['candidate']['starts_on']!=item['starts_on'] or result['candidate']['ends_on']!=item['ends_on'] or norm(result['candidate']['organizer'])!=norm(item.get('market_organizer') or ''):
    raise Uncertain('A previously verified linked form has changed or lacks current evidence. Confirm the application with the organizer.')
   return result
@@ -110,7 +118,7 @@ def run(dry_run=False):
     counts['proposed_'+result['decision']]+=1
     print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url') or result.get('research_suggestions',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'research_quality':result.get('research_quality'),'quality_issues':result.get('quality_issues',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility',''),'research_suggestions':result.get('research_suggestions')},ensure_ascii=False));return
    if result.get('category_warnings'):print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'category_warnings':result['category_warnings']},ensure_ascii=False))
-   if result.get('policy')=='triangle-form-auto-v1' and result.get('decision')=='publish':
+   if result.get('policy') in ('triangle-form-auto-v1','triangle-form-calendar-v2') and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_form',{'p_result':result,
       'p_id':item['id'] if item else None,
       'p_expected_updated_at':item['updated_at'] if item else None})

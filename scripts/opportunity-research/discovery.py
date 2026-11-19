@@ -205,7 +205,7 @@ def _stage_event(source,app,fetcher,now):
  result['reason']='Organizer account, dated event and enabled vendor application independently verified for automated publication.'
  return result
 
-def discover_triangle(fetcher,now=None,include_search=True,known=None):
+def discover_triangle(fetcher,now=None,include_search=True,known=None,include_calendars=True):
  """Returns (unpublished candidates, form leads, diagnostics).
 
  Errors on optional outside pages do not erase validated listings or turn
@@ -234,6 +234,18 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
    failures.append(f'{organizer}: {source_error(error)}')
  if include_search:
   events.update(search_urls(now))
+ # Join dated official event calendars to specific organizer applications.
+ # This is an evidence-gathering layer, NOT permission to publish. Existing
+ # Eventeny and public-form source validators still make the decision.
+ from calendar_research import discover_calendars
+ if include_calendars:
+  cal_events,calendar_pairs,calendar_stats=discover_calendars(fetcher)
+  events.update(cal_events)
+ else:
+  calendar_pairs=[]
+  calendar_stats={'calendar_sources':0,'calendar_event_pages_inspected':0,
+                  'calendar_eventeny_urls':0,'calendar_form_pairs':0,
+                  'calendar_source_failures':[]}
  # Follow only one same-host application page from each curated organizer.
  # An organizer's front page often links to a separate, current application
  # index; that index can in turn link to a dated Eventeny event. Never crawl
@@ -292,7 +304,7 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
  # forms are deliberately left as private leads.
  from form_discovery import verify_public_form
  verified_forms=0
- for lead in list(raw_leads.values())[:MAX_LEADS]:
+ for lead in (calendar_pairs+list(raw_leads.values()))[:MAX_LEADS+30]:
   if len(staged)>=MAX_NEW_DRAFTS:break
   result=verify_public_form(lead,fetcher,now)
   if not result:continue
@@ -309,5 +321,6 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
         'discovery_event_urls':len(events),'discovery_vendor_application_urls':len(apps),
         'discovery_followed_organizer_pages':len(followed),
         'discovery_verified_candidates':len(staged),
-        'discovery_verified_public_forms':verified_forms,'discovery_unconfirmed_leads':len(leads)}
+        'discovery_verified_public_forms':verified_forms,'discovery_unconfirmed_leads':len(leads),
+        'calendar':calendar_stats}
  return list(staged.values()),leads,stats
