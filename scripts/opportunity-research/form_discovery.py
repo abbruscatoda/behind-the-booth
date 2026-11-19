@@ -15,6 +15,11 @@ from category_rules import visible_text
 from research_quality import build_quality
 
 POLICY='triangle-form-auto-v1'
+CALENDAR_POLICY='triangle-form-calendar-v2'
+EVENT_DATE=re.compile(
+ r'\\b(January|February|March|April|May|June|July|August|September|October|November|December)'
+ r'\\s+([0-3]?\\d),?\\s+(20\\d{2})\\b',re.I)
+
 DATE_FMT='%B %d, %Y'
 CUTOFF=re.compile(
  r'\b(?:Application|Vendor)\s+deadline\s*[:\-–]?\s*'
@@ -34,11 +39,30 @@ def verify_public_form(lead,fetcher,now=None):
  source_url=lead.get('source_url','')
  app_url=lead.get('target_url') or lead.get('application_url','')
  if not supported_form(app_url):return None
- organizer_label=next((organizer for organizer,_,url in SOURCES if url==source_url),None)
+ organizer_root=lead.get('organizer_root') or source_url
+ calendar_url=lead.get('calendar_url')
+ if calendar_url:
+  # Only configured official calendars may establish event-page provenance.
+  from calendar_research import CALENDARS
+  organizer_label=next((organizer for organizer,root,calendar in CALENDARS
+     if root==organizer_root and calendar==calendar_url),None)
+  if not organizer_label or not valid_url(source_url):return None
+  if urlparse(source_url).hostname!=urlparse(calendar_url).hostname:return None
+ else:
+  organizer_label=next((organizer for organizer,_,url in SOURCES if url==source_url),None)
  if not organizer_label:return None
  try:
+  if calendar_url:
+   from calendar_research import calendar_event_pages
+   calendar,_=fetcher.get(calendar_url)
+   if source_url not in calendar_event_pages(calendar,calendar_url):return None
   source,source_hash=fetcher.get(source_url)
-  if app_url not in source.root.links(source_url):return None
+  if app_url not in source.root.links(source_url):
+   # Some organizers put the form on a separate official application
+   # page. Never trust a form linked by an unrelated host.
+   if not calendar_url:return None
+   root_doc,_=fetcher.get(organizer_root)
+   if app_url not in root_doc.root.links(organizer_root):return None
   events=list(source.events())
   if len(events)!=1:return None
   event=events[0]
@@ -72,6 +96,15 @@ def verify_public_form(lead,fetcher,now=None):
   if norm(name) not in norm(text):return None
   formatted=f'{starts.date():%B} {starts.day}, {starts.year}'
   if formatted.lower() not in text.lower():return None
+  # Multiple distinct event dates indicate a seasonal or multi-event
+  # application. Merely mentioning the target date cannot certify that
+  # its individual category/application is available.
+  dates=set()
+  for month,day,year in EVENT_DATE.findall(text):
+   try:
+    dates.add(datetime.strptime(f'{month} {int(day)} {year}','%B %d %Y').date())
+   except ValueError:return None
+  if len(dates)>2 or (len(dates)==2 and starts.date() not in dates):return None
   if not re.search(r'\b(?:artist|vendor|exhibitor|merchant)\s+application\b',text,re.I):return None
   # Reject page-wide closure. Partial category availability must not be
   # presented as a universally open application.
@@ -101,12 +134,16 @@ def verify_public_form(lead,fetcher,now=None):
    'categories':[],'fee_notes':facts.get('fee_notes') or '',
    'eligibility':facts.get('eligibility') or ''}
   receipt={'application_url':app_url,'checked_at':now.isoformat(),'categories':{}}
-  result={'policy':POLICY,'decision':'publish','form_complete':True,'form_readable':True,
+  result={'policy':CALENDAR_POLICY if calendar_url else POLICY,
+   'decision':'publish','form_complete':True,'form_readable':True,
    'reason':'Official dated organizer page and public vendor form independently match; enabled submission and exact future deadline verified.',
    'checked_at':now.isoformat(),'source_hash':source_hash,
    'application_hash':app_hash,
    'evidence':'Official dated event page links the exact public form. Event, organizer, application date, and live submission controls agree.',
    'candidate':candidate,'category_evidence':receipt}
+  if calendar_url:
+   result['organizer_root']=organizer_root
+   result['calendar_url']=calendar_url
   result['research_quality']=build_quality(result,form,candidate['eligibility'])
   return result
  except (ValueError,KeyError,TypeError,AttributeError):
