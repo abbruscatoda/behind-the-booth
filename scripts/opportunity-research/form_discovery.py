@@ -17,8 +17,8 @@ from research_quality import build_quality
 POLICY='triangle-form-auto-v1'
 CALENDAR_POLICY='triangle-form-calendar-v2'
 EVENT_DATE=re.compile(
- r'\\b(January|February|March|April|May|June|July|August|September|October|November|December)'
- r'\\s+([0-3]?\\d),?\\s+(20\\d{2})\\b',re.I)
+ r'\b(January|February|March|April|May|June|July|August|September|October|November|December)'
+ r'\s+([0-3]?\d),?\s+(20\d{2})\b',re.I)
 
 DATE_FMT='%B %d, %Y'
 CUTOFF=re.compile(
