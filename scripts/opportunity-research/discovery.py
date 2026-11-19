@@ -220,8 +220,8 @@ def dated_organizer_pages(doc,source_url):
   label=node.text()[:120].lower()
   path=p.path.lower().replace('-',' ')
   if p.hostname!=host or not is_safe_lead_url(url):continue
-  if not re.search(r'\\b(?:calendar|markets?|events?|schedule|festival|fair|popup|pop up)\\b',label+' '+path):continue
-  if re.search(r'\\b(?:past events|archive|photos|gallery|blog|news|faq|rules|policy|vendors directory)\\b',label+' '+path):continue
+  if not re.search(r'\b(?:calendar|markets?|events?|schedule|festival|fair|popup|pop up)\b',label+' '+path):continue
+  if re.search(r'\b(?:past events|archive|photos|gallery|blog|news|faq|rules|policy|vendors directory)\b',label+' '+path):continue
   if url.rstrip('/')!=source_url.rstrip('/'):links.add(url)
  return sorted(links)[:12]
 
