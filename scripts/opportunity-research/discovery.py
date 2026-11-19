@@ -273,7 +273,7 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,backlog=No
    if len(event_pages)>=65:break
    try:
     doc,_=fetcher.get(url)
-    event_pages[url]=(source,doc)
+    event_pages[url]=(source,source,doc)
     ev,aa,_=extract_links(doc,url)
     events.update(ev);apps.update(aa)
    except Exception:continue
@@ -303,7 +303,7 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,backlog=No
     if len(event_pages)>=65 or page in event_pages:continue
     try:
      calendar,_=fetcher.get(page)
-     event_pages[page]=(source,calendar)
+     event_pages[page]=(source,target,calendar)
      ev,aa,_=extract_links(calendar,page)
      events.update(ev);apps.update(aa)
     except Exception:continue
@@ -351,10 +351,10 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,backlog=No
  # Prefer event-specific organizer calendar pages, then generic form links.
  # Both paths must establish the same event, application and organizer.
  form_hints=[]
- for page,(root,doc) in event_pages.items():
+ for page,(root,linking_page,doc) in event_pages.items():
   for url in doc.root.links(page):
    if not supported_form(url):continue
-   form_hints.append({'source_url':page,'curated_source_url':root,'target_url':url})
+   form_hints.append({'source_url':page,'curated_source_url':root,'linking_page_url':linking_page,'target_url':url})
  form_hints.extend(raw_leads.values())
  seen_forms=set()
  for lead in form_hints[:90]:
