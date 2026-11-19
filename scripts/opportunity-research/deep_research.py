@@ -30,7 +30,9 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
  if not valid_url(source):return out('source_unavailable','Organizer source is not an approved HTTPS research URL.')
  # An organizer's official vendor-application landing page can itself be
  # the lead URL. A bare directory or a fragment-only link is not an application.
- self_vendor_page=(target==source and re.search(r'/vendor[-_]?application/?
+ self_vendor_page=(target==source and urlparse(source).path.rstrip('/').lower().endswith('/vendorapplication'))
+ if (target.rstrip('/#')==source.rstrip('/#') and not self_vendor_page) or target.endswith('/#'):
+  return out('not_application','This link points to the organizer directory itself or a page anchor, not a distinct vendor application.')
  if EXCLUDE_RE.search(name) and not re.search(r'\bvendor\b',name,re.I):
   return out('not_application','The link is labeled for a non-vendor activity rather than a market booth application.')
  try:
