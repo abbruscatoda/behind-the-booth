@@ -52,7 +52,7 @@ class AutoPublicFormTests(unittest.TestCase):
  def test_discovery_promotes_strongly_verified_form_to_publish_candidate(self):
   pages=Fetch()
   with patch.object(discovery,'SOURCES',[('Triangle Pop-Up','Raleigh',SOURCE)]):
-   found,leads,summary=discovery.discover_triangle(pages,NOW,include_search=False)
+   found,leads,summary=discovery.discover_triangle(pages,NOW,include_search=False,include_calendars=False)
   self.assertEqual(len(found),1)
   self.assertEqual(found[0]['policy'],'triangle-form-auto-v1')
   self.assertEqual(summary['discovery_verified_public_forms'],1)
