@@ -18,6 +18,8 @@ FVG_ROOT='https://www.fvgrowersmarket.com/'
 FVG_VENDOR='https://www.fvgrowersmarket.com/vendor-application'
 WW_ROOT='https://westernwakefarmersmarket.org/'
 WW_VENDOR='https://westernwakefarmersmarket.org/apply'
+WF_ROOT='https://wakeforestmarket.org/vendors/become-a-vendor/'
+WF_VENDOR='https://wakeforestmarket.org/vendors/market-vendor-application/'
 
 PROVIDERS=(
  {'slug':'fuquay-varina-growers-market','name':'Fuquay-Varina Growers Market',
@@ -26,6 +28,9 @@ PROVIDERS=(
  {'slug':'western-wake-farmers-market','name':'Western Wake Farmers Market',
   'organizer':'Western Wake Farmers Market','city':'Morrisville',
   'market_url':WW_ROOT,'vendor_url':WW_VENDOR,'kind':'rolling'},
+ {'slug':'wake-forest-farmers-market','name':'Wake Forest Farmers Market',
+  'organizer':'Wake Forest Farmers Market','city':'Wake Forest',
+  'market_url':WF_ROOT,'vendor_url':WF_VENDOR,'kind':'embedded_year_round'},
 )
 CLOSED=r'no longer accepting|applications? (?:are |have )?closed|fully booked|sold out|submissions? (?:are |is )?closed'
 MONTHS={'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12}
@@ -196,6 +201,86 @@ def _ww(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
  }
  return candidate,form_hash,form_access
 
+def _official_year_round_embedded(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
+ """Reusable strict adapter for an official year-round market + embedded form.
+
+ No attendance dates are inferred. A first-page Next control proves the public
+ form is interactive, but never establishes eligibility for specific dates.
+ """
+ from calendar_research import calendar_form_links
+ from urllib.error import HTTPError
+ market=visible_text(root.root);text=visible_text(vendor.root)
+ name=provider['name']
+ if not re.search(re.escape(name),market,re.I):
+  raise Uncertain('Official market identity is not present on its organizer page.')
+ if not re.search(r'(?:Saturdays?.{0,35}year.round|year.round.{0,35}Saturdays?)',market,re.I):
+  raise Uncertain('A year-round Saturday schedule is not explicitly confirmed.')
+ if not re.search(r'(?:market vendors?|regular market vendors?)',text,re.I):
+  raise Uncertain('The application page does not identify regular market vendors.')
+ if not re.search(r'(?:please fill out the following application|apply to become a market vendor)',text,re.I):
+  raise Uncertain('Official organizer page does not invite public vendor applications.')
+ if re.search(CLOSED,text+' '+market,re.I):
+  raise Uncertain('Official organizer says applications are closed.')
+ if re.search(r'(?:invitation only|returning vendors only|existing vendors only)',text,re.I):
+  raise Uncertain('Official applications are restricted to existing or invited vendors.')
+ if provider['vendor_url'] not in root.root.links(provider['market_url']):
+  raise Uncertain('Organizer root no longer links the exact vendor application page.')
+ applications=calendar_form_links(vendor,provider['vendor_url'])
+ public={url for url in applications if url.startswith('https://docs.google.com/forms/d/e/')}
+ if len(public)!=1 or len(applications)!=1:
+  raise Uncertain('A single organizer-embedded public vendor application cannot be isolated.')
+ app=next(iter(public))
+ form_hash=None;form_access='http_auth_blocked'
+ from verifier import clean as clean_text
+ try:
+  form,form_hash=fetcher.get(app)
+ except HTTPError as error:
+  if error.code not in (401,403):raise
+ else:
+  ft=visible_text(form.root)
+  if re.search(CLOSED,ft,re.I):
+   raise Uncertain('Public vendor form explicitly reports closed applications.')
+  if not re.search(r'Wake Forest Farmers Market',ft,re.I):
+   raise Uncertain('Embedded form is not named for the approved market.')
+  if not re.search(r'20\d{2}\s*[-–/]\s*20\d{2}\s+vendor application',ft,re.I):
+   raise Uncertain('Current year-specific vendor application identity is not confirmed.')
+  active=any(
+   n.tag in ('button','div','span','input') and
+   n.attrs.get('aria-disabled')!='true' and
+   n.attrs.get('disabled') is None and
+   clean_text(n.text() if n.tag!='input' else n.attrs.get('value','')).lower() in ('next','submit')
+   for n in form.root.walk())
+  if not active:
+   raise Uncertain('No enabled Next or Submit control was visible on the public application.')
+  form_access='readable_first_page'
+ today=now.astimezone(ZoneInfo('America/New_York')).date()
+ horizon_start=date(today.year,1,1)
+ horizon_end=date(today.year+1,12,31)
+ details=('The public first page lists a $28 nonrefundable application fee and a $35 per-event booth fee. '
+          'Annual membership may apply; confirm complete prices before applying.'
+          if form_access=='readable_first_page' and '$28' in ft and '$35' in ft
+          else 'The organizer requires a nonrefundable application fee, annual membership for regular vendors, '
+               'and per-Saturday stall fees; confirm current amounts and attendance arrangements.')
+ candidate={
+  'title':name+' — Rolling Vendor Applications',
+  'market_slug':provider['slug'],'market_name':name,
+  'organizer':provider['organizer'],'city':provider['city'],'state':'NC',
+  'venue':'Wake Forest Farmers Market, Wake Forest, NC',
+  'market_url':provider['market_url'],'source_url':provider['vendor_url'],
+  'application_url':app,'starts_on':horizon_start.isoformat(),
+  'ends_on':horizon_end.isoformat(),'schedule_type':'rolling_market',
+  'availability':'open','deadline':None,'booth_fee':None,
+  'application_fee':None,'deposit':None,'categories':[],
+  'fee_notes':details,
+  'eligibility':'The official market seeks local farmers, makers and food producers. '
+                'Application, inspection, fee payment and organizer acceptance are required.',
+  'research_notes':'The official organizer links an embedded regular-vendor application for a '
+      'year-round Saturday market. Internal dates represent a coverage window, not bookable '
+      'individual market dates. Form status: '+form_access+'. '
+      'No particular booth, market date or application cutoff is guaranteed.'
+ }
+ return candidate,form_hash,form_access
+
 def check_provider(provider,fetcher,now=None):
  now=now or datetime.now(timezone.utc)
  if provider not in PROVIDERS:raise Uncertain('Unknown seasonal provider.')
@@ -214,13 +299,15 @@ def check_provider(provider,fetcher,now=None):
   form_access='readable_verified'
  elif provider['kind']=='rolling':
   candidate,form_hash,form_access=_ww(provider,main,main_hash,vendor,vendor_hash,fetcher,now)
+ elif provider['kind']=='embedded_year_round':
+  candidate,form_hash,form_access=_official_year_round_embedded(provider,main,main_hash,vendor,vendor_hash,fetcher,now)
  else:raise Uncertain('Unsupported seasonal provider type.')
  return {'decision':'publish','policy':POLICY,'candidate':candidate,
   'checked_at':now.isoformat(),'source_hash':vendor_hash,
   'market_source_hash':main_hash,'application_hash':form_hash,
-  'form_complete':form_access=='readable_verified','form_readable':form_access=='readable_verified',
+  'form_complete':form_access=='readable_verified','form_readable':form_access in ('readable_verified','readable_first_page'),
   'application_access':form_access,
-  'evidence':('Official market and vendor pages independently confirm rolling applications, matching identity, location, season, and an exact linked regular-vendor Google Form; Google returned HTTP 401/403 and submission was NOT independently verified.' if form_access=='http_auth_blocked' else 'Official market and vendor pages independently agree on active intake, location, participating season or rolling schedule, and an exact linked readable application with Submit.'),
+  'evidence':('Official organizer pages independently document year-round Saturday markets and a live linked regular-vendor Google application; server-side access to the form is blocked, so submission is NOT verified.' if form_access=='http_auth_blocked' else 'Official organizer pages and a public first-page Google application independently identify the year-round market, applicant pathway and an enabled Next/Submit control. No answers submitted.' if form_access=='readable_first_page' else 'Official market and vendor pages independently agree on active intake, location, participating season or rolling schedule, and an exact linked readable application with Submit.'),
   'reason':'Organizer-verified seasonal or rolling vendor intake, not guaranteed individual market dates.'}
 
 def discover_seasonal(fetcher,now=None,diagnostics=None):
