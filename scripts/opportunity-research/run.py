@@ -37,7 +37,6 @@ def existing_result(item,found,fetcher,now):
   lead={'source_url':item['source_url'],'target_url':item['application_url']}
   if item.get('verification_policy')=='triangle-form-calendar-v2':
    from calendar_research import CALENDARS
-   from urllib.parse import urlparse
    matching=[(root,cal) for _,root,cal in CALENDARS
        if urlparse(item['source_url']).hostname==urlparse(cal).hostname]
    if len(matching)!=1:
