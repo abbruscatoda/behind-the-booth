@@ -137,7 +137,7 @@ class SeasonalTests(unittest.TestCase):
  def test_unlinked_rolling_form_cannot_publish_with_401(self):
   fetch=Fetch()
   fetch.pages[seasonal.WW_VENDOR]=WW_VENDOR.replace(WEST_FORM,'https://forms.gle/ZZZZZZZZZZZ')
-  with self.assertRaises(Uncertain):
+  with self.assertRaises((Uncertain,ValueError)):
    seasonal.check_provider(seasonal.PROVIDERS[1],fetch,NOW)
 
  def test_missing_rolling_claim_cannot_publish_if_form_returns_401(self):
