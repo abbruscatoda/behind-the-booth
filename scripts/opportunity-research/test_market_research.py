@@ -56,6 +56,17 @@ class GroupInvestigationTests(unittest.TestCase):
   self.assertEqual(verified[0]['candidate']['title'],'Raleigh Holiday Artisan Market')
   self.assertEqual(verified[0]['candidate']['application_url'],FORM)
 
+ def test_event_linked_application_is_prioritized_over_generic_links(self):
+  fetch=Fetch()
+  generic=''.join('<a href="https://form.jotform.com/'+str(200000000000000+i)+'">Apply</a>' for i in range(30))
+  fetch.pages[ROOT]=ROOT_HTML+generic
+  fetch.pages[EVENT]=EVENT_HTML+'<a href="'+FORM+'">Specific vendor application</a>'
+  with patch.object(discovery,'SOURCES',[('Triangle Pop-Up','Raleigh',ROOT)]):
+   pairs,stats=investigate_groups(leads(),fetch)
+  self.assertEqual(pairs[0]['target_url'],FORM)
+  self.assertLessEqual(len(pairs),16)
+  self.assertEqual(stats['grouped_organizers_researched'],1)
+
  def test_unlinked_saved_application_cannot_be_used(self):
   fetch=Fetch();fetch.pages[HUB]='<p>No longer linked to an application</p>'
   pairs,_,verified=self.discover(fetch)
