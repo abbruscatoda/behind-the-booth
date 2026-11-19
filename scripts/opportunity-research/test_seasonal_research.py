@@ -67,6 +67,19 @@ class SeasonalTests(unittest.TestCase):
   self.assertIn('$260',data['fee_notes'])
   self.assertIn('$30 per day',data['fee_notes'])
 
+ def test_market_address_may_appear_on_one_official_page(self):
+  pages=Fetch()
+  pages.pages[seasonal.FVG_VENDOR]=FVG_VENDOR.replace('121 N. Main St.','Downtown Fuquay-Varina')
+  result=seasonal.check_provider(seasonal.PROVIDERS[0],pages,NOW)
+  self.assertEqual(result['candidate']['venue'],'121 N. Main St. (Chamber of Commerce parking lot)')
+
+ def test_neither_page_can_omit_the_venue(self):
+  pages=Fetch()
+  pages.pages[seasonal.FVG_VENDOR]=FVG_VENDOR.replace('121 N. Main St.','Downtown')
+  pages.pages[seasonal.FVG_ROOT]=FVG_MAIN.replace('121 N Main Street','Downtown')
+  with self.assertRaises(Uncertain):
+   seasonal.check_provider(seasonal.PROVIDERS[0],pages,NOW)
+
  def test_fvg_rejects_conflicting_dates_or_closed_forms(self):
   for bad in ('<p>Saturdays, April 11th to September 4th</p><button>Submit</button>',
               FVG_FORM.replace('<button>Submit</button>',''),

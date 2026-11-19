@@ -86,8 +86,9 @@ def _fvg(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
  season=_month_day(text,r'\b(April|May)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(?:through|to|-)\s+(September|October)\s+(\d{1,2})(?:st|nd|rd|th)?',year)
  if not re.search(rf'{year}\s+Regular Season:\s*Apr\s+{season[0].day}\s*[-–]\s*Sep\s+{season[1].day}',market,re.I):
   raise Uncertain('Market calendar does not independently match the vendor season.')
- if not re.search(r'121\s+N\.?\s+Main\s+St',text,re.I) or not re.search(r'121\s+N\.?\s+Main\s+St',market,re.I):
-  raise Uncertain('The official market location is not confirmed by both pages.')
+ if not (re.search(r'121\s+N\.?\s+Main\s+St(?:reet|\.)?',text,re.I) or
+         re.search(r'121\s+N\.?\s+Main\s+St(?:reet|\.)?',market,re.I)):
+  raise Uncertain('No exact market street address was found on the official organizer pages.')
  applicants=links_labeled(vendor,provider['vendor_url'],re.compile(r'^New Vendor Application$',re.I))
  if len(applicants)!=1 or not re.fullmatch(r'https://form\.jotform\.com/\d{10,20}',applicants[0]):
   raise Uncertain('Exact, linked new-vendor Jotform is missing or ambiguous.')
@@ -141,8 +142,9 @@ def _ww(provider,root,root_hash,vendor,vendor_hash,fetcher,now):
  if year2!=year1+1:raise Uncertain('Rolling intake period has conflicting years.')
  today=now.astimezone(ZoneInfo('America/New_York')).date()
  if not year1<=today.year<=year2:raise Uncertain('The published rolling intake season is no longer current.')
- if not re.search(r'101\s+Town\s+Hall\s+Drive',market,re.I) or not re.search(r'101\s+Town\s+Hall\s+Drive',text,re.I):
-  raise Uncertain('Current official market address is incomplete.')
+ if not (re.search(r'101\s+Town\s+Hall\s+Drive',market,re.I) or
+         re.search(r'101\s+Town\s+Hall\s+Drive',text,re.I)):
+  raise Uncertain('No confirmed market address on an official organizer page.')
  applicants=links_labeled(vendor,provider['vendor_url'],re.compile(r'^(?:Apply Online|Regular Vendor Application)$',re.I))
  if len(set(applicants))!=1 or not re.fullmatch(r'https://forms\.gle/[A-Za-z0-9_-]{6,60}',applicants[0]):
   raise Uncertain('Exact official regular-vendor application could not be isolated.')
