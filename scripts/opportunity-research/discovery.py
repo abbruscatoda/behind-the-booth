@@ -205,7 +205,27 @@ def _stage_event(source,app,fetcher,now):
  result['reason']='Organizer account, dated event and enabled vendor application independently verified for automated publication.'
  return result
 
-def discover_triangle(fetcher,now=None,include_search=True,known=None):
+def dated_organizer_pages(doc,source_url):
+ """At most one additional same-host hop to clearly labeled calendars/events.
+
+ An arbitrary link, search snippet, or generic event landing page never
+ qualifies as application evidence by itself.
+ """
+ host=urlparse(source_url).hostname
+ links=set()
+ for node in doc.root.walk():
+  if node.tag!='a' or not node.attrs.get('href'):continue
+  url=urljoin(source_url,node.attrs['href'])
+  p=urlparse(url)
+  label=node.text()[:120].lower()
+  path=p.path.lower().replace('-',' ')
+  if p.hostname!=host or not is_safe_lead_url(url):continue
+  if not re.search(r'\\b(?:calendar|markets?|events?|schedule|festival|fair|popup|pop up)\\b',label+' '+path):continue
+  if re.search(r'\\b(?:past events|archive|photos|gallery|blog|news|faq|rules|policy|vendors directory)\\b',label+' '+path):continue
+  if url.rstrip('/')!=source_url.rstrip('/'):links.add(url)
+ return sorted(links)[:12]
+
+def discover_triangle(fetcher,now=None,include_search=True,known=None,backlog=None):
  """Returns (unpublished candidates, form leads, diagnostics).
 
  Errors on optional outside pages do not erase validated listings or turn
@@ -218,10 +238,14 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
  events=set()
  apps=set()
  raw_leads={}
+ root_docs={}
+ calendar_pages={}
  failures=[]
  for organizer,city,root in SOURCES:
   try:
    doc,_=fetcher.get(root)
+   root_docs[root]=doc
+   calendar_pages[root]=dated_organizer_pages(doc,root)
    es,aa,links=extract_links(doc,root)
    events.update(es);apps.update(aa)
    for url,label in links:
@@ -232,6 +256,27 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
        'notes':'Found on a curated organizer page. Exact event date and application status have not been verified.'}
   except Exception as error:
    failures.append(f'{organizer}: {source_error(error)}')
+ # Revisit previous unverified leads. A persisted lead is only a hint:
+ # require the SAME official source still links it before any verification.
+ for lead in (backlog or [])[:80]:
+  url=lead.get('target_url','')
+  source=lead.get('source_url','')
+  if source not in root_docs:continue
+  if url not in root_docs[source].root.links(source):continue
+  if not is_application_hint(url,lead.get('title','')):continue
+  raw_leads.setdefault(url,lead)
+ # Follow date-specific organizer calendars as independent official evidence.
+ # Limit to one organizer-host hop, without crawling arbitrary third-party URLs.
+ event_pages={}
+ for source,links in calendar_pages.items():
+  for url in links[:6]:
+   if len(event_pages)>=65:break
+   try:
+    doc,_=fetcher.get(url)
+    event_pages[url]=(source,doc)
+    ev,aa,_=extract_links(doc,url)
+    events.update(ev);apps.update(aa)
+   except Exception:continue
  if include_search:
   events.update(search_urls(now))
  # Follow only one same-host application page from each curated organizer.
@@ -252,6 +297,16 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
    extra_events,extra_apps,_=extract_links(inner,target)
    events.update(extra_events)
    apps.update(extra_apps)
+   # Application indexes often link a date-specific organizer calendar;
+   # inspect only one further calendar page, never a general web crawl.
+   for page in dated_organizer_pages(inner,target)[:2]:
+    if len(event_pages)>=65 or page in event_pages:continue
+    try:
+     calendar,_=fetcher.get(page)
+     event_pages[page]=(source,calendar)
+     ev,aa,_=extract_links(calendar,page)
+     events.update(ev);apps.update(aa)
+    except Exception:continue
   except Exception:
    continue
  # Recognized vendor-application links can supply their *own* Eventeny event URL.
@@ -290,10 +345,25 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
  # independently matches a single dated official organizer event and exposes
  # a live Submit control plus an exact future deadline. Generic seasonal
  # forms are deliberately left as private leads.
- from form_discovery import verify_public_form
+ from form_discovery import verify_public_form,supported_form
  verified_forms=0
- for lead in list(raw_leads.values())[:MAX_LEADS]:
+ verified_forms_checked=0
+ # Prefer event-specific organizer calendar pages, then generic form links.
+ # Both paths must establish the same event, application and organizer.
+ form_hints=[]
+ for page,(root,doc) in event_pages.items():
+  for url in doc.root.links(page):
+   if not supported_form(url):continue
+   form_hints.append({'source_url':page,'curated_source_url':root,'target_url':url})
+ form_hints.extend(raw_leads.values())
+ seen_forms=set()
+ for lead in form_hints[:90]:
   if len(staged)>=MAX_NEW_DRAFTS:break
+  pair=(lead.get('source_url'),lead.get('target_url'))
+  if pair in seen_forms:continue
+  seen_forms.add(pair)
+  if not supported_form(lead.get('target_url','')):continue
+  verified_forms_checked+=1
   result=verify_public_form(lead,fetcher,now)
   if not result:continue
   data=result['candidate']
@@ -309,5 +379,8 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
         'discovery_event_urls':len(events),'discovery_vendor_application_urls':len(apps),
         'discovery_followed_organizer_pages':len(followed),
         'discovery_verified_candidates':len(staged),
-        'discovery_verified_public_forms':verified_forms,'discovery_unconfirmed_leads':len(leads)}
+        'discovery_verified_public_forms':verified_forms,
+        'discovery_form_pairs_researched':verified_forms_checked,
+        'discovery_calendar_pages':len(event_pages),
+        'discovery_backlog_leads':len(backlog or []),'discovery_unconfirmed_leads':len(leads)}
  return list(staged.values()),leads,stats
