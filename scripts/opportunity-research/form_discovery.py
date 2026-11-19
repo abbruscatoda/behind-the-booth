@@ -56,12 +56,12 @@ def verify_public_form(lead,fetcher,now=None):
    from calendar_research import calendar_event_pages
    calendar,_=fetcher.get(calendar_url)
    if source_url not in calendar_event_pages(calendar,calendar_url):return None
+   root_doc,_=fetcher.get(organizer_root)
   source,source_hash=fetcher.get(source_url)
   if app_url not in source.root.links(source_url):
    # Some organizers put the form on a separate official application
    # page. Never trust a form linked by an unrelated host.
    if not calendar_url:return None
-   root_doc,_=fetcher.get(organizer_root)
    if app_url not in root_doc.root.links(organizer_root):return None
   events=list(source.events())
   if len(events)!=1:return None
@@ -88,6 +88,14 @@ def verify_public_form(lead,fetcher,now=None):
   # A generic application for multiple events cannot safely be labeled open
   # for one occurrence without explicit, matching form-level date evidence.
   if starts.date()!=ends.date():return None
+  if calendar_url:
+   # A currently reachable legacy form does not override a source-wide,
+   # explicit closure of the organizer's applications for this event year.
+   root_text=visible_text(root_doc.root)
+   closed_years={int(y) for y in re.findall(
+     r'\\b(?:all\\s+)?(20\\d{2})\\s+(?:vendor\\s+)?applications\\s+(?:have\\s+)?closed\\b',
+     root_text,re.I)}
+   if starts.year in closed_years:return None
 
   form,app_hash=fetcher.get(app_url)
   facts=read_public_form(form)
@@ -122,6 +130,7 @@ def verify_public_form(lead,fetcher,now=None):
   if len(cutoffs)!=1:return None
   deadline=datetime.fromisoformat(next(iter(cutoffs)))
   if deadline<=now or deadline.date()>starts.date():return None
+  if dates-{deadline.date()}!={starts.date()}:return None
 
   venue=clean(', '.join(x for x in (loc.get('name',''),addr.get('streetAddress','')) if x))
   if len(venue)>300:return None
