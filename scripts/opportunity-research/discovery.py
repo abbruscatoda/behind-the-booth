@@ -41,6 +41,11 @@ SOURCES = (
  ('YMCA of the Triangle', 'Cary', 'https://www.ymcatriangle.org/events/vendor-market'),
  ('Artspace', 'Raleigh', 'https://artspacenc.org/calls-for-art/'),
  ('Artsplosure', 'Raleigh', 'https://www.artsplosure.org/first-night-raleigh'),
+ ('Wake Forest Farmers Market','Wake Forest','https://wakeforestmarket.org/vendors/become-a-vendor/'),
+ ('Chatham Mills Farmers Market','Pittsboro','https://www.chathammillsfarmersmarket.com/vendors/'),
+ ('Town of Garner','Garner','https://www.garnernc.gov/departments/parks-recreation-and-cultural-resources/events/vendor-interest'),
+ ('Town of Knightdale','Knightdale','https://www.knightdalenc.gov/parks-recreation-and-cultural-programs/festivals-and-events/vendor-interest-form'),
+ ('State Farmers Market','Raleigh','https://www.ncagr.gov/divisions/marketing/farmers-markets-agricultural-centers/state-farmers-market-raleigh/vendor-information'),
 )
 # Four-region search: no account or API key. Results supply *URLs only*, never
 # dates, names, organizer, availability, or prices.
