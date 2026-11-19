@@ -83,3 +83,25 @@ search hints for Raleigh, Durham, Cary/Apex, and Chapel Hill/Carrboro.
   `scripts/opportunity-research/sql/20261118_verified_public_form_auto_publish.sql`.
   Previously published form-backed events are rechecked against the same
   evidence, with quality regressions held for review.
+
+### Existing leads and dated organizer calendars
+
+Every production research run now reads the private unresolved-lead backlog
+using the worker-secret-guarded `btb_research_discovery_backlog` RPC.
+A saved link does **not** become publication evidence merely because it is in
+the database. The current official organizer page must still link to it.
+
+For known organizers, discovery follows a small, bounded number of same-host
+calendar/event links and application-index pages. A date-specific calendar
+page may qualify for automatic publication **only** after an independently
+linked public form confirms the exact same single-date event, organizer,
+submission control and future cutoff. The worker follows the official root
+to the calendar index to that specific event page, then rechecks the exact
+form. The database authorizes the narrow `triangle-form-calendar-v2`
+route only for explicitly approved organizer/calendar URL pairs, rather
+than allowing arbitrary web pages or generic seasonal forms to publish.
+
+Neither a recurring event pattern nor a season-wide application is proof
+of availability for each date. If the event/form relationship is ambiguous,
+the lead stays private until stronger public evidence appears. Database
+migration: `scripts/opportunity-research/sql/20261118_discovery_backlog_rpc.sql`.
