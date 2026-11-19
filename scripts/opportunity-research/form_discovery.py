@@ -32,11 +32,27 @@ def verify_public_form(lead,fetcher,now=None):
  from discovery import SOURCES
  now=now or datetime.now(timezone.utc)
  source_url=lead.get('source_url','')
+ curated_root=lead.get('curated_source_url') or source_url
+ linking_page=lead.get('linking_page_url') or curated_root
  app_url=lead.get('target_url') or lead.get('application_url','')
  if not supported_form(app_url):return None
- organizer_label=next((organizer for organizer,_,url in SOURCES if url==source_url),None)
+ organizer_label=next((organizer for organizer,_,url in SOURCES if url==curated_root),None)
  if not organizer_label:return None
+ # An organizer's date-specific event page must be reached from an approved
+ # official root, optionally via one same-host calendar/application index.
+ # Re-check the actual links; a supplied URL or domain match alone is not proof.
  try:
+  if source_url!=curated_root:
+   root_doc,root_hash=fetcher.get(curated_root)
+   from verifier import valid_url
+   if not valid_url(source_url):return None
+   if urlparse(source_url).hostname!=urlparse(curated_root).hostname:return None
+   if linking_page!=curated_root:
+    if not valid_url(linking_page) or urlparse(linking_page).hostname!=urlparse(curated_root).hostname:return None
+    if linking_page not in root_doc.root.links(curated_root):return None
+    link_doc,_=fetcher.get(linking_page)
+    if source_url not in link_doc.root.links(linking_page):return None
+   elif source_url not in root_doc.root.links(curated_root):return None
   source,source_hash=fetcher.get(source_url)
   if app_url not in source.root.links(source_url):return None
   events=list(source.events())
@@ -98,13 +114,13 @@ def verify_public_form(lead,fetcher,now=None):
    'deadline':deadline.isoformat(),'application_url':app_url,'source_url':source_url,
    'availability':'open','booth_fee':facts.get('booth_fee'),
    'application_fee':facts.get('application_fee'),'deposit':facts.get('deposit'),
-   'categories':[],'fee_notes':facts.get('fee_notes') or '',
+   'categories':[],'organizer_source_url':curated_root,'fee_notes':facts.get('fee_notes') or '',
    'eligibility':facts.get('eligibility') or ''}
   receipt={'application_url':app_url,'checked_at':now.isoformat(),'categories':{}}
   result={'policy':POLICY,'decision':'publish','form_complete':True,'form_readable':True,
    'reason':'Official dated organizer page and public vendor form independently match; enabled submission and exact future deadline verified.',
    'checked_at':now.isoformat(),'source_hash':source_hash,
-   'application_hash':app_hash,
+   'application_hash':app_hash,'organizer_source_url':curated_root,
    'evidence':'Official dated event page links the exact public form. Event, organizer, application date, and live submission controls agree.',
    'candidate':candidate,'category_evidence':receipt}
   result['research_quality']=build_quality(result,form,candidate['eligibility'])
