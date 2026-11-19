@@ -47,10 +47,10 @@ SOURCES = (
 REGIONS = ('Raleigh', 'Durham', 'Cary Apex', 'Chapel Hill Carrboro')
 MAX_FEED_BYTES = 300_000
 MAX_LINKS = 40
-MAX_EVENTS = 30
-MAX_APPLICATIONS = 25
-MAX_NEW_DRAFTS = 8
-MAX_LEADS = 40
+MAX_EVENTS = 65
+MAX_APPLICATIONS = 50
+MAX_NEW_DRAFTS = 24
+MAX_LEADS = 80
 
 class NoSearchRedirect(HTTPRedirectHandler):
  def redirect_request(self,*args,**kwargs):
@@ -306,7 +306,7 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
  # link to the exact application before it may be considered.
  from form_discovery import verify_public_form
  saved_hints=[]
- for entry in (backlog or [])[:80]:
+ for entry in (backlog or [])[:160]:
   source=entry.get('source_url')
   url=entry.get('target_url')
   doc=root_docs.get(source)
