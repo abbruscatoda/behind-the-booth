@@ -119,7 +119,7 @@ def run(dry_run=False):
  db=Database();context=db.rpc('btb_research_context')
  if not context['enabled']:
   print('Automatic updates are paused in admin. No writes or source requests made.');return
- now=datetime.now(timezone.utc);fetcher=Fetcher(limit=220);run_id=None;counts=Counter();problems=[]
+ now=datetime.now(timezone.utc);fetcher=Fetcher(limit=360);run_id=None;counts=Counter();problems=[]
  if not dry_run:run_id=db.rpc('btb_research_run')
  try:
   results,problems=discover(fetcher,now)
@@ -196,7 +196,7 @@ def run(dry_run=False):
   # Research each saved/new lead and persist the *reason* it could not be
   # published. This is diagnostic evidence, never an automatic approval.
   from deep_research import diagnose_leads
-  research_rows,research_counts=diagnose_leads(backlog+leads,fetcher,now)
+  research_rows,research_counts=diagnose_leads(backlog+leads,fetcher,now,limit=80,reserve=24)
   discovery_stats['lead_research_states']=research_counts
   discovery_stats['diagnosed_leads']=len(research_rows)
   if dry_run:

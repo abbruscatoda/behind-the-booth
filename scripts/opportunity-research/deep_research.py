@@ -69,7 +69,7 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
   return out('missing_event','A public form link exists but no single matching future event and independently supported application window has been confirmed.')
  return out('missing_event','The official page links the opportunity, but an exact dated event or eligible recurring-market application window is not yet corroborated.')
 
-def diagnose_leads(leads,fetcher,now=None,limit=32,reserve=12):
+def diagnose_leads(leads,fetcher,now=None,limit=80,reserve=24):
  results=[]
  seen=set()
  for entry in leads:
