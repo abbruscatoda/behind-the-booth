@@ -26,9 +26,15 @@ VENDOR=(
  '<p>Extended Season Weekly Vendor (50 dates) $442 Every Saturday May through April with two exceptions for holidays or town events</p>'
  '<p>Winter Season Weekly Vendor (25 dates) $207</p>'
  '<p>Application Fee $20 Applies to new applications and renewals.</p>')
+VISIT=(
+ '<nav><a href="https://www.hollyspringsnc.gov/319/Farmers-Market">Farmers Market</a></nav>'
+ '<h1>Plan Your Visit</h1><h2>Now open every Saturday year-round</h2>'
+ '<p>The Farmers Market is located at 300 W. Ballentine St., '
+ 'in the northern part of the loop outside the Holly Springs Cultural Center.</p>'
+ '<p>Exceptions in December for holidays and town events.</p>')
 class MockFetcher:
- def __init__(self,main=MAIN,vendor=VENDOR):
-  self.html={recurring.HOLLY_MARKET:main,recurring.HOLLY_VENDOR:vendor}
+ def __init__(self,main=MAIN,vendor=VENDOR,visit=VISIT):
+  self.html={recurring.HOLLY_MARKET:main,recurring.HOLLY_VENDOR:vendor,recurring.HOLLY_VISIT:visit}
   self.calls=[]
  def get(self,url):
   self.calls.append(url)
@@ -86,6 +92,14 @@ class RecurringWaitlistTests(unittest.TestCase):
     with self.assertRaises(Uncertain):
      recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(vendor=changed),NOW)
 
+ def test_visitor_page_must_confirm_actual_market_address(self):
+  for visit in (VISIT.replace('300 W. Ballentine St.','128 S. Main St.'),
+                VISIT.replace('Now open every Saturday year-round','Hours to be announced'),
+                VISIT.replace(recurring.HOLLY_MARKET,'https://www.hollyspringsnc.gov/1701')):
+   with self.subTest(page=visit[-130:]):
+    with self.assertRaises(Uncertain):
+     recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(visit=visit),NOW)
+
  def test_past_season_must_not_remain_open(self):
   with self.assertRaises(Uncertain):
    recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(),datetime(2027,5,2,tzinfo=timezone.utc))
@@ -93,7 +107,7 @@ class RecurringWaitlistTests(unittest.TestCase):
  def test_provider_never_requests_unverified_manage_my_market_accounts(self):
   f=MockFetcher()
   recurring.check_recurring_provider(recurring.PROVIDERS[0],f,NOW)
-  self.assertEqual(set(f.calls),{recurring.HOLLY_MARKET,recurring.HOLLY_VENDOR})
+  self.assertEqual(set(f.calls),{recurring.HOLLY_MARKET,recurring.HOLLY_VENDOR,recurring.HOLLY_VISIT})
 
  def test_worker_dispatches_recurring_policy_to_restricted_rpc(self):
   r=recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(),NOW)
