@@ -55,6 +55,7 @@ class DiscoveryTests(unittest.TestCase):
    def rpc(self,name,body=None):
     calls.append((name,body))
     if name=='btb_research_context':return {'enabled':True,'items':[]}
+    if name=='btb_research_discovery_backlog':return []
     if name=='btb_research_run':return 'test-run'
     if name=='btb_research_publish_discovery':
      self_result=body['p_result']
