@@ -110,8 +110,11 @@ def check_recurring_provider(provider,fetcher,now=None):
  visit,visit_hash=fetcher.get(provider['visit_url'])
  if not _linked(visit,provider['visit_url'],provider['market_url']):
   raise Uncertain('Official visitor page does not identify the same farmers market.')
- visit_text=visible_text(visit.root)
- if not re.search(r'farmers market is located at\s+300\s+W\.?\s+Ballentine\s+St\.?',visit_text,re.I):
+ # Municipal FAQ answer panels may be collapsed (CSS display:none)
+ # until the user expands them. Reading the official page's non-script HTML
+ # text is appropriate here; visible_text intentionally excludes accordions.
+ visit_text=visit.root.text()
+ if not re.search(r'farmers market\s+is\s+located\s+at\s+300\s+W\s*\.?\s*Ballentine\s+St\.?',visit_text,re.I):
   raise Uncertain('Official visitor page no longer confirms the market street address.')
  if not re.search(r'now open every Saturday year-round',visit_text,re.I):
   raise Uncertain('Official year-round market schedule was not confirmed.')
