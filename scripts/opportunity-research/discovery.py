@@ -219,7 +219,8 @@ def dated_organizer_pages(doc,source_url):
   p=urlparse(url)
   label=node.text()[:120].lower()
   path=p.path.lower().replace('-',' ')
-  if p.hostname!=host or not is_safe_lead_url(url):continue
+  from verifier import valid_url
+  if p.hostname!=host or not is_safe_lead_url(url) or not valid_url(url):continue
   if not re.search(r'\b(?:calendar|markets?|events?|schedule|festival|fair|popup|pop up)\b',label+' '+path):continue
   if re.search(r'\b(?:past events|archive|photos|gallery|blog|news|faq|rules|policy|vendors directory)\b',label+' '+path):continue
   if url.rstrip('/')!=source_url.rstrip('/'):links.add(url)
@@ -276,6 +277,16 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,backlog=No
     event_pages[url]=(source,source,doc)
     ev,aa,_=extract_links(doc,url)
     events.update(ev);apps.update(aa)
+    # A curated root can point to an events/calendar index, which in turn
+    # exposes individual dated pages. Stop after the event page.
+    for dated in dated_organizer_pages(doc,url)[:8]:
+     if len(event_pages)>=65 or dated in event_pages:continue
+     try:
+      dated_doc,_=fetcher.get(dated)
+      event_pages[dated]=(source,url,dated_doc)
+      es,applications,_=extract_links(dated_doc,dated)
+      events.update(es);apps.update(applications)
+     except Exception:continue
    except Exception:continue
  if include_search:
   events.update(search_urls(now))
