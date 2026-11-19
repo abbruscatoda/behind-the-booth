@@ -175,6 +175,10 @@ def verify_public_form(lead,fetcher,now=None):
   if calendar_url:
    result['organizer_root']=organizer_root
    result['calendar_url']=calendar_url
+   if lead.get('grouped_research'):
+    result['grouped_research']=True
+    result['event_index_url']=lead.get('event_index_url')
+    result['application_index_url']=lead.get('application_index_url')
   result['research_quality']=build_quality(result,form,candidate['eligibility'])
   return result
  except (ValueError,KeyError,TypeError,AttributeError):
