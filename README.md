@@ -69,6 +69,21 @@ search hints for Raleigh, Durham, Cary/Apex, and Chapel Hill/Carrboro.
 - No third-party search API key is needed. The RSS search is opportunistic;
   the curated sources continue functioning without it. Current request
   budgets and per-run verified-candidate caps are in `discovery.py`.
+- Deeper source-to-event matching also checks six curated official event
+  calendars (Triangle Pop-Up, Night Market Company, Geek and Grub,
+  Western Wake, Shop Local Raleigh, Chapel Hill). It follows bounded
+  same-host event-detail pages and matches organizer-linked public forms
+  to their exact upcoming event. A form must explicitly name the event
+  and event date, expose Submit, and show a future event-specific cutoff
+  before the dedicated `triangle-form-calendar-v2` policy may publish.
+  Seasonal or multievent forms remain private leads if the individual date
+  cannot be confirmed. Explicit year-wide organizer closures override
+  apparently clickable old application forms.
+- Calendar-backed published events are revalidated on later worker runs.
+  Current calendar allowlists and matching code live in
+  `calendar_research.py`, with guarded database changes in
+  `sql/20261118_deep_calendar_form_publication.sql` and
+  `sql/20261118_expand_calendar_source_gates.sql`.
 - The private discovery-lead table and worker/admin RPCs must be installed
   before deploying the worker. See
   `scripts/opportunity-research/sql/20261118_triangle_discovery_leads.sql`
