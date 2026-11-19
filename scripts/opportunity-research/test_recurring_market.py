@@ -56,6 +56,22 @@ class RecurringWaitlistTests(unittest.TestCase):
   with self.assertRaises(Uncertain):
    recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(vendor=vendor),NOW)
 
+ def test_http_www_registration_variant_for_exact_organization(self):
+  variant='http://www.managemymarket.com/vendorregister.aspx?orgID=933'
+  vendor=VENDOR.replace(recurring.HOLLY_APPLICATION,variant)
+  candidate=recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(vendor=vendor),NOW)
+  self.assertEqual(candidate['candidate']['application_url'],recurring.HOLLY_APPLICATION)
+
+ def test_unrelated_organization_registration_is_rejected(self):
+  for variant in ('https://managemymarket.com/VendorRegister.aspx?orgID=934',
+                  'https://managemymarket.com/VendorRegister.aspx?orgID=933&token=abc',
+                  'https://managemymarket.example/VendorRegister.aspx?orgID=933',
+                  'https://managemymarket.com/Login.aspx?orgID=933'):
+   with self.subTest(link=variant):
+    vendor=VENDOR.replace(recurring.HOLLY_APPLICATION,variant)
+    with self.assertRaises(Uncertain):
+     recurring.check_recurring_provider(recurring.PROVIDERS[0],MockFetcher(vendor=vendor),NOW)
+
  def test_no_market_breadcrumb_is_not_independent_evidence(self):
   vendor=VENDOR.replace(recurring.HOLLY_MARKET,'https://www.hollyspringsnc.gov/1701')
   with self.assertRaises(Uncertain):
