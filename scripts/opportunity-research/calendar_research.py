@@ -17,8 +17,9 @@ CALENDARS=(
  ('Shop Local Raleigh','https://shoplocalraleigh.org/vendor-information/','https://shoplocalraleigh.org/events/'),
  ('Chapel Hill Farmers Market','https://www.thechapelhillfarmersmarket.com/','https://www.thechapelhillfarmersmarket.com/events.html'),
 )
-MAX_CALENDAR_EVENT_PAGES=28
-MAX_CALENDAR_FORMS=30
+MAX_CALENDAR_EVENT_PAGES=56
+MAX_CALENDAR_FORMS=80
+MAX_CALENDAR_INDEX_PAGES=18
 
 def same_organizer_host(url,calendar):
  a=urlparse(url);b=urlparse(calendar)
@@ -38,9 +39,32 @@ def calendar_event_pages(doc,base):
    continue
   p=urlparse(url)
   if same_organizer_host(url,base) and any(tag in p.path.lower() for tag in
-      ('/events/','/event-details/','/calendar/','/markets/')):
+      ('/events/','/event-details/','/calendar/','/markets/','/market/','/event/','/upcoming/')):
    result.add(url)
  return result
+
+def calendar_index_pages(doc,base):
+ """Bounded same-host calendar indexes, not arbitrary external links."""
+ result=set()
+ for link in doc.root.links(base):
+  url=urljoin(base,link)
+  if not same_organizer_host(url,base):continue
+  path=urlparse(url).path.lower()
+  if any(tag in path for tag in ('/calendar','/upcoming','/events','/markets','/schedule')):
+   result.add(url)
+ return result
+
+def calendar_event_provenance(fetcher,calendar_url,event_url):
+ """Require a live calendar -> detail or calendar -> index -> detail path."""
+ calendar,_=fetcher.get(calendar_url)
+ if event_url in calendar_event_pages(calendar,calendar_url):return True
+ for index_url in sorted(calendar_index_pages(calendar,calendar_url))[:MAX_CALENDAR_INDEX_PAGES]:
+  if index_url==event_url:continue
+  try:
+   index,_=fetcher.get(index_url)
+   if event_url in calendar_event_pages(index,index_url):return True
+  except Exception:continue
+ return False
 
 def calendar_form_links(doc,base):
  links=set()
@@ -62,6 +86,7 @@ def discover_calendars(fetcher):
  failures=[]
  visited=set()
  inspected=0
+ indexes_inspected=0
  for organizer,root,calendar in CALENDARS:
   if not valid_url(calendar) or not valid_url(root):
    failures.append(organizer+': untrusted source configuration')
@@ -72,7 +97,16 @@ def discover_calendars(fetcher):
    # Root-level applications may cover an explicitly identified date, but
    # the subsequent verifier must prove that exact date in the actual form.
    organizer_forms=calendar_form_links(root_doc,root)
-   for event_url in sorted(calendar_event_pages(cal,calendar)):
+   event_urls=set(calendar_event_pages(cal,calendar))
+   # A current organizer index may lead to individual dated market pages.
+   for index_url in sorted(calendar_index_pages(cal,calendar))[:MAX_CALENDAR_INDEX_PAGES]:
+    if index_url in event_urls:continue
+    try:
+     index_doc,_=fetcher.get(index_url)
+     indexes_inspected+=1
+     event_urls.update(calendar_event_pages(index_doc,index_url))
+    except Exception:continue
+   for event_url in sorted(event_urls):
     if len(visited)>=MAX_CALENDAR_EVENT_PAGES:break
     if event_url in visited:continue
     visited.add(event_url)
@@ -103,6 +137,7 @@ def discover_calendars(fetcher):
  return eventeny,list(form_leads.values()),{
   'calendar_sources':len(CALENDARS),
   'calendar_event_pages_inspected':inspected,
+  'calendar_indexes_inspected':indexes_inspected,
   'calendar_eventeny_urls':len(eventeny),
   'calendar_form_pairs':len(form_leads),
   'calendar_source_failures':failures[:8],
