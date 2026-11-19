@@ -59,7 +59,7 @@ class GroupInvestigationTests(unittest.TestCase):
  def test_unlinked_saved_application_cannot_be_used(self):
   fetch=Fetch();fetch.pages[HUB]='<p>No longer linked to an application</p>'
   pairs,_,verified=self.discover(fetch)
-  self.assertTrue(pairs)
+  self.assertFalse(pairs)
   self.assertEqual(verified,[])
 
  def test_wrong_date_in_form_never_publishes(self):
