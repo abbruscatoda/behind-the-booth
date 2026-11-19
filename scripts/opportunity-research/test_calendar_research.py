@@ -101,6 +101,13 @@ class CalendarResearchTests(unittest.TestCase):
   with patch('calendar_research.CALENDARS',(CONFIG,)):
    self.assertIsNone(verify_public_form(lead(),pages,NOW))
 
+ def test_organizer_closed_all_applications_for_event_year(self):
+  pages=Pages(root=(
+   '<p>All 2026 applications have closed.</p>'
+   '<a href="'+FORM+'">Vendor Application</a>'))
+  with patch('calendar_research.CALENDARS',(CONFIG,)):
+   self.assertIsNone(verify_public_form(lead(),pages,NOW))
+
  def test_seasonal_form_with_multiple_events_does_not_automatically_publish(self):
   pages=Pages(form=form_html(extra='<p>Also accepting December 20, 2026 vendors.</p>'))
   with patch('calendar_research.CALENDARS',(CONFIG,)):
