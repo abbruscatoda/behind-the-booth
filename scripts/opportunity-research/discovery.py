@@ -205,7 +205,7 @@ def _stage_event(source,app,fetcher,now):
  result['reason']='Organizer account, dated event and enabled vendor application independently verified for automated publication.'
  return result
 
-def discover_triangle(fetcher,now=None,include_search=True,known=None):
+def discover_triangle(fetcher,now=None,include_search=True,known=None,include_calendars=True):
  """Returns (unpublished candidates, form leads, diagnostics).
 
  Errors on optional outside pages do not erase validated listings or turn
@@ -238,8 +238,14 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None):
  # This is an evidence-gathering layer, NOT permission to publish. Existing
  # Eventeny and public-form source validators still make the decision.
  from calendar_research import discover_calendars
- cal_events,calendar_pairs,calendar_stats=discover_calendars(fetcher)
- events.update(cal_events)
+ if include_calendars:
+  cal_events,calendar_pairs,calendar_stats=discover_calendars(fetcher)
+  events.update(cal_events)
+ else:
+  calendar_pairs=[]
+  calendar_stats={'calendar_sources':0,'calendar_event_pages_inspected':0,
+                  'calendar_eventeny_urls':0,'calendar_form_pairs':0,
+                  'calendar_source_failures':[]}
  # Follow only one same-host application page from each curated organizer.
  # An organizer's front page often links to a separate, current application
  # index; that index can in turn link to a dated Eventeny event. Never crawl
