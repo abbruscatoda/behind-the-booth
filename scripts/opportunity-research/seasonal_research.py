@@ -242,7 +242,7 @@ def _official_year_round_embedded(provider,root,root_hash,vendor,vendor_hash,fet
    raise Uncertain('Public vendor form explicitly reports closed applications.')
   if not re.search(r'Wake Forest Farmers Market',ft,re.I):
    raise Uncertain('Embedded form is not named for the approved market.')
-  if not re.search(r'20\\d{2}\\s*[-–/]\\s*20\\d{2}\\s+vendor application',ft,re.I):
+  if not re.search(r'20\d{2}\s*[-–/]\s*20\d{2}\s+vendor application',ft,re.I):
    raise Uncertain('Current year-specific vendor application identity is not confirmed.')
   active=any(
    n.tag in ('button','div','span','input') and
