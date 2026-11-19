@@ -15,6 +15,26 @@ from category_rules import visible_text
 from research_quality import build_quality
 
 POLICY='triangle-form-auto-v1'
+CALENDAR_POLICY='triangle-form-calendar-v2'
+# These exact organizer-root/calendar combinations are independently
+# allowlisted by the database. Unknown calendar hosts are research-only.
+CALENDAR_ROUTES={
+ ('https://www.trianglepopup.com/applications','https://www.trianglepopup.com/events'):
+   'https://www.trianglepopup.com/events/',
+ ('https://thenightmarketcompany.com/','https://thenightmarketcompany.com/'):
+   'https://thenightmarketcompany.com/',
+ ('https://www.geekandgrubmarket.com/vendorapplication','https://www.geekandgrubmarket.com/upcoming-events'):
+   'https://www.geekandgrubmarket.com/event-details/',
+ ('https://westernwakefarmersmarket.org/','https://westernwakefarmersmarket.org/events'):
+   'https://westernwakefarmersmarket.org/events/'
+}
+
+def calendar_provenance(source_url):
+ for (root,calendar),prefix in CALENDAR_ROUTES.items():
+  if source_url.startswith(prefix) and source_url!=calendar and source_url!=root:
+   return root,calendar
+ return None
+
 DATE_FMT='%B %d, %Y'
 CUTOFF=re.compile(
  r'\b(?:Application|Vendor)\s+deadline\s*[:\-–]?\s*'
@@ -36,6 +56,10 @@ def verify_public_form(lead,fetcher,now=None):
  linking_page=lead.get('linking_page_url') or curated_root
  app_url=lead.get('target_url') or lead.get('application_url','')
  if not supported_form(app_url):return None
+ from_calendar=source_url!=curated_root
+ if from_calendar:
+  if (curated_root,linking_page) not in CALENDAR_ROUTES:return None
+  if not source_url.startswith(CALENDAR_ROUTES[(curated_root,linking_page)]):return None
  organizer_label=next((organizer for organizer,_,url in SOURCES if url==curated_root),None)
  if not organizer_label:return None
  # An organizer's date-specific event page must be reached from an approved
@@ -117,7 +141,9 @@ def verify_public_form(lead,fetcher,now=None):
    'categories':[],'organizer_source_url':curated_root,'fee_notes':facts.get('fee_notes') or '',
    'eligibility':facts.get('eligibility') or ''}
   receipt={'application_url':app_url,'checked_at':now.isoformat(),'categories':{}}
-  result={'policy':POLICY,'decision':'publish','form_complete':True,'form_readable':True,
+  result={'policy':CALENDAR_POLICY if from_calendar else POLICY,
+   'organizer_root':curated_root,'calendar_url':linking_page,
+   'decision':'publish','form_complete':True,'form_readable':True,
    'reason':'Official dated organizer page and public vendor form independently match; enabled submission and exact future deadline verified.',
    'checked_at':now.isoformat(),'source_hash':source_hash,
    'application_hash':app_hash,'organizer_source_url':curated_root,
