@@ -99,8 +99,8 @@ def check_recurring_provider(provider,fetcher,now=None):
  if not re.search(r'Weekly Vendor\s*\(50 dates\)\s*\$442',text,re.I):
   raise Uncertain('Extended-season price or number of dates changed.')
  if not re.search(r'Winter Season',text,re.I):raise Uncertain('Winter market schedule unavailable.')
- if not re.search(r'food only',main_text,re.I):
-  raise Uncertain('Market food-focused eligibility has changed.')
+ if not re.search(r'seeking farmers and producers from across North Carolina',text,re.I):
+  raise Uncertain('Official eligibility no longer identifies North Carolina farmers and producers.')
  if not re.search(r'liability insurance',text,re.I) or not re.search(r'tax ID',text,re.I):
   raise Uncertain('Vendor requirements incomplete.')
  if not re.search(r'300 W\.? Ballentine St\.?',main_text,re.I):
