@@ -22,7 +22,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -193,6 +193,17 @@ def run(dry_run=False):
    if key not in known and key not in found:
     apply(None,candidate)
   discovery_stats['seasonal_research_notes']=seasonal_notes[:12]
+  # Research each saved/new lead and persist the *reason* it could not be
+  # published. This is diagnostic evidence, never an automatic approval.
+  from deep_research import diagnose_leads
+  research_rows,research_counts=diagnose_leads(backlog+leads,fetcher,now)
+  discovery_stats['lead_research_states']=research_counts
+  discovery_stats['diagnosed_leads']=len(research_rows)
+  if dry_run:
+   counts['proposed_lead_diagnostics']=len(research_rows)
+  elif research_rows:
+   diagnostic_result=db.rpc('btb_research_diagnose_leads',{'p_diagnostics':research_rows})
+   counts['leads_diagnosed']=diagnostic_result.get('updated',0)
   if dry_run:
    counts['proposed_discovery_leads']=len(leads)
    for lead in leads[:10]:
