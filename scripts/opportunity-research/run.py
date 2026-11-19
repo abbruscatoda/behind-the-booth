@@ -141,7 +141,7 @@ def run(dry_run=False):
   # opportunities are published only through the dedicated, guarded RPC after
   # both Eventeny identities, dates, application status and receipts match.
   # Inconclusive organizer links remain private admin research leads.
-  backlog=db.rpc('btb_research_discovery_backlog')
+  backlog=[] if dry_run else db.rpc('btb_research_discovery_backlog')
   incoming,leads,discovery_stats=discover_triangle(fetcher,now,known=known|set(found),backlog=backlog)
   for candidate in incoming:
    data=candidate['candidate']
