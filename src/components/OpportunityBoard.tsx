@@ -7,14 +7,33 @@ import { activeCategoryEvidence, categoryEvidenceLabel, categoryHighlights, list
 import { currentCoverage, coverageLabels, coverageStatus } from "../lib/researchCoverage";
 import { opportunityDeadline, opportunityBoothPrice, opportunityDetailSections } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
-import { filterOpportunities, sortOpportunities, fee, safeExternalUrl, statusLabel, VENDOR_CATEGORIES, type Opportunity, type OpportunityFilters, type OpportunitySort } from "../lib/opportunities";
+import { filterOpportunities, sortOpportunities, fee, safeExternalUrl, statusLabel, VENDOR_CATEGORIES, type Opportunity, type OpportunitySort } from "../lib/opportunities";
+import { defaultOpportunityFilters, defaultOpportunitySort, readOpportunitySearch, writeOpportunitySearch } from "../lib/opportunitySearchUrl";
 
-const defaultFilters: OpportunityFilters = {search:"",city:"",month:"",category:"",status:"active",includeUnconfirmed:true,maxBoothFee:"",deadlineBefore:"",priceAvailability:"all"};
 
 export default function OpportunityBoard({ marketId, compact = false }: { marketId?: string; compact?: boolean }) {
  const [items,setItems]=useState<Opportunity[]>([]), [loading,setLoading]=useState(true), [error,setError]=useState("");
- const [filters,setFilters]=useState({...defaultFilters});
- const [sort,setSort]=useState<OpportunitySort>("date"),[refresh,setRefresh]=useState(0),[saved,setSaved]=useState<string[]>([]),[saving,setSaving]=useState<string|null>(null),[message,setMessage]=useState("");
+ const [filters,setFilters]=useState({...defaultOpportunityFilters});
+ const [urlReady,setUrlReady]=useState(false),[shareMessage,setShareMessage]=useState("");
+ const [sort,setSort]=useState<OpportunitySort>(defaultOpportunitySort),[refresh,setRefresh]=useState(0),[saved,setSaved]=useState<string[]>([]),[saving,setSaving]=useState<string|null>(null),[message,setMessage]=useState("");
+ useEffect(()=>{
+  if(compact || marketId)return;
+  const fromUrl=()=>{const state=readOpportunitySearch(new URLSearchParams(window.location.search));setFilters(state.filters);setSort(state.sort);};
+  fromUrl();
+  setUrlReady(true);
+  window.addEventListener("popstate",fromUrl);
+  return()=>window.removeEventListener("popstate",fromUrl);
+ },[compact,marketId]);
+ useEffect(()=>{
+  if(!urlReady || compact || marketId)return;
+  const next=writeOpportunitySearch(new URL(window.location.href),filters,sort);
+  if(next.href!==window.location.href)window.history.replaceState(window.history.state,"",next.href);
+ },[filters,sort,urlReady,compact,marketId]);
+ async function copySearchLink(){
+  const url=writeOpportunitySearch(new URL(window.location.href),filters,sort);
+  try{await navigator.clipboard.writeText(url.href);setShareMessage("Search link copied.");}
+  catch{setShareMessage("Unable to copy automatically. Copy the address from your browser.");}
+ }
  useEffect(()=>{let active=true;const client=createClient();const subscription=client.auth.onAuthStateChange(()=>{if(active)setSaved([]);});
  async function load(){setLoading(true);setError("");try{let all:Opportunity[]=[];let offset=0;while(true){const {data,error}=await client.rpc("btb_public_opportunities",{p_market_id:marketId??null,p_offset:offset});if(error)throw error;all=all.concat(data.items);offset+=100;if(offset>=data.total||data.items.length===0)break;}if(active)setItems(all);
  const {data:auth}=await client.auth.getUser();if(auth.user){const {data,error}=await client.rpc("btb_my_saved_opportunities");if(!error&&active)setSaved((data as {id:string}[]).map(row=>row.id));}
@@ -50,7 +69,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  </div>
  {(filters.maxBoothFee || filters.deadlineBefore || sort==="fee_asc" || sort==="rating_desc")&&<p className="mt-3 text-xs leading-relaxed text-[#626C57]">Fee filters use only published standard booth prices; unknown prices are not treated as free. Deadline filtering uses confirmed event-specific cutoffs only. Unreviewed markets appear last when sorting by rating.</p>}
  {filters.category&&<div className="mt-4"><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={filters.includeUnconfirmed} onChange={event=>setFilters({...filters,includeUnconfirmed:event.target.checked})} aria-describedby="unconfirmed-category-help"/>Include opportunities with unconfirmed categories</label><p id="unconfirmed-category-help" className="text-xs leading-relaxed text-[#626C57]">Unconfirmed listings may accept your category; check with the organizer. They are not confirmed matches.</p></div>}
- <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p role="status" className="text-sm text-[#55554E]">{loading?"Checking opportunities…":`${visible.length} ${visible.length===1?"opportunity":"opportunities"}${unconfirmedCount?` · ${unconfirmedCount} with unconfirmed categories`:""}`}</p><div className="flex flex-wrap gap-x-5"><button type="button" onClick={()=>{setFilters({...defaultFilters});setSort("date");}} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Clear filters</button>{filters.status!=="all"&&<button type="button" onClick={()=>setFilters({...filters,status:"all"})} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Show all statuses</button>}</div></div></div>}
+ <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p role="status" className="text-sm text-[#55554E]">{loading?"Checking opportunities…":`${visible.length} ${visible.length===1?"opportunity":"opportunities"}${unconfirmedCount?` · ${unconfirmedCount} with unconfirmed categories`:""}`}</p><div className="flex flex-wrap gap-x-5"><button type="button" onClick={()=>void copySearchLink()} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Copy search link</button><button type="button" onClick={()=>{setFilters({...defaultOpportunityFilters});setSort(defaultOpportunitySort);}} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Clear filters</button>{filters.status!=="all"&&<button type="button" onClick={()=>setFilters({...filters,status:"all"})} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Show all statuses</button>}</div></div></div>}
  {!compact&&sort==="deadline"&&<p className="mt-3 text-xs leading-relaxed text-[#626C57]">Event-specific deadlines appear first. Series deadlines and unconfirmed cutoffs appear afterward, ordered by event date.</p>}
  {message&&<p role="status" className="my-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{message} <Link href="/login" className="font-semibold underline">My Account →</Link></p>}
  {error?<div role="alert" className="mt-6"><p>{error}</p><button onClick={()=>setRefresh(value=>value+1)} className="mt-3 font-semibold underline">Refresh opportunities</button></div>:loading?<p role="status" className="mt-6">Loading opportunities…</p>:visible.length===0?<p className="mt-6 text-[#55554E]">{compact?"No recently verified vendor applications or waitlists are listed for this market right now.":"No opportunities match these filters. Try another location or month, include unconfirmed categories, or show all statuses."}</p>:<div className={`mt-5 grid items-start gap-5 ${compact?"":"lg:grid-cols-2"}`}>
