@@ -23,15 +23,15 @@ begin
    or position('return jsonb_build_object(' in original)=0
  then raise exception 'Unexpected lead worker function; bulk ingestion change aborted';end if;
  updated:=replace(original,
-  'perform public.btb_research_authorize();',
-  'perform public.btb_research_authorize();'||chr(10)||
-  ' perform set_config(''btb.discovery_bulk_ingest'',''on'',true);');
- -- End the bulk phase before reconciling matching published applications.
+  'update btb_private.triangle_research_sources set active=false;',
+  'perform set_config(''btb.discovery_bulk_ingest'',''on'',true);'||chr(10)||
+  ' update btb_private.triangle_research_sources set active=false;');
+ -- End only the validated batch phase before reconciling published links.
  updated:=replace(updated,
-  'return jsonb_build_object(',
+  'return jsonb_build_object(''saved'',saved,''skipped'',skipped,',
   'perform set_config(''btb.discovery_bulk_ingest'',''off'',true);'||chr(10)||
   ' perform btb_private.resolve_published_discovery_leads();'||chr(10)||
-  ' return jsonb_build_object(');
+  ' return jsonb_build_object(''saved'',saved,''skipped'',skipped,');
  if position('perform btb_private.resolve_published_discovery_leads();' in updated)=0
  then raise exception 'Bulk lead reconciliation not installed';end if;
  execute updated;
