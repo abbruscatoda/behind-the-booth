@@ -53,6 +53,7 @@ class PublicBrowserTests(unittest.TestCase):
    with self.assertRaises(HTTPError):
     fetcher.get(FORM)
   self.assertEqual(fetcher.browser_successes,0)
+  self.assertEqual(fetcher.browser_failures.get('No access'),1)
 
  def test_untrusted_source_never_opens_browser(self):
   with patch.dict(os.environ,{'BTB_BROWSER_FALLBACK':'1'}):
