@@ -50,7 +50,13 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
    return out('source_unavailable','Linked organizer application or form could not be read: '+source_error(error)+'.')
  combined=' '.join([text,linked_text])
  # Restriction/closure on the *target* page outweighs the menu label.
- if CLOSE_RE.search(linked_text):
+ # A menu link *labeled* "Applications Closed" is navigation, not
+ # proof this entire market application is closed. Follow official status.
+ direct_status_text=' '.join(
+  ''.join(part for part in node.children if isinstance(part,str))
+  for node in doc.root.walk()
+  if node.tag not in ('a','script','style','noscript','nav','header','footer'))
+ if CLOSE_RE.search(direct_status_text):
   return out('closed','The linked application page explicitly says this intake is closed; the worker must not publish it as open.')
  if RESTRICT_RE.search(linked_text):
   return out('restricted','The organizer accepts only returning or manager-invited applicants. A generic public open-application listing would be misleading.')
