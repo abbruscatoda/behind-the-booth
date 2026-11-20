@@ -56,6 +56,7 @@ class DiscoveryTests(unittest.TestCase):
     calls.append((name,body))
     if name=='btb_research_context':return {'enabled':True,'items':[]}
     if name=='btb_research_discovery_backlog':return []
+    if name=='btb_research_market_gaps':return {'markets':[],'count':0}
     if name=='btb_research_run':return 'test-run'
     if name=='btb_research_publish_discovery':
      self_result=body['p_result']
