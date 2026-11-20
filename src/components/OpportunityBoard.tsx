@@ -59,6 +59,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  <label className="text-xs font-bold text-[#626C57]">LOCATION<select className={input} value={filters.city} onChange={event=>setFilters({...filters,city:event.target.value})}><option value="">All locations</option>{[...new Set(items.map(item=>item.city))].sort().map(city=><option key={city}>{city}</option>)}</select></label>
  <label className="text-xs font-bold text-[#626C57]">EVENT MONTH<input type="month" className={input} value={filters.month} onChange={event=>setFilters({...filters,month:event.target.value})}/></label>
  <label className="text-xs font-bold text-[#626C57]">VENDOR CATEGORY<select className={input} value={filters.category} onChange={event=>setFilters({...filters,category:event.target.value})}><option value="">All categories</option>{VENDOR_CATEGORIES.map(category=><option key={category}>{category}</option>)}</select></label>
+ <label className="text-xs font-bold text-[#626C57]">OPPORTUNITY TYPE<select className={input} value={filters.schedule ?? "all"} onChange={event=>setFilters({...filters,schedule:event.target.value as "all" | "dated" | "seasonal" | "ongoing"})}><option value="all">All opportunities</option><option value="dated">Dated events</option><option value="seasonal">Seasonal applications / waitlists</option><option value="ongoing">Ongoing / rolling applications</option></select></label>
  <label className="text-xs font-bold text-[#626C57]">APPLICATION STATUS<select className={input} value={filters.status} onChange={event=>setFilters({...filters,status:event.target.value})}><option value="active">Open, limited or waitlist</option>{["all","open","limited","waitlist","needs_recheck","closed"].map(status=><option key={status} value={status}>{status==="all"?"All statuses":statusLabel(status)}</option>)}</select></label>
  <label className="text-xs font-bold text-[#626C57]">SORT<select className={input} value={sort} onChange={event=>setSort(event.target.value as OpportunitySort)}><option value="date">Upcoming event date</option><option value="deadline">Application deadline (confirmed first)</option><option value="fee_asc">Booth fee (lowest published first)</option><option value="rating_desc">Vendor rating (reviewed first)</option></select></label>
  </div>
@@ -88,13 +89,13 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
      : listed.length ? `${listed.slice(0,3).join(", ")}${listed.length>3?` +${listed.length-3} more`:""}` : "Unconfirmed — check with organizer";
    return <article key={item.id} id={item.id} className="heritage-card min-w-0 scroll-mt-8 flex flex-col [overflow-wrap:anywhere]">
      <div className="flex flex-wrap items-center justify-between gap-3">
-       <p className="heritage-label">{statusLabel(item.effective_status)}</p>
+       <p className="heritage-label">{item.schedule_type==="rolling_market"?"Ongoing market · "+statusLabel(item.effective_status):statusLabel(item.effective_status)}</p>
        <p className="text-xs text-[#626C57]">{item.verified_at?`Checked ${new Date(item.verified_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}`:"Not verified"}</p>
      </div>
      <h2 className="mt-4 font-serif text-2xl font-bold sm:text-3xl"><Link href={`/markets/${item.market_slug}`} className="text-inherit hover:text-[#07472B] hover:underline underline-offset-4">{item.title}</Link></h2>
      <p className="mt-2 text-sm font-semibold text-[#07472B]">{item.organizer}</p>
      <p className="mt-3 text-base font-semibold">{item.schedule_type==="rolling_market"
-  ?"Year-round farmers market · rolling vendor applications"
+  ?"Ongoing market · rolling vendor applications"
   :<>{["recurring_season","seasonal_application"].includes(item.schedule_type??"")?"Market season: ":""}{formatAttendanceDate(item.starts_on)}{item.ends_on!==item.starts_on?` – ${formatAttendanceDate(item.ends_on)}`:""}</>}</p>
      {["recurring_season","seasonal_application","rolling_market"].includes(item.schedule_type??"")&&<p className="mt-1 text-xs text-[#626C57]">Recurring market application. Participation on individual market dates and booth assignment are not guaranteed; check with the organizer.</p>}
      <p className="mt-1 text-sm text-[#55554E]">{item.venue} · {item.city}, {item.state}</p>
