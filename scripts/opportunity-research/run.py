@@ -22,7 +22,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -41,6 +41,16 @@ def existing_result(item,found,fetcher,now):
   if data['starts_on']!=item['starts_on'] or data['application_url']!=item['application_url'] or data['schedule_type']!=item.get('schedule_type'):
    raise Uncertain('The official seasonal application or coverage window has changed; do not overwrite an existing listing.')
   return result
+ if item.get('verification_policy')=='triangle-multidate-jotform-v1':
+  from multidate_research import PROVIDERS,verify_provider
+  matches=[p for p in PROVIDERS if p['slug']==item.get('market_slug')]
+  if len(matches)!=1:raise Uncertain('No approved multi-date provider for the published market.')
+  results=verify_provider(matches[0],fetcher,now)
+  for result in results:
+   c=result['candidate']
+   if c['starts_on']==item['starts_on'] and c['application_url']==item['application_url']:
+    return result
+  raise Uncertain('The former market date is no longer offered in the official application.')
  if item.get('verification_policy')=='recurring-official-waitlist-v1':
   from recurring_market import PROVIDERS,check_recurring_provider
   providers=[provider for provider in PROVIDERS if provider['market_slug']==item.get('market_slug')]
@@ -129,7 +139,7 @@ def run(dry_run=False):
    # Seasonal waitlists use a separate, tightly scoped official-source
    # verification policy. The dated-event quality gate expects an exact
    # event deadline and must not silently downgrade a verified waitlist.
-   if result.get('policy') not in ('recurring-official-waitlist-v1','seasonal-official-v1'):
+   if result.get('policy') not in ('recurring-official-waitlist-v1','seasonal-official-v1','triangle-multidate-jotform-v1'):
     result=add_review_suggestions(item,apply_quality_gate(item,result))
    if defer_inconclusive_review(item,result):
     counts['deferred_inconclusive']+=1
@@ -141,6 +151,8 @@ def run(dry_run=False):
    if result.get('category_warnings'):print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'category_warnings':result['category_warnings']},ensure_ascii=False))
    if result.get('policy')=='seasonal-official-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_seasonal',{'p_result':result})
+   elif result.get('policy')=='triangle-multidate-jotform-v1' and result.get('decision')=='publish':
+    response=db.rpc('btb_research_publish_multidate',{'p_result':result})
    elif result.get('policy')=='recurring-official-waitlist-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_recurring',{'p_result':result})
    elif result.get('policy') in ('triangle-form-auto-v1','triangle-form-calendar-v2') and result.get('decision')=='publish':
@@ -185,6 +197,14 @@ def run(dry_run=False):
    key=(data['application_url'],data['starts_on'])
    if key not in known:
     apply(None,candidate)
+  from multidate_research import discover_multidate
+  multidate_notes=[]
+  for candidate in discover_multidate(fetcher,now,diagnostics=multidate_notes):
+   data=candidate['candidate']
+   key=(data['application_url'],data['starts_on'])
+   if key not in known and key not in found:
+    apply(None,candidate)
+  discovery_stats['multidate_research_notes']=multidate_notes[:8]
   from seasonal_research import discover_seasonal
   seasonal_notes=[]
   for candidate in discover_seasonal(fetcher,now,diagnostics=seasonal_notes):
