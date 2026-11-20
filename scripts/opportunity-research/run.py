@@ -146,7 +146,7 @@ def run(dry_run=False):
  try:
   # Read-only Brewgaloo public-form check; never changes listed fees.
   form_probe=None
-  if fetcher.browser_enabled:
+  if getattr(fetcher,'browser_enabled',False):
    from form_probe import probe_public_form
    form_probe=probe_public_form(fetcher)
   results,problems=discover(fetcher,now)
@@ -305,7 +305,7 @@ def run(dry_run=False):
   if fetcher.requests>=fetcher.limit:
    problems.append('Source request budget reached. Some checks may be deferred or need review.')
   discovery_stats['recurring_verification_notes']=recurring_diagnostics[:8]
-  if fetcher.browser_enabled:
+  if getattr(fetcher,'browser_enabled',False):
    discovery_stats['browser_forms']={'attempts':fetcher.browser_attempts,
     'successful_public_renders':fetcher.browser_successes,
     'attempt_limit':fetcher.browser_max_attempts,
