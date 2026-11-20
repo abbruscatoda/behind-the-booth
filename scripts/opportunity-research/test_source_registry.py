@@ -33,7 +33,7 @@ class SourceRegistryTests(unittest.TestCase):
      return 'test-run'
     if name=='btb_research_discovery_backlog':return []
     if name=='btb_research_coverage_context':return []
-    if name=='btb_research_record_discovery_leads':
+    if name=='btb_research_record_discovery_leads_v2':
      self.assertEqual(len(body['p_sources']),len(discovery.SOURCES))
      return {'saved':1,'approved_sources':len(body['p_sources'])}
     raise AssertionError('unexpected RPC '+name)
@@ -55,7 +55,7 @@ class SourceRegistryTests(unittest.TestCase):
        patch.object(lead_reconciliation,'reconcile_shortcuts',return_value=[]),\
        contextlib.redirect_stdout(io.StringIO()):
    worker.run(False)
-  record=[body for name,body in calls if name=='btb_research_record_discovery_leads']
+  record=[body for name,body in calls if name=='btb_research_record_discovery_leads_v2']
   self.assertEqual(len(record),1)
   self.assertEqual(record[0]['p_sources'],
    [{'organizer':name,'city':city,'source_url':root} for name,city,root in discovery.SOURCES])
