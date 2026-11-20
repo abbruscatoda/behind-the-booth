@@ -93,6 +93,7 @@ def coverage_receipts(leads,opportunities,fetcher,approved_roots):
    if not all(valid_url(u) for u in (published_source,published_application)):continue
    if site(source)!=site(published_source):continue
    proof=None
+   proven_section=None
    # A published opportunity's exact official event/application page
    # is a covered link even when the old lead used a broader index.
    if target==published_source and target!=source:
@@ -117,11 +118,14 @@ def coverage_receipts(leads,opportunities,fetcher,approved_roots):
      context={'market_name':opp.get('market_name'),'heading_dates':date_line}
      if date_headings_match(title,context,opp.get('starts_on'),opp.get('ends_on')):
       proof='published_dated_event_section'
+      proven_section=(title,date_line)
       break
    if not proof:continue
    receipt={'source_url':source,'target_url':target,
             'opportunity_id':opp['id'],'published_source_url':published_source,
             'published_application_url':published_application,'proof':proof}
+   if proven_section:
+    receipt['event_heading'],receipt['event_dates']=proven_section
    evidence.append(receipt)
    stats[proof]+=1
    break
