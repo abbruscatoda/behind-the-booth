@@ -7,7 +7,7 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.error import HTTPError, URLError
-import hashlib, json, re, time
+import hashlib, json, re, time, os
 
 POLICY = 'makrs-eventeny-v5-quality'
 ROOTS = ['https://makrs.com/market-applications','https://makrs.com/makrs-holiday-fest', 'https://makrs.com/moore-square-winterfaire']
@@ -102,19 +102,60 @@ class SafeRedirect(HTTPRedirectHandler):
   if not valid_url(newurl):raise ValueError('Redirect left trusted source hosts')
   return super().redirect_request(req,fp,code,msg,headers,newurl)
 class Fetcher:
- def __init__(self,limit=90):self.limit=limit;self.requests=0;self.cache={};self.opener=build_opener(SafeRedirect())
+ def __init__(self,limit=90):
+  self.limit=limit;self.requests=0;self.cache={};self.opener=build_opener(SafeRedirect())
+  self.browser_enabled=os.environ.get('BTB_BROWSER_FALLBACK')=='1'
+  self.browser_attempts=0;self.browser_successes=0
+  self.browser_max_attempts=6
+ def _browser_form(self,url):
+  from browser_forms import public_google_form,render_public_form,BrowserUnavailable
+  if (not self.browser_enabled or not public_google_form(url)
+      or self.browser_attempts>=self.browser_max_attempts
+      or self.requests>=self.limit):return None
+  self.browser_attempts+=1
+  self.requests+=1
+  try:
+   result=render_public_form(url)
+  except BrowserUnavailable:
+   return None
+  self.browser_successes+=1
+  return result
  def get(self,url):
   if not valid_url(url):raise ValueError('Untrusted URL')
   if url in self.cache:return self.cache[url]
   if self.requests>=self.limit:raise ValueError('Source request budget reached')
   self.requests+=1
   time.sleep(.2)
-  with self.opener.open(Request(url,headers={'User-Agent':'BehindTheBoothVerifier/1.0 (+https://www.behindtheboothhq.com/contact)'}),timeout=20) as response:
-   if not valid_url(response.url):raise ValueError('Untrusted destination')
-   if 'text/html' not in response.headers.get('Content-Type',''):raise ValueError('Expected an HTML source')
-   raw=response.read(MAX_SOURCE_BYTES+1)
-   if len(raw)>MAX_SOURCE_BYTES:raise ValueError('HTML source exceeds the 4 MB limit')
-  html=raw.decode('utf-8',errors='replace');result=(Document(html),hashlib.sha256(raw).hexdigest());self.cache[url]=result;return result
+  try:
+   with self.opener.open(Request(url,headers={'User-Agent':'BehindTheBoothVerifier/1.0 (+https://www.behindtheboothhq.com/contact)'}),timeout=20) as response:
+    if not valid_url(response.url):raise ValueError('Untrusted destination')
+    if 'text/html' not in response.headers.get('Content-Type',''):raise ValueError('Expected an HTML source')
+    raw=response.read(MAX_SOURCE_BYTES+1)
+    if len(raw)>MAX_SOURCE_BYTES:raise ValueError('HTML source exceeds the 4 MB limit')
+  except HTTPError as exc:
+   # Do not bypass sign-in or permissions. A browser may render a publicly
+   # accessible Google Form even when the static fetch receives 401/403.
+   if exc.code in (401,403):
+    browser_result=self._browser_form(url)
+    if browser_result:
+     self.cache[url]=browser_result
+     return browser_result
+   raise
+  html=raw.decode('utf-8',errors='replace')
+  result=(Document(html),hashlib.sha256(raw).hexdigest())
+  # Public Forms frequently render their questions with JavaScript. Only
+  # replace a thin shell if the browser actually returns more visible text.
+  if self.browser_enabled:
+   from browser_forms import public_google_form
+   if public_google_form(url):
+    from category_rules import visible_text
+    baseline=visible_text(result[0].root)
+    if len(baseline)<260:
+     alternative=self._browser_form(url)
+     if alternative and len(visible_text(alternative[0].root))>len(baseline):
+      result=alternative
+  self.cache[url]=result
+  return result
 
 def source_error(error):
  # Emit diagnostic categories, never raw response bodies or arbitrary exception text.
