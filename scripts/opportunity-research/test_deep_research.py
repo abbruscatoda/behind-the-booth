@@ -31,6 +31,25 @@ class DiagnosticsTests(unittest.TestCase):
   pages=Pages(reason='2026 vendor applications are closed.')
   self.assertEqual(research.diagnose_one(lead(),pages)['status'],'closed')
 
+ def test_explicit_2026_season_closure_is_recognized(self):
+  pages=Pages(reason='Applications for 2026 market season are now closed.')
+  self.assertEqual(research.diagnose_one(lead(),pages)['status'],'closed')
+
+ def test_jotform_with_selectable_market_dates_is_classified_multidate(self):
+  pages=Pages(reason='Cary Night Market Dates - Please only choose the markets you are prepared to pay for.')
+  self.assertEqual(research.diagnose_one(lead(),pages)['status'],'multi_date')
+
+ def test_apex_general_apply_menu_does_not_override_current_closure(self):
+  source='https://www.apexfarmersmarket.com/'
+  apply='https://www.apexfarmersmarket.com/apply'
+  closed='https://www.apexfarmersmarket.com/applicationclose'
+  pages=Pages()
+  pages.docs[source]='<a href="'+apply+'">Apply Now</a>'
+  pages.docs[apply]='<a href="'+closed+'">Application Closed!</a><p>Become a Vendor</p>'
+  pages.docs[closed]='<h1>Applications closed!</h1><p>Come back in January!</p>'
+  lead={'source_url':source,'target_url':apply,'title':'Apply Now'}
+  self.assertEqual(research.diagnose_one(lead,pages)['status'],'closed')
+
  def test_old_unlinked_form_is_not_used_as_current_evidence(self):
   pages=Pages(linked=False)
   self.assertEqual(research.diagnose_one(lead(),pages)['status'],'unlinked')
