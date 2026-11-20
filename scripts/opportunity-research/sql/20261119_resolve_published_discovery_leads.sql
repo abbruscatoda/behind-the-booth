@@ -6,7 +6,7 @@ alter table btb_private.triangle_discovery_leads
  add column if not exists resolved_at timestamptz;
 
 create or replace function btb_private.resolve_published_discovery_leads()
-returns trigger language plpgsql security definer set search_path='' as $$
+returns integer language plpgsql security definer set search_path='' as $
 begin
  with matching as (
   select l.id as lead_id, o.id as opportunity_id,
@@ -40,22 +40,30 @@ begin
      resolved_at=now()
  from matching m
  where l.id=m.lead_id and m.precedence=1 and l.review_state='new';
- return null;
-end $$;
+ return 1;
+end $;
 
 revoke all on function btb_private.resolve_published_discovery_leads() from public,anon,authenticated;
+
+create or replace function btb_private.reconcile_discovery_trigger()
+returns trigger language plpgsql security definer set search_path='' as $$
+begin
+ perform btb_private.resolve_published_discovery_leads();
+ return null;
+end $$;
+revoke all on function btb_private.reconcile_discovery_trigger() from public,anon,authenticated;
 
 drop trigger if exists btb_reconcile_published_opportunity_leads on public.vendor_opportunities;
 create trigger btb_reconcile_published_opportunity_leads
 after insert or update of publication,source_url,application_url
 on public.vendor_opportunities
-for each statement execute function btb_private.resolve_published_discovery_leads();
+for each statement execute function btb_private.reconcile_discovery_trigger();
 
 drop trigger if exists btb_reconcile_new_discovery_leads on btb_private.triangle_discovery_leads;
 create trigger btb_reconcile_new_discovery_leads
 after insert or update of source_url,target_url
 on btb_private.triangle_discovery_leads
-for each statement execute function btb_private.resolve_published_discovery_leads();
+for each statement execute function btb_private.reconcile_discovery_trigger();
 
 -- Backfill the already published opportunities and their pending source leads.
 do $backfill$ begin
