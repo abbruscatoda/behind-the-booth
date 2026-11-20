@@ -22,6 +22,7 @@ export type OpportunityFilters = {
  search: string; city: string; month: string; category: string; status: string;
  includeUnconfirmed?: boolean; maxBoothFee?: string; deadlineBefore?: string;
  priceAvailability?: "all" | "published" | "unpublished";
+ schedule?: "all" | "dated" | "seasonal" | "ongoing";
 };
 export type OpportunitySort = "date" | "deadline" | "fee_asc" | "rating_desc";
 
@@ -35,7 +36,7 @@ export function filterOpportunities(items: Opportunity[], filters: OpportunityFi
   if (filters.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(filters.month)) {
    const [year,month] = filters.month.split("-").map(Number);
    const last = new Date(Date.UTC(year,month,0)).getUTCDate();
-   if (item.starts_on > `${filters.month}-${String(last).padStart(2,"0")}` || item.ends_on < `${filters.month}-01`) return false;
+   if (item.schedule_type !== "rolling_market" && (item.starts_on > `${filters.month}-${String(last).padStart(2,"0")}` || item.ends_on < `${filters.month}-01`)) return false;
   }
   if (filters.category) {
    const categoryStatus = opportunityCategoryStatus(item,filters.category);
@@ -43,6 +44,9 @@ export function filterOpportunities(items: Opportunity[], filters: OpportunityFi
   }
   if (filters.status !== "all" && (filters.status === "active"
    ? !["open","limited","waitlist"].includes(item.effective_status) : filters.status !== item.effective_status)) return false;
+  if (filters.schedule === "ongoing" && item.schedule_type !== "rolling_market") return false;
+  if (filters.schedule === "seasonal" && !["recurring_season","seasonal_application"].includes(item.schedule_type ?? "")) return false;
+  if (filters.schedule === "dated" && item.schedule_type !== "dated_event" && item.schedule_type !== undefined) return false;
   if (filters.priceAvailability === "published" && item.booth_fee === null) return false;
   if (filters.priceAvailability === "unpublished" && item.booth_fee !== null) return false;
   // Never treat a missing or category-specific fee as a free booth.
@@ -58,7 +62,7 @@ export function filterOpportunities(items: Opportunity[], filters: OpportunityFi
 }
 
 export function sortOpportunities(items: Opportunity[], sort: OpportunitySort): Opportunity[] {
- const dateOrder = (a:Opportunity,b:Opportunity) => a.starts_on.localeCompare(b.starts_on) || a.title.localeCompare(b.title);
+ const dateOrder = (a:Opportunity,b:Opportunity) => (a.schedule_type === "rolling_market" ? 1 : 0) - (b.schedule_type === "rolling_market" ? 1 : 0) || a.starts_on.localeCompare(b.starts_on) || a.title.localeCompare(b.title);
  return [...items].sort((a,b) => {
   if (sort === "deadline") return opportunityDeadline(a).sortAt - opportunityDeadline(b).sortAt || dateOrder(a,b);
   if (sort === "fee_asc") return (a.booth_fee ?? Infinity) - (b.booth_fee ?? Infinity) || dateOrder(a,b);
