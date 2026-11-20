@@ -55,12 +55,23 @@ def render_public_form(url,timeout_ms=16000):
      if req.resource_type in ('image','media','font','stylesheet'):return route.abort()
      return route.continue_()
     page.route('**/*',guard)
-    response=page.goto(url,wait_until='domcontentloaded',timeout=timeout_ms)
-    if response is None or response.status>=400:
-     raise BrowserUnavailable('Public form did not load')
+    # Only the official published form and Google's public embed view.
+    # Never submit, authenticate, or access respondent content.
+    last_status='unknown'
+    for candidate in ((url,url+'?embedded=true') if '/viewform' in url else (url,)):
+     try:
+      response=page.goto(candidate,wait_until='domcontentloaded',timeout=timeout_ms)
+     except PlaywrightTimeout:
+      last_status='timeout'
+      continue
+     last_status=str(response.status) if response else 'no_response'
+     if response and response.status<400:
+      break
+    else:
+     raise BrowserUnavailable('Public form browser status: '+last_status)
     page.wait_for_timeout(900)
     landed=page.url
-    if not public_google_form(landed):
+    if not public_google_form(landed.split('?')[0]):
      raise BrowserUnavailable('Form requires authorization or redirected')
     html=page.content()
     visible=page.locator('body').inner_text(timeout=5000)
@@ -75,7 +86,9 @@ def render_public_form(url,timeout_ms=16000):
     return Document(combined),sha256(raw).hexdigest()
    finally:
     browser.close()
- except (PlaywrightTimeout,BrowserUnavailable) as exc:
-  raise BrowserUnavailable('Public form unavailable or timed out') from exc
+ except BrowserUnavailable:
+  raise
+ except PlaywrightTimeout as exc:
+  raise BrowserUnavailable('Public form browser timeout') from exc
  except Exception as exc:
-  raise BrowserUnavailable('Browser could not retrieve public form') from exc
+  raise BrowserUnavailable('Public form browser runtime failure') from exc
