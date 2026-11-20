@@ -83,6 +83,25 @@ class DiagnosticsTests(unittest.TestCase):
   self.assertEqual(result['status'],'needs_evidence')
   self.assertEqual(pages.requests,1)
 
+ def test_generic_application_index_is_monitored_not_counted_as_event(self):
+  source='https://www.trianglepopup.com/applications'
+  target='https://www.trianglepopup.com/vendor-info'
+  pages=Pages()
+  pages.docs[source]='<a href="'+target+'">Vendor Info</a>'
+  pages.docs[target]=('<h1>Vendor Information</h1><a href="https://form.jotform.com/233513866839165">Apply at Crabtree</a>')
+  data={'target_url':target,'source_url':source,'title':'Vendor Info'}
+  result=research.diagnose_one(data,pages)
+  self.assertEqual(result['status'],'application_directory')
+
+ def test_directory_without_current_link_is_not_monitorable(self):
+  source='https://www.trianglepopup.com/applications'
+  target='https://www.trianglepopup.com/vendor-info'
+  pages=Pages()
+  pages.docs[source]='<a href="https://www.trianglepopup.com/other">Other</a>'
+  pages.docs[target]='<h1>Vendor information</h1><a href="https://form.jotform.com/233513866839165">Apply</a>'
+  result=research.diagnose_one({'source_url':source,'target_url':target,'title':'Vendor Info'},pages)
+  self.assertEqual(result['status'],'unlinked')
+
  def test_old_unlinked_form_is_not_used_as_current_evidence(self):
   pages=Pages(linked=False)
   self.assertEqual(research.diagnose_one(lead(),pages)['status'],'unlinked')
