@@ -23,9 +23,9 @@ def verify_raleigh(fetcher,now=None):
  if SOURCE not in homepage.root.links(ROOT):
   raise Uncertain("Market homepage no longer links the official vendor information page.")
  text=visible_text(source.root)
- if not re.search(r'The Raleigh Market',text,re.I) or not re.search(r'4285\\s+Trinity',text,re.I):
+ if not re.search(r'The Raleigh Market',text,re.I) or not re.search(r'4285\s+Trinity',text,re.I):
   raise Uncertain("Market identity or location missing from the official page.")
- if not re.search(r'Saturday and Sunday\\s+9\\s*am\\s*-\\s*5\\s*pm',text,re.I):
+ if not re.search(r'Saturday and Sunday\s+9\s*am\s*-\s*5\s*pm',text,re.I):
   raise Uncertain("Current weekend market schedule is not independently confirmed.")
  if not re.search(r'TEMPORARY OUTDOOR VENDORS',text,re.I) or not re.search(r'weekly call.for.vendors',text,re.I):
   raise Uncertain("Ongoing temporary-vendor intake no longer confirmed.")
@@ -37,7 +37,7 @@ def verify_raleigh(fetcher,now=None):
         if n.tag=='a' and n.attrs.get('href') and re.search(r'(?:request to be a vendor|request to become a vendor)',clean(n.text()),re.I)}
  if links!={APPLICATION}:
   raise Uncertain("Official vendor page no longer links the expected application.")
- if not re.search(r'Weekend\\s*\\$50\\s*/\\s*10',text,re.I) or not re.search(r'\\$30\\s*/\\s*day',text,re.I):
+ if not re.search(r'Weekend\s*\$50\s*/\s*10',text,re.I) or not re.search(r'\$30\s*/\s*day',text,re.I):
   raise Uncertain("Temporary outdoor booth prices have changed or cannot be verified.")
  if not re.search(r'Food trucks and vendors wishing to sell food or beverages may NOT drop in',text,re.I):
   raise Uncertain("Category-specific food restrictions changed.")
@@ -47,7 +47,7 @@ def verify_raleigh(fetcher,now=None):
   raise Uncertain("Application no longer names the verified organizer.")
  if not re.search(r'(?:Submit Application|Submit)',form_text,re.I):
   raise Uncertain("Public Jotform does not expose its submission control.")
- if not re.search(r'Outdoor 10.{0,6}20.{0,30}\\$50/weekend.{0,20}\\$30/day',form_text,re.I):
+ if not re.search(r'Outdoor 10.{0,6}20.{0,30}\$50/weekend.{0,20}\$30/day',form_text,re.I):
   raise Uncertain("Application pricing no longer matches organizer pricing.")
  if re.search(r'(?:form is closed|no longer accepting submissions|submission disabled)',form_text,re.I):
   raise Uncertain("Official vendor form says applications are closed.")
