@@ -4,7 +4,9 @@ This is a conservative, organizer-bound graph of live public links. It does
 not declare applications open, and does not discard category-specific details.
 No generic organizer-name-based cleanup: all links need current provenance.
 """
-from urllib.parse import urlparse
+from urllib.parse import urlparse,urljoin
+from datetime import date
+from calendar import month_name
 from collections import Counter
 import re
 from verifier import valid_url
@@ -24,6 +26,43 @@ def segment(url):
  p=urlparse(url)
  return next((x.lower() for x in p.path.split('/') if x),'')
 
+def official_event_section(document,root_url,target_url):
+ """Read the nearest event heading and date line before a live linked CTA.
+
+ Only h4/h5 event calendars qualify; navigation/menu links or free-floating
+ buttons are not proof that the CTA belongs to a published event.
+ """
+ event=''
+ dates=''
+ results=[]
+ for node in document.root.walk():
+  if node.tag=='h4':
+   event=node.text().strip()
+   dates=''
+  elif node.tag=='h5':
+   dates=node.text().strip()
+  elif node.tag=='a' and node.attrs.get('href'):
+   if urljoin(root_url,node.attrs['href'])==target_url and event and dates:
+    results.append((event,dates))
+ return results
+
+def date_headings_match(heading,event_dates,start,end):
+ """Require organizer's event label and all published calendar dates."""
+ name=' '.join(heading.casefold().split())
+ event_name=' '.join((event_dates.get('market_name') or '').casefold().split())
+ if len(event_name)<6 or event_name not in name:return False
+ try:
+  first=date.fromisoformat(start)
+  last=date.fromisoformat(end)
+ except (TypeError,ValueError):return False
+ if first.year!=last.year or first.month!=last.month:return False
+ dates=' '.join(event_dates.get('heading_dates','').casefold().split())
+ month=month_name[first.month].casefold()
+ if month not in dates:return False
+ if str(first.year) not in dates:return False
+ if not re.search(r'(?<!\\d)'+str(first.day)+r'(?!\\d)',dates):return False
+ return first==last or bool(re.search(r'(?<!\\d)'+str(last.day)+r'(?!\\d)',dates))
+
 def coverage_receipts(leads,opportunities,fetcher,approved_roots):
  """Return independently checked exact relationships, not speculative matches."""
  evidence=[]
@@ -42,9 +81,9 @@ def coverage_receipts(leads,opportunities,fetcher,approved_roots):
   if source not in approved_roots or not valid_url(target):continue
   if not valid_url(source):continue
   if source not in roots:
-   try:roots[source]=set(fetcher.get(source)[0].root.links(source))
-   except Exception:roots[source]=set()
-  if target not in roots[source]:continue
+   try:roots[source]=fetcher.get(source)[0]
+   except Exception:roots[source]=None
+  if roots[source] is None or target not in roots[source].root.links(source):continue
   for opp in opportunities:
    if opp.get('publication')!='published':continue
    if (opp.get('market_city') or opp.get('city','')).casefold()!=(lead.get('city') or '').casefold():continue
@@ -54,6 +93,7 @@ def coverage_receipts(leads,opportunities,fetcher,approved_roots):
    if not all(valid_url(u) for u in (published_source,published_application)):continue
    if site(source)!=site(published_source):continue
    proof=None
+   proven_section=None
    # A published opportunity's exact official event/application page
    # is a covered link even when the old lead used a broader index.
    if target==published_source and target!=source:
@@ -71,10 +111,21 @@ def coverage_receipts(leads,opportunities,fetcher,approved_roots):
      except Exception:hubs[hub]=set()
     if target in hubs.get(hub,set()) and target!=hub:
      proof='published_event_application_category'
+   if not proof:
+    # Organizer page has a separate link for each dated event. Verify that
+    # the target occurs under the exact event heading and printed dates.
+    for title,date_line in official_event_section(roots[source],source,target):
+     context={'market_name':opp.get('market_name'),'heading_dates':date_line}
+     if date_headings_match(title,context,opp.get('starts_on'),opp.get('ends_on')):
+      proof='published_dated_event_section'
+      proven_section=(title,date_line)
+      break
    if not proof:continue
    receipt={'source_url':source,'target_url':target,
             'opportunity_id':opp['id'],'published_source_url':published_source,
             'published_application_url':published_application,'proof':proof}
+   if proven_section:
+    receipt['event_heading'],receipt['event_dates']=proven_section
    evidence.append(receipt)
    stats[proof]+=1
    break

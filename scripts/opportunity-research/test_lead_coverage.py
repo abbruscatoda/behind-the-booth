@@ -66,6 +66,35 @@ class GeneralCoverageTests(unittest.TestCase):
   pages=Fetch();pages.docs[ROOT]+='<a href="'+source+'">Other application</a>'
   self.assertEqual(coverage_receipts([lead(source)],[pub()],pages,{ROOT})[0],[])
 
+ def test_dated_organizer_section_matches_existing_event_not_other_festivals(self):
+  short='https://forms.gle/hcXTaCKGmfkpZkp17'
+  unrelated='https://forms.gle/OtherEventForm123'
+  pages=Fetch()
+  pages.docs[ROOT]=(
+   '<h4>BREWGALOO</h4><h5>April 23 &amp; 24, 2027 – Downtown Raleigh</h5>'
+   '<a href="'+short+'">Apply Here</a>'
+   '<h4>Raleigh Food Truck Rodeo</h4><h5>June 19, 2027</h5>'
+   '<a href="'+unrelated+'">Apply Here</a>')
+  expected=pub(market_name='Brewgaloo',starts_on='2027-04-23',ends_on='2027-04-24')
+  receipts,_=coverage_receipts([lead(short),lead(unrelated)],[expected],pages,{ROOT})
+  self.assertEqual(len(receipts),1)
+  self.assertEqual(receipts[0]['proof'],'published_dated_event_section')
+  self.assertEqual(receipts[0]['event_heading'],'BREWGALOO')
+  self.assertIn('April 23 & 24, 2027',receipts[0]['event_dates'])
+
+ def test_different_year_prevents_same_event_name_shortcut_archival(self):
+  short='https://forms.gle/hcXTaCKGmfkpZkp17'
+  pages=Fetch()
+  pages.docs[ROOT]='<h4>BREWGALOO</h4><h5>April 23 & 24, 2026</h5><a href="'+short+'">Apply Here</a>'
+  expected=pub(market_name='Brewgaloo',starts_on='2027-04-23',ends_on='2027-04-24')
+  self.assertEqual(coverage_receipts([lead(short)],[expected],pages,{ROOT})[0],[])
+
+ def test_no_h4_and_h5_context_means_no_association(self):
+  short='https://forms.gle/hcXTaCKGmfkpZkp17'
+  pages=Fetch();pages.docs[ROOT]='<a href="'+short+'">Apply Here</a>'
+  expected=pub(market_name='Brewgaloo',starts_on='2027-04-23',ends_on='2027-04-24')
+  self.assertEqual(coverage_receipts([lead(short)],[expected],pages,{ROOT})[0],[])
+
  def test_held_published_opportunity_still_provides_coverage(self):
   p=pub(automation_hold=True)
   self.assertEqual(len(coverage_receipts([lead()],[p],Fetch(),{ROOT})[0]),1)
