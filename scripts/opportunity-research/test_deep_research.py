@@ -50,6 +50,29 @@ class DiagnosticsTests(unittest.TestCase):
   lead={'source_url':source,'target_url':apply,'title':'Apply Now'}
   self.assertEqual(research.diagnose_one(lead,pages)['status'],'closed')
 
+ def test_generic_closed_status_link_on_another_organizer(self):
+  source='https://www.carrborofarmersmarket.com/'
+  target='https://www.carrborofarmersmarket.com/apply'
+  status='https://www.carrborofarmersmarket.com/application-closed'
+  pages=Pages()
+  pages.docs[source]='<a href="'+target+'">Apply to the Market</a>'
+  pages.docs[target]='<h1>Apply to the Market</h1><a href="'+status+'">Applications Closed</a>'
+  pages.docs[status]='Applications for 2026 market season are now closed.'
+  result=research.diagnose_one(
+   {'source_url':source,'target_url':target,'title':'Apply to the Market'},pages)
+  self.assertEqual(result['status'],'closed')
+
+ def test_offsite_closure_status_is_never_fetched(self):
+  source='https://www.carrborofarmersmarket.com/'
+  target='https://www.carrborofarmersmarket.com/apply'
+  pages=Pages()
+  pages.docs[source]='<a href="'+target+'">Apply to the Market</a>'
+  pages.docs[target]='<a href="https://example.com/private">Applications Closed</a>'
+  result=research.diagnose_one(
+   {'source_url':source,'target_url':target,'title':'Apply to the Market'},pages)
+  self.assertEqual(result['status'],'missing_event')
+  self.assertEqual(pages.requests,2)
+
  def test_old_unlinked_form_is_not_used_as_current_evidence(self):
   pages=Pages(linked=False)
   self.assertEqual(research.diagnose_one(lead(),pages)['status'],'unlinked')

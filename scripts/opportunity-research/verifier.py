@@ -48,7 +48,7 @@ def valid_url(url):
  # Google Docs/Forms must not be used to fetch documents, sign-in, prefill,
  # entry values, or arbitrary query paths.
  if p.hostname=='forms.gle' and (not re.fullmatch(r'/[A-Za-z0-9_-]{6,60}',p.path) or p.query):return False
- if p.hostname=='docs.google.com' and (not re.fullmatch(r'/forms/d/e/[A-Za-z0-9_-]{20,120}/viewform',p.path) or p.query not in ('','usp=send_form')):return False
+ if p.hostname=='docs.google.com' and (not re.fullmatch(r'/forms/d/e/[A-Za-z0-9_-]{20,120}/viewform',p.path) or p.query not in ('','usp=send_form','usp=sf_link','usp=sharing','usp=header')):return False
  if p.hostname=='artspacenc.org' and p.path.rstrip('/')!='/calls-for-art':return False
  if p.hostname=='form.jotform.com' and (not re.fullmatch(r'/[0-9]{10,20}',p.path) or p.query):return False
  if p.hostname=='pci.jotform.com' and (not re.fullmatch(r'/form/[0-9]{10,20}',p.path) or p.query):return False
