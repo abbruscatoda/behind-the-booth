@@ -1,6 +1,6 @@
 """Daily verifier. --dry-run never writes to Supabase. No AI key or third-party packages."""
 from __future__ import annotations
-import argparse, json, os, sys
+import argparse, json, os, sys, re
 from collections import Counter
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -36,10 +36,8 @@ class Database:
    try:
     payload=json.loads(cause.read(4096).decode('utf-8','replace'))
     received=payload.get('code','') if isinstance(payload,dict) else ''
-    allowed={'23505','23503','23514','23502','22023','22001','22003',
-             '23P01','42501','42804','42703','42702','42P01','P0001',
-             'P0002','PGRST116','PGRST202','PGRST203'}
-    if received in allowed:error_code=received
+    if isinstance(received,str) and re.fullmatch(r'(?:[A-Z0-9]{5}|PGRST[0-9]{3})',received):
+     error_code=received
    except (ValueError,UnicodeError,OSError):pass
    raise RuntimeError(f'{name} failed (HTTP {cause.code}, code {error_code}); inspect database diagnostics.') from None
   except Exception:
