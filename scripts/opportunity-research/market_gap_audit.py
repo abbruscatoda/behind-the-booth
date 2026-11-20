@@ -23,6 +23,8 @@ def audit_missing_markets(rows,fetcher,now=None,limit=8):
  selected=(ordered[start:]+ordered[:start])[:limit]
  signals=[];checked=0;skipped=0
  for market in selected:
+  # Preserve capacity for dated-event lead verification and reconciliation.
+  if getattr(fetcher,"requests",0) >= getattr(fetcher,"limit",360)-90:break
   url=market.get('website_url','')
   if not valid_url(url):
    skipped+=1
