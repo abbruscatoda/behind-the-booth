@@ -23,7 +23,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads','btb_research_publish_ongoing','btb_research_market_gaps'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads','btb_research_publish_ongoing','btb_research_market_gaps','btb_research_publish_verified_rolling'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -44,6 +44,14 @@ class Database:
    raise RuntimeError(f'{name} failed (network or response error); inspect database diagnostics.') from None
 
 def existing_result(item,found,fetcher,now):
+ if item.get('verification_policy')=='explore-rolling-official-v1':
+  from generic_ongoing import verify_generic_market
+  result=verify_generic_market({'slug':item.get('market_slug'),
+    'name':item.get('market_name'),'city':item.get('market_city'),
+    'website_url':item.get('market_website_url')},fetcher,now)
+  if result['candidate']['application_url']!=item.get('application_url') or result['candidate']['source_url']!=item.get('source_url'):
+   raise Uncertain('Rolling application source or identity changed; preserve the existing listing for review.')
+  return result
  if item.get('verification_policy')=='raleigh-rolling-official-v1':
   from ongoing_market import verify_raleigh
   result=verify_raleigh(fetcher,now)
@@ -162,7 +170,7 @@ def run(dry_run=False):
    # Seasonal waitlists use a separate, tightly scoped official-source
    # verification policy. The dated-event quality gate expects an exact
    # event deadline and must not silently downgrade a verified waitlist.
-   if result.get('policy') not in ('recurring-official-waitlist-v1','seasonal-official-v1','triangle-multidate-jotform-v1','raleigh-rolling-official-v1'):
+   if result.get('policy') not in ('recurring-official-waitlist-v1','seasonal-official-v1','triangle-multidate-jotform-v1','raleigh-rolling-official-v1','explore-rolling-official-v1'):
     result=add_review_suggestions(item,apply_quality_gate(item,result))
    if defer_inconclusive_review(item,result):
     counts['deferred_inconclusive']+=1
@@ -172,7 +180,9 @@ def run(dry_run=False):
     counts['proposed_'+result['decision']]+=1
     print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url') or result.get('research_suggestions',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'research_quality':result.get('research_quality'),'quality_issues':result.get('quality_issues',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility',''),'research_suggestions':result.get('research_suggestions')},ensure_ascii=False));return
    if result.get('category_warnings'):print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'category_warnings':result['category_warnings']},ensure_ascii=False))
-   if result.get('policy')=='raleigh-rolling-official-v1' and result.get('decision')=='publish':
+   if result.get('policy')=='explore-rolling-official-v1' and result.get('decision')=='publish':
+    response=db.rpc('btb_research_publish_verified_rolling',{'p_result':result})
+   elif result.get('policy')=='raleigh-rolling-official-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_ongoing',{'p_result':result})
    elif result.get('policy')=='seasonal-official-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_seasonal',{'p_result':result})
@@ -255,6 +265,23 @@ def run(dry_run=False):
     ongoing_notes.append('the-raleigh-market: official pages or application currently inaccessible')
   from market_gap_audit import audit_missing_markets
   gap_survey=audit_missing_markets(gap_context.get('markets',[]),fetcher,now,limit=8)
+  from generic_ongoing import verify_generic_market
+  verified_rolling=0
+  selected=set(gap_survey.get('selected_slugs',[]))
+  for market in gap_context.get('markets',[]):
+   if market.get('slug') not in selected or market.get('slug')=='the-raleigh-market':continue
+   if fetcher.requests>=fetcher.limit-65:break
+   try:
+    candidate=verify_generic_market(market,fetcher,now)
+    apply(None,candidate)
+    verified_rolling+=1
+   except Uncertain:
+    pass
+   except Exception:
+    # Incomplete or temporarily unreadable evidence must not invent an
+    # application or prevent independently verified dated opportunities.
+    pass
+  discovery_stats['generic_rolling_candidates_verified']=verified_rolling
   discovery_stats['market_gap_official_survey']=gap_survey
   discovery_stats['explore_markets_without_active_opportunities']=gap_context.get('count',0)
   discovery_stats['ongoing_market_research_notes']=ongoing_notes
