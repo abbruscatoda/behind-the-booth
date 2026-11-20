@@ -118,6 +118,21 @@ class DiagnosticsTests(unittest.TestCase):
   pages=Pages(reason='Our market is currently not accepting new applications.')
   self.assertEqual(research.diagnose_one(lead(),pages)['status'],'closed')
 
+ def test_instructional_workshop_is_not_a_vendor_market(self):
+  pages=Pages(reason='BIG INK printmaking workshop registration. Participants attend a printing day after an online master class.')
+  entry={**lead(),'title':'Learn More: Registration closes February 1'}
+  self.assertEqual(research.diagnose_one(entry,pages)['status'],'not_application')
+
+ def test_permanent_store_consignment_is_not_an_event_application(self):
+  pages=Pages(reason='You are applying to have your products sold at Curate in downtown Raleigh. This is an at-will contract with no stated ending date following acceptance.')
+  entry={**lead(),'title':'Curate Downtown Raleigh'}
+  self.assertEqual(research.diagnose_one(entry,pages)['status'],'not_application')
+
+ def test_real_market_application_is_not_falsely_excluded(self):
+  pages=Pages(reason='Cary Night Market 2026 Vendor Application. Apply to vend on December 18, 2026. Submit Form.')
+  result=research.diagnose_one(lead(),pages)
+  self.assertNotEqual(result['status'],'not_application')
+
  def test_old_unlinked_form_is_not_used_as_current_evidence(self):
   pages=Pages(linked=False)
   self.assertEqual(research.diagnose_one(lead(),pages)['status'],'unlinked')
