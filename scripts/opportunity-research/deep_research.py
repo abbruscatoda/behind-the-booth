@@ -54,17 +54,28 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
   return out('closed','The linked application page explicitly says this intake is closed; the worker must not publish it as open.')
  if RESTRICT_RE.search(linked_text):
   return out('restricted','The organizer accepts only returning or manager-invited applicants. A generic public open-application listing would be misleading.')
- # The Apex regular-vendor Apply menu is a directory, while the official
- # seasonal vendor tab explicitly says applications are closed until January.
- # Treat the specific current closure as authoritative over generic copy.
- if source=='https://www.apexfarmersmarket.com/' and target=='https://www.apexfarmersmarket.com/apply':
-  closed_url='https://www.apexfarmersmarket.com/applicationclose'
-  if closed_url in doc.root.links(target):
-   try:
-    closed_doc,_=fetcher.get(closed_url)
-    if re.search(r'Applications closed!|Application for the new year will be open in January',visible_text(closed_doc.root),re.I):
-     return out('closed','The official current vendor application tab says applications are closed until January; the general Apply page is not proof of an open intake.')
-   except Exception:pass
+ # Organizer application hubs often keep a generic "Apply" banner while
+ # their linked season-specific status page explicitly says intake is closed.
+ # Do not privilege generic marketing copy over the *current linked status*.
+ from urllib.parse import urljoin
+ from calendar_research import same_organizer_host
+ explicit_closures=[]
+ for node in doc.root.walk():
+  if node.tag!='a' or not node.attrs.get('href'):continue
+  label=clean(node.text())
+  if not re.search(r'\b(?:applications?\s+closed|closed\s+applications?|application\s+status)\b',label,re.I):
+   continue
+  status_url=urljoin(target,node.attrs['href'])
+  if not valid_url(status_url) or not same_organizer_host(status_url,target):continue
+  explicit_closures.append(status_url)
+ for status_url in list(dict.fromkeys(explicit_closures))[:2]:
+  try:
+   status_doc,_=fetcher.get(status_url)
+  except (OSError,ValueError):continue
+  status_text=visible_text(status_doc.root)
+  if CLOSE_RE.search(status_text) or re.search(
+      r'\bApplications\s+closed!|Application for the new year will be open in January',status_text,re.I):
+   return out('closed','Official linked application-status page confirms this intake is closed; generic organizer Apply navigation does not establish an open window.')
  if GATE_RE.search(linked_text):
   return out('form_gated','The linked form requests sign-in or permissions, so its submission state cannot be independently verified.')
  if ROLL_RE.search(linked_text) or ROLL_RE.search(text):
