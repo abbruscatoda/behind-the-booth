@@ -230,7 +230,14 @@ def run(dry_run=False):
     print(json.dumps({'action':'proposed_discovery_lead','title':lead['title'],
       'source':lead['source_url'],'target':lead['target_url']}))
   elif leads:
-   saved=db.rpc('btb_research_record_discovery_leads',{'p_leads':leads})
+   # Registry and lead batches are now synchronized atomically: the SQL
+   # worker cannot silently reject the five newest curated Triangle sources.
+   from discovery import SOURCES
+   approved=[{'organizer':name,'city':city,'source_url':url}
+     for name,city,url in SOURCES]
+   saved=db.rpc('btb_research_record_discovery_leads',
+                {'p_leads':leads,'p_sources':approved})
+   discovery_stats['source_registry_count']=saved.get('approved_sources')
    counts['discovery_leads_seen']=saved.get('saved',0)
   # Reconcile source-linked Google shortcuts to their real forms. This is
   # independent of vendor application openness: a redirect only proves two
