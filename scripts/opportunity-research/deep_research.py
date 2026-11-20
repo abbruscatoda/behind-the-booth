@@ -54,6 +54,17 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
   return out('closed','The linked application page explicitly says this intake is closed; the worker must not publish it as open.')
  if RESTRICT_RE.search(linked_text):
   return out('restricted','The organizer accepts only returning or manager-invited applicants. A generic public open-application listing would be misleading.')
+ # The Apex regular-vendor Apply menu is a directory, while the official
+ # seasonal vendor tab explicitly says applications are closed until January.
+ # Treat the specific current closure as authoritative over generic copy.
+ if source=='https://www.apexfarmersmarket.com/' and target=='https://www.apexfarmersmarket.com/apply':
+  closed_url='https://www.apexfarmersmarket.com/applicationclose'
+  if closed_url in doc.root.links(target):
+   try:
+    closed_doc,_=fetcher.get(closed_url)
+    if re.search(r'Applications closed!|Application for the new year will be open in January',visible_text(closed_doc.root),re.I):
+     return out('closed','The official current vendor application tab says applications are closed until January; the general Apply page is not proof of an open intake.')
+   except Exception:pass
  if GATE_RE.search(linked_text):
   return out('form_gated','The linked form requests sign-in or permissions, so its submission state cannot be independently verified.')
  if ROLL_RE.search(linked_text) or ROLL_RE.search(text):
