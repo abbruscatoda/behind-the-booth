@@ -267,20 +267,25 @@ def run(dry_run=False):
   gap_survey=audit_missing_markets(gap_context.get('markets',[]),fetcher,now,limit=8)
   from generic_ongoing import verify_generic_market
   verified_rolling=0
+  generic_rolling_notes=[]
+  generic_rolling_attempted=0
   selected=set(gap_survey.get('selected_slugs',[]))
   for market in gap_context.get('markets',[]):
    if market.get('slug') not in selected or market.get('slug')=='the-raleigh-market':continue
    if fetcher.requests>=fetcher.limit-65:break
+   generic_rolling_attempted+=1
    try:
     candidate=verify_generic_market(market,fetcher,now)
     apply(None,candidate)
     verified_rolling+=1
-   except Uncertain:
-    pass
+   except Uncertain as exc:
+    generic_rolling_notes.append({'slug':market.get('slug'),'reason':str(exc)[:170]})
    except Exception:
     # Incomplete or temporarily unreadable evidence must not invent an
     # application or prevent independently verified dated opportunities.
-    pass
+    generic_rolling_notes.append({'slug':market.get('slug'),'reason':'Official source, public form, or parser unavailable'})
+  discovery_stats['generic_rolling_attempted']=generic_rolling_attempted
+  discovery_stats['generic_rolling_research_notes']=generic_rolling_notes
   discovery_stats['generic_rolling_candidates_verified']=verified_rolling
   discovery_stats['market_gap_official_survey']=gap_survey
   discovery_stats['explore_markets_without_active_opportunities']=gap_context.get('count',0)
