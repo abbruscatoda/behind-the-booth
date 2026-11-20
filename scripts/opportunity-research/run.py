@@ -1,6 +1,6 @@
 """Daily verifier. --dry-run never writes to Supabase. No AI key or third-party packages."""
 from __future__ import annotations
-import argparse, json, os, sys
+import argparse, json, os, sys, re
 from collections import Counter
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -36,10 +36,8 @@ class Database:
    try:
     payload=json.loads(cause.read(4096).decode('utf-8','replace'))
     received=payload.get('code','') if isinstance(payload,dict) else ''
-    allowed={'23505','23503','23514','23502','22023','22001','22003',
-             '23P01','42501','42804','42703','42702','42P01','P0001',
-             'P0002','PGRST116','PGRST202','PGRST203'}
-    if received in allowed:error_code=received
+    if isinstance(received,str) and re.fullmatch(r'(?:[A-Z0-9]{5}|PGRST[0-9]{3})',received):
+     error_code=received
    except (ValueError,UnicodeError,OSError):pass
    raise RuntimeError(f'{name} failed (HTTP {cause.code}, code {error_code}); inspect database diagnostics.') from None
   except Exception:
@@ -249,12 +247,19 @@ def run(dry_run=False):
    from discovery import SOURCES
    approved=[{'organizer':name,'city':city,'source_url':url}
      for name,city,url in SOURCES]
-   saved=db.rpc('btb_research_record_discovery_leads',
-                {'p_leads':leads,'p_sources':approved})
-   discovery_stats['source_registry_count']=saved.get('approved_sources')
-   counts['discovery_leads_seen']=saved.get('saved',0)
-   counts['discovery_leads_skipped']=saved.get('skipped',0)
-   counts['lead_cardinality_conflicts']=saved.get('cardinality_conflicts',0)
+   try:
+    saved=db.rpc('btb_research_record_discovery_leads',
+                 {'p_leads':leads,'p_sources':approved})
+   except RuntimeError as error:
+    # Ingestion errors are visible and fail the run, but unrelated
+    # already-published lead reconciliation can still proceed.
+    problems.append(str(error)[:200])
+    counts['discovery_lead_ingestion_failed']=1
+   else:
+    discovery_stats['source_registry_count']=saved.get('approved_sources')
+    counts['discovery_leads_seen']=saved.get('saved',0)
+    counts['discovery_leads_skipped']=saved.get('skipped',0)
+    counts['lead_cardinality_conflicts']=saved.get('cardinality_conflicts',0)
   # Verify current official-page relationships before retiring saved or new
   # leads. Published listings on manual edit hold are still valid evidence.
   if backlog or leads:
