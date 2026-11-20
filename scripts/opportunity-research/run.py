@@ -239,6 +239,8 @@ def run(dry_run=False):
                 {'p_leads':leads,'p_sources':approved})
    discovery_stats['source_registry_count']=saved.get('approved_sources')
    counts['discovery_leads_seen']=saved.get('saved',0)
+   counts['discovery_leads_skipped']=saved.get('skipped',0)
+   counts['lead_cardinality_conflicts']=saved.get('cardinality_conflicts',0)
   # Verify current official-page relationships before retiring saved or new
   # leads. Published listings on manual edit hold are still valid evidence.
   if backlog or leads:
