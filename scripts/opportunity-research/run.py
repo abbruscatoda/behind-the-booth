@@ -162,7 +162,7 @@ def run(dry_run=False):
    # Seasonal waitlists use a separate, tightly scoped official-source
    # verification policy. The dated-event quality gate expects an exact
    # event deadline and must not silently downgrade a verified waitlist.
-   if result.get('policy') not in ('recurring-official-waitlist-v1','seasonal-official-v1','triangle-multidate-jotform-v1'):
+   if result.get('policy') not in ('recurring-official-waitlist-v1','seasonal-official-v1','triangle-multidate-jotform-v1','raleigh-rolling-official-v1'):
     result=add_review_suggestions(item,apply_quality_gate(item,result))
    if defer_inconclusive_review(item,result):
     counts['deferred_inconclusive']+=1
