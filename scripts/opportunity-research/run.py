@@ -23,7 +23,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -260,6 +260,15 @@ def run(dry_run=False):
     counts['discovery_leads_seen']=saved.get('saved',0)
     counts['discovery_leads_skipped']=saved.get('skipped',0)
     counts['lead_cardinality_conflicts']=saved.get('cardinality_conflicts',0)
+    # Separate HTTP RPC = separate committed transaction. Never reconcile
+    # freshly inserted lead rows within the same bulk upsert command.
+    try:
+     finalized=db.rpc('btb_research_finalize_discovery_leads')
+    except RuntimeError as error:
+     problems.append(str(error)[:200])
+     counts['post_ingest_reconciliation_failed']=1
+    else:
+     counts['post_ingest_leads_resolved']=finalized.get('resolved',0)
   # Verify current official-page relationships before retiring saved or new
   # leads. Published listings on manual edit hold are still valid evidence.
   if backlog or leads:

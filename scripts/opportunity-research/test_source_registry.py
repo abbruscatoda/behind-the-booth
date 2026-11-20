@@ -33,6 +33,7 @@ class SourceRegistryTests(unittest.TestCase):
      return 'test-run'
     if name=='btb_research_discovery_backlog':return []
     if name=='btb_research_coverage_context':return []
+    if name=='btb_research_finalize_discovery_leads':return {'resolved':0}
     if name=='btb_research_record_discovery_leads_v2':
      self.assertEqual(len(body['p_sources']),len(discovery.SOURCES))
      return {'saved':1,'approved_sources':len(body['p_sources'])}
@@ -57,6 +58,8 @@ class SourceRegistryTests(unittest.TestCase):
    worker.run(False)
   record=[body for name,body in calls if name=='btb_research_record_discovery_leads_v2']
   self.assertEqual(len(record),1)
+  self.assertLess([n for n,_ in calls].index('btb_research_record_discovery_leads_v2'),
+                  [n for n,_ in calls].index('btb_research_finalize_discovery_leads'))
   self.assertEqual(record[0]['p_sources'],
    [{'organizer':name,'city':city,'source_url':root} for name,city,root in discovery.SOURCES])
 
