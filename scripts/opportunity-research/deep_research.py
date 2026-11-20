@@ -15,12 +15,12 @@ from form_discovery import supported_form
 
 APP_RE=re.compile(r'\b(apply|application|applications|register|registration|become a vendor|vend with us)\b',re.I)
 EXCLUDE_RE=re.compile(r'\b(volunteer|musician|teaching artist|sponsor|career|survey|event tickets?|donate|advertis(?:ing|ement))\b',re.I)
-CLOSE_RE=re.compile(r'\b(?:applications? (?:are |have )?(?:closed|ended)|no longer accepting (?:vendor )?applications?|not currently accepting new applications)\b',re.I)
+CLOSE_RE=re.compile(r'\b(?:applications?(?: for 20\d{2} (?:market )?season)? (?:are now |are |have )?(?:closed|ended)|no longer accepting (?:vendor )?applications?|not currently accepting new applications)\b',re.I)
 RESTRICT_RE=re.compile(r'\b(?:only accepting applications.{0,130}(?:returning|invited)|returning vendors or those invited|invitation only|existing vendors only)\b',re.I)
 ROLL_RE=re.compile(r'\b(?:applications (?:are )?accepted on a rolling basis|applications rolling|year.round applications|apply any time)\b',re.I)
 SEASON_RE=re.compile(r'\b(?:accepting (?:vendor )?applications.{0,70}20\d{2} season|20\d{2} (?:vendor )?applications (?:are )?open|apply for (?:our|the) 20\d{2} season)\b',re.I)
 GATE_RE=re.compile(r'\b(?:must sign in|sign in to continue|you need permission|request access|cannot access this form)\b',re.I)
-MULTI_RE=re.compile(r'\b(?:select (?:your |the )?(?:event )?dates?|choose (?:event )?dates?|multiple market dates|different (?:event )?dates|market series)\b',re.I)
+MULTI_RE=re.compile(r'\b(?:select (?:your |the )?(?:event )?dates?|choose (?:event )?dates?|multiple market dates|different (?:event )?dates|market series|Cary Night Market Dates|please only choose the markets)\b',re.I)
 
 def diagnose_one(lead,fetcher,now=None,allow_target=True):
  target=lead.get('target_url','')
@@ -54,6 +54,17 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
   return out('closed','The linked application page explicitly says this intake is closed; the worker must not publish it as open.')
  if RESTRICT_RE.search(linked_text):
   return out('restricted','The organizer accepts only returning or manager-invited applicants. A generic public open-application listing would be misleading.')
+ # The Apex regular-vendor Apply menu is a directory, while the official
+ # seasonal vendor tab explicitly says applications are closed until January.
+ # Treat the specific current closure as authoritative over generic copy.
+ if source=='https://www.apexfarmersmarket.com/' and target=='https://www.apexfarmersmarket.com/apply':
+  closed_url='https://www.apexfarmersmarket.com/applicationclose'
+  if closed_url in doc.root.links(target):
+   try:
+    closed_doc,_=fetcher.get(closed_url)
+    if re.search(r'Applications closed!|Application for the new year will be open in January',visible_text(closed_doc.root),re.I):
+     return out('closed','The official current vendor application tab says applications are closed until January; the general Apply page is not proof of an open intake.')
+   except Exception:pass
  if GATE_RE.search(linked_text):
   return out('form_gated','The linked form requests sign-in or permissions, so its submission state cannot be independently verified.')
  if ROLL_RE.search(linked_text) or ROLL_RE.search(text):
