@@ -23,7 +23,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads','btb_research_publish_ongoing','btb_research_market_gaps'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -44,6 +44,12 @@ class Database:
    raise RuntimeError(f'{name} failed (network or response error); inspect database diagnostics.') from None
 
 def existing_result(item,found,fetcher,now):
+ if item.get('verification_policy')=='raleigh-rolling-official-v1':
+  from ongoing_market import verify_raleigh
+  result=verify_raleigh(fetcher,now)
+  if item.get('market_slug')!='the-raleigh-market' or item.get('application_url')!=result['candidate']['application_url']:
+   raise Uncertain('Existing ongoing opportunity does not match the approved organizer.')
+  return result
  if item.get('verification_policy')=='seasonal-official-v1':
   from seasonal_research import PROVIDERS,check_provider
   matches=[p for p in PROVIDERS if p['slug']==item.get('market_slug')]
@@ -166,7 +172,9 @@ def run(dry_run=False):
     counts['proposed_'+result['decision']]+=1
     print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url') or result.get('research_suggestions',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'research_quality':result.get('research_quality'),'quality_issues':result.get('quality_issues',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility',''),'research_suggestions':result.get('research_suggestions')},ensure_ascii=False));return
    if result.get('category_warnings'):print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'category_warnings':result['category_warnings']},ensure_ascii=False))
-   if result.get('policy')=='seasonal-official-v1' and result.get('decision')=='publish':
+   if result.get('policy')=='raleigh-rolling-official-v1' and result.get('decision')=='publish':
+    response=db.rpc('btb_research_publish_ongoing',{'p_result':result})
+   elif result.get('policy')=='seasonal-official-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_seasonal',{'p_result':result})
    elif result.get('policy')=='triangle-multidate-jotform-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_multidate',{'p_result':result})
@@ -230,6 +238,25 @@ def run(dry_run=False):
    if key not in known and key not in found:
     apply(None,candidate)
   discovery_stats['seasonal_research_notes']=seasonal_notes[:12]
+  # Cross-reference Explore Markets profiles with published opportunities.
+  # Only an explicitly approved official-source adapter can auto-publish.
+  # An ordinary market website or past schedule is not evidence of open intake.
+  gap_context={'markets':[],'count':0} if dry_run else db.rpc('btb_research_market_gaps')
+  from ongoing_market import verify_raleigh
+  ongoing_notes=[]
+  for market in gap_context.get('markets',[]):
+   if market.get('slug')!='the-raleigh-market':continue
+   try:
+    result=verify_raleigh(fetcher,now)
+    apply(None,result)
+   except Uncertain as exc:
+    ongoing_notes.append('the-raleigh-market: '+str(exc)[:170])
+   except Exception:
+    ongoing_notes.append('the-raleigh-market: official pages or application currently inaccessible')
+  discovery_stats['explore_markets_without_active_opportunities']=gap_context.get('count',0)
+  discovery_stats['ongoing_market_research_notes']=ongoing_notes
+  discovery_stats['market_gap_candidates']=[{'slug':m.get('slug'),'city':m.get('city')}
+    for m in gap_context.get('markets',[])[:50]]
   # Research each saved/new lead and persist the *reason* it could not be
   # published. This is diagnostic evidence, never an automatic approval.
   from deep_research import diagnose_leads
