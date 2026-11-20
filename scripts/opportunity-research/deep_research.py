@@ -53,9 +53,9 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
  # Classify the actual application type before concluding that a vendor
  # market is missing dates. Workshop enrollment and permanent retail
  # consignment are distinct programs, not event booth opportunities.
- if (re.search(r'\\b(?:workshop|master class|printing session)\\b',linked_text,re.I)
-     and re.search(r'\\b(?:register|registration|participants?|printing day|master class)\\b',linked_text,re.I)
-     and re.search(r'\\b(?:tuition|printing|woodblock|master class)\\b',linked_text,re.I)):
+ if (re.search(r'\b(?:workshop|master class|printing session)\b',linked_text,re.I)
+     and re.search(r'\b(?:register|registration|participants?|printing day|master class)\b',linked_text,re.I)
+     and re.search(r'\b(?:tuition|printing|woodblock|master class)\b',linked_text,re.I)):
   return out('not_application','Not a vendor market: this is an instructional workshop registration, not an event booth application.')
  if (re.search(r'you are applying to have your products sold (?:in|at)',linked_text,re.I)
      and re.search(r'(?:at.will contract|no stated ending date|initial inventory|products sold in the store|products sold at the store)',linked_text,re.I)):
