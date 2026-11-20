@@ -144,6 +144,11 @@ def run(dry_run=False):
  now=datetime.now(timezone.utc);fetcher=Fetcher(limit=360);run_id=None;counts=Counter();problems=[]
  if not dry_run:run_id=db.rpc('btb_research_run')
  try:
+  # Read-only Brewgaloo public-form check; never changes listed fees.
+  form_probe=None
+  if fetcher.browser_enabled:
+   from form_probe import probe_public_form
+   form_probe=probe_public_form(fetcher)
   results,problems=discover(fetcher,now)
   found={(r['candidate']['application_url'],r['candidate']['starts_on']):r for r in results}
   known={(canonical_application(i['application_url']) or i['application_url'],i['starts_on']) for i in context['items']}
@@ -300,6 +305,11 @@ def run(dry_run=False):
   if fetcher.requests>=fetcher.limit:
    problems.append('Source request budget reached. Some checks may be deferred or need review.')
   discovery_stats['recurring_verification_notes']=recurring_diagnostics[:8]
+  if fetcher.browser_enabled:
+   discovery_stats['browser_forms']={'attempts':fetcher.browser_attempts,
+    'successful_public_renders':fetcher.browser_successes,
+    'attempt_limit':fetcher.browser_max_attempts,
+    'brewgaloo_form_probe':form_probe}
   summary={'dry_run':dry_run,'counts':dict(counts),'issues':problems[:12],'source_requests':fetcher.requests,'discovery':discovery_stats}
   summary['failed']=bool(problems)
   if not dry_run:db.rpc('btb_research_run',{'p_id':run_id,'p_summary':summary})
