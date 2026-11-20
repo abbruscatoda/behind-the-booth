@@ -18,8 +18,8 @@ def audit_missing_markets(rows,fetcher,now=None,limit=8):
  """Rotate bounded source probes to avoid ignoring later alphabetic markets."""
  now=now or datetime.now(timezone.utc)
  ordered=sorted((m for m in rows if isinstance(m,dict) and m.get('slug')),key=lambda m:m['slug'])
- if not ordered:return {'checked':0,'skipped':0,'signals':[]}
- start=now.date().toordinal()%len(ordered)
+ if not ordered:return {'checked':0,'skipped':0,'signals':[],'selected_slugs':[]}
+ start=(now.date().toordinal()*limit)%len(ordered)
  selected=(ordered[start:]+ordered[:start])[:limit]
  signals=[];checked=0;skipped=0
  for market in selected:
@@ -46,4 +46,4 @@ def audit_missing_markets(rows,fetcher,now=None,limit=8):
          else 'application_link_needs_verification' if links
          else 'no_confirmed_application')
   signals.append({'slug':market['slug'],'state':state,'linked_applications':len(set(links))})
- return {'checked':checked,'skipped':skipped,'signals':signals}
+ return {'checked':checked,'skipped':skipped,'signals':signals,'selected_slugs':[m['slug'] for m in selected]}
