@@ -32,7 +32,7 @@ export function filterOpportunities(items: Opportunity[], filters: OpportunityFi
   if (query && ![item.title,item.organizer,item.city,item.venue].join(" ").toLocaleLowerCase().includes(query)) return false;
   if (filters.city && item.city !== filters.city) return false;
   // ISO calendar dates compare lexically; use the actual month's final day.
-  if (filters.month && /^\\d{4}-(0[1-9]|1[0-2])$/.test(filters.month)) {
+  if (filters.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(filters.month)) {
    const [year,month] = filters.month.split("-").map(Number);
    const last = new Date(Date.UTC(year,month,0)).getUTCDate();
    if (item.starts_on > `${filters.month}-${String(last).padStart(2,"0")}` || item.ends_on < `${filters.month}-01`) return false;
@@ -51,7 +51,7 @@ export function filterOpportunities(items: Opportunity[], filters: OpportunityFi
   if (filters.deadlineBefore) {
    const cutoff = opportunityDeadline(item).sortAt;
    // Unknown / series deadlines are not confirmed to fall before the date.
-   if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(filters.deadlineBefore) || !Number.isFinite(cutoff) || deadlineForInput(item.deadline ?? "") > filters.deadlineBefore) return false;
+   if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.deadlineBefore) || !Number.isFinite(cutoff) || deadlineForInput(item.deadline ?? "") > filters.deadlineBefore) return false;
   }
   return true;
  });
