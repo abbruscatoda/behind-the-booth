@@ -73,6 +73,16 @@ class DiagnosticsTests(unittest.TestCase):
   self.assertEqual(result['status'],'missing_event')
   self.assertEqual(pages.requests,2)
 
+ def test_linked_third_party_page_does_not_crash_worker(self):
+  source='https://artspacenc.org/calls-for-art/'
+  outside='https://www.bigink.org/workshops/artspace-2027/'
+  pages=Pages()
+  pages.docs[source]='<a href="'+outside+'">Learn More: Registration closes February 1, 2027</a>'
+  result=research.diagnose_one(
+   {'source_url':source,'target_url':outside,'title':'Learn More: Registration closes February 1, 2027'},pages)
+  self.assertEqual(result['status'],'needs_evidence')
+  self.assertEqual(pages.requests,1)
+
  def test_old_unlinked_form_is_not_used_as_current_evidence(self):
   pages=Pages(linked=False)
   self.assertEqual(research.diagnose_one(lead(),pages)['status'],'unlinked')

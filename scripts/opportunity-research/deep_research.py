@@ -42,12 +42,15 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
   return out('needs_evidence','The organizer links a page but has not identified this link as an open vendor application.')
  text=visible_text(root.root)
  linked_text=''
+ doc=None
  if allow_target and valid_url(target):
   try:
    doc,_=fetcher.get(target)
    linked_text=visible_text(doc.root)
   except Exception as error:
    return out('source_unavailable','Linked organizer application or form could not be read: '+source_error(error)+'.')
+ if doc is None:
+  return out('needs_evidence','The linked target could not be examined as a supported public application URL; further official-source evidence is required.')
  combined=' '.join([text,linked_text])
  # Restriction/closure on the *target* page outweighs the menu label.
  # A menu link *labeled* "Applications Closed" is navigation, not
