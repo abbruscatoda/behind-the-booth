@@ -241,18 +241,19 @@ def run(dry_run=False):
    counts['discovery_leads_seen']=saved.get('saved',0)
   # Verify current official-page relationships before retiring saved or new
   # leads. Published listings on manual edit hold are still valid evidence.
-  from lead_coverage import coverage_receipts
-  from discovery import SOURCES as COVERAGE_SOURCES
-  coverage_context=db.rpc('btb_research_coverage_context')
-  coverage,coverage_stats=coverage_receipts(backlog+leads,coverage_context,
-      fetcher,{root for _,_,root in COVERAGE_SOURCES})
-  discovery_stats['published_lead_coverage']=coverage_stats
-  if dry_run:
-   counts['proposed_covered_leads']=len(coverage)
-  elif coverage:
-   coverage_result=db.rpc('btb_research_reconcile_covered_leads',
-                          {'p_receipts':coverage})
-   counts['covered_leads_resolved']=coverage_result.get('resolved',0)
+  if backlog or leads:
+   from lead_coverage import coverage_receipts
+   from discovery import SOURCES as COVERAGE_SOURCES
+   coverage_context=db.rpc('btb_research_coverage_context')
+   coverage,coverage_stats=coverage_receipts(backlog+leads,coverage_context,
+       fetcher,{root for _,_,root in COVERAGE_SOURCES})
+   discovery_stats['published_lead_coverage']=coverage_stats
+   if dry_run:
+    counts['proposed_covered_leads']=len(coverage)
+   elif coverage:
+    coverage_result=db.rpc('btb_research_reconcile_covered_leads',
+                           {'p_receipts':coverage})
+    counts['covered_leads_resolved']=coverage_result.get('resolved',0)
   # Reconcile source-linked Google shortcuts to their real forms. This is
   # independent of vendor application openness: a redirect only proves two
   # URLs identify the same already-published application, never publication.
