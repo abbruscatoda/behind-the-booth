@@ -229,6 +229,7 @@ class SeasonalTests(unittest.TestCase):
     calls.append(name)
     if name=='btb_research_context':return {'enabled':True,'items':[]}
     if name=='btb_research_discovery_backlog':return []
+    if name=='btb_research_market_gaps':return {'markets':[],'count':0}
     if name=='btb_research_publish_seasonal':
      self_result=body['p_result']
      assert self_result['candidate']['schedule_type']=='seasonal_application'
