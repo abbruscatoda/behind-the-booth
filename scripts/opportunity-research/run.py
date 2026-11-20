@@ -264,13 +264,14 @@ def run(dry_run=False):
    except Exception:
     ongoing_notes.append('the-raleigh-market: official pages or application currently inaccessible')
   from market_gap_audit import audit_missing_markets
-  gap_survey=audit_missing_markets(gap_context.get('markets',[]),fetcher,now,limit=8)
+  rolling_candidates=gap_context.get('rolling_candidates',gap_context.get('markets',[]))
+  gap_survey=audit_missing_markets(rolling_candidates,fetcher,now,limit=8)
   from generic_ongoing import verify_generic_market
   verified_rolling=0
   generic_rolling_notes=[]
   generic_rolling_attempted=0
   selected=set(gap_survey.get('selected_slugs',[]))
-  for market in gap_context.get('markets',[]):
+  for market in rolling_candidates:
    if market.get('slug') not in selected or market.get('slug')=='the-raleigh-market':continue
    if fetcher.requests>=fetcher.limit-65:break
    generic_rolling_attempted+=1
@@ -288,6 +289,7 @@ def run(dry_run=False):
   discovery_stats['generic_rolling_research_notes']=generic_rolling_notes
   discovery_stats['generic_rolling_candidates_verified']=verified_rolling
   discovery_stats['market_gap_official_survey']=gap_survey
+  discovery_stats['explore_markets_without_ongoing_opportunities']=gap_context.get('rolling_candidate_count',len(rolling_candidates))
   discovery_stats['explore_markets_without_active_opportunities']=gap_context.get('count',0)
   discovery_stats['ongoing_market_research_notes']=ongoing_notes
   discovery_stats['market_gap_candidates']=[{'slug':m.get('slug'),'city':m.get('city')}
