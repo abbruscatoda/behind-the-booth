@@ -105,7 +105,7 @@ class Fetcher:
  def __init__(self,limit=90):
   self.limit=limit;self.requests=0;self.cache={};self.opener=build_opener(SafeRedirect())
   self.browser_enabled=os.environ.get('BTB_BROWSER_FALLBACK')=='1'
-  self.browser_attempts=0;self.browser_successes=0
+  self.browser_attempts=0;self.browser_successes=0;self.browser_failures={}
   self.browser_max_attempts=6
  def _browser_form(self,url):
   from browser_forms import public_google_form,render_public_form,BrowserUnavailable
@@ -116,7 +116,10 @@ class Fetcher:
   self.requests+=1
   try:
    result=render_public_form(url)
-  except BrowserUnavailable:
+  except BrowserUnavailable as error:
+   # Only bounded, internally generated reason labels; never raw site content.
+   reason=str(error)[:110]
+   self.browser_failures[reason]=self.browser_failures.get(reason,0)+1
    return None
   self.browser_successes+=1
   return result
