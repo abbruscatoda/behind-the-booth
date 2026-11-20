@@ -253,6 +253,9 @@ def run(dry_run=False):
     ongoing_notes.append('the-raleigh-market: '+str(exc)[:170])
    except Exception:
     ongoing_notes.append('the-raleigh-market: official pages or application currently inaccessible')
+  from market_gap_audit import audit_missing_markets
+  gap_survey=audit_missing_markets(gap_context.get('markets',[]),fetcher,now,limit=8)
+  discovery_stats['market_gap_official_survey']=gap_survey
   discovery_stats['explore_markets_without_active_opportunities']=gap_context.get('count',0)
   discovery_stats['ongoing_market_research_notes']=ongoing_notes
   discovery_stats['market_gap_candidates']=[{'slug':m.get('slug'),'city':m.get('city')}
