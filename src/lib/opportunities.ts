@@ -1,5 +1,6 @@
 import type { ResearchCoverage } from "./researchCoverage";
 import { opportunityCategoryStatus, type CategoryEvidence } from "./opportunityCategories";
+import { opportunityDeadline } from "./opportunityPresentation";
 
 export const VENDOR_CATEGORIES = ["Food & Beverages", "Food Trucks", "Art & Photography", "Handmade Crafts", "Jewelry & Accessories", "Clothing & Vintage", "Bath, Body & Beauty", "Plants & Farm Products", "Pet Products", "Services", "Other"];
 export type Opportunity = {
@@ -16,9 +17,53 @@ export const statusLabel = (value: string) => ({ open: "Applications open", limi
 export function safeExternalUrl(value: string): string | null {
  try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password ? url.href : null; } catch { return null; }
 }
-export function filterOpportunities(items: Opportunity[], filters: { search: string; city: string; month: string; category: string; status: string; includeUnconfirmed?: boolean }) {
- return items.filter(item => (!filters.search || `${item.title} ${item.organizer} ${item.city}`.toLowerCase().includes(filters.search.toLowerCase().trim()))
-  && (!filters.city || item.city === filters.city) && (!filters.month || (item.starts_on <= `${filters.month}-31` && item.ends_on >= `${filters.month}-01`))
-  && (!filters.category || (opportunityCategoryStatus(item, filters.category) === "eligible" || (filters.includeUnconfirmed === true && opportunityCategoryStatus(item, filters.category) === "unknown"))) && (filters.status === "all" || (filters.status === "active" ? ["open", "limited", "waitlist"].includes(item.effective_status) : filters.status === item.effective_status)));
+export type OpportunityFilters = {
+ search: string; city: string; month: string; category: string; status: string;
+ includeUnconfirmed?: boolean; maxBoothFee?: string; deadlineBefore?: string;
+ priceAvailability?: "all" | "published" | "unpublished";
+};
+export type OpportunitySort = "date" | "deadline" | "fee_asc" | "rating_desc";
+
+export function filterOpportunities(items: Opportunity[], filters: OpportunityFilters) {
+ const query = filters.search.trim().toLocaleLowerCase();
+ const max = filters.maxBoothFee?.trim() ? Number(filters.maxBoothFee) : null;
+ return items.filter(item => {
+  if (query && ![item.title,item.organizer,item.city,item.venue].join(" ").toLocaleLowerCase().includes(query)) return false;
+  if (filters.city && item.city !== filters.city) return false;
+  // ISO calendar dates compare lexically; use the actual month's final day.
+  if (filters.month && /^\\d{4}-(0[1-9]|1[0-2])$/.test(filters.month)) {
+   const [year,month] = filters.month.split("-").map(Number);
+   const last = new Date(Date.UTC(year,month,0)).getUTCDate();
+   if (item.starts_on > `${filters.month}-${String(last).padStart(2,"0")}` || item.ends_on < `${filters.month}-01`) return false;
+  }
+  if (filters.category) {
+   const categoryStatus = opportunityCategoryStatus(item,filters.category);
+   if (categoryStatus !== "eligible" && !(filters.includeUnconfirmed === true && categoryStatus === "unknown")) return false;
+  }
+  if (filters.status !== "all" && (filters.status === "active"
+   ? !["open","limited","waitlist"].includes(item.effective_status) : filters.status !== item.effective_status)) return false;
+  if (filters.priceAvailability === "published" && item.booth_fee === null) return false;
+  if (filters.priceAvailability === "unpublished" && item.booth_fee !== null) return false;
+  // Never treat a missing or category-specific fee as a free booth.
+  if (max !== null && Number.isFinite(max) && max >= 0 &&
+      (item.booth_fee === null || item.booth_fee > max)) return false;
+  if (filters.deadlineBefore) {
+   const cutoff = opportunityDeadline(item).sortAt;
+   // Unknown / series deadlines are not confirmed to fall before the date.
+   const limit = Date.parse(`${filters.deadlineBefore}T23:59:59-05:00`);
+   if (!Number.isFinite(limit) || !Number.isFinite(cutoff) || cutoff > limit) return false;
+  }
+  return true;
+ });
+}
+
+export function sortOpportunities(items: Opportunity[], sort: OpportunitySort): Opportunity[] {
+ const dateOrder = (a:Opportunity,b:Opportunity) => a.starts_on.localeCompare(b.starts_on) || a.title.localeCompare(b.title);
+ return [...items].sort((a,b) => {
+  if (sort === "deadline") return opportunityDeadline(a).sortAt - opportunityDeadline(b).sortAt || dateOrder(a,b);
+  if (sort === "fee_asc") return (a.booth_fee ?? Infinity) - (b.booth_fee ?? Infinity) || dateOrder(a,b);
+  if (sort === "rating_desc") return (b.history.review_count ? (b.history.overall ?? -1) : -1) - (a.history.review_count ? (a.history.overall ?? -1) : -1) || dateOrder(a,b);
+  return dateOrder(a,b);
+ });
 }
 export const fee = (amount: number | null) => amount === null ? "Not published" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(amount));
