@@ -32,6 +32,7 @@ class SourceRegistryTests(unittest.TestCase):
     if name=='btb_research_run':
      return 'test-run'
     if name=='btb_research_discovery_backlog':return []
+    if name=='btb_research_coverage_context':return []
     if name=='btb_research_record_discovery_leads':
      self.assertEqual(len(body['p_sources']),len(discovery.SOURCES))
      return {'saved':1,'approved_sources':len(body['p_sources'])}
