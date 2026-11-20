@@ -20,6 +20,7 @@ RESTRICT_RE=re.compile(r'\b(?:only accepting applications.{0,130}(?:returning|in
 ROLL_RE=re.compile(r'\b(?:applications (?:are )?accepted on a rolling basis|applications rolling|year.round applications|apply any time)\b',re.I)
 SEASON_RE=re.compile(r'\b(?:accepting (?:vendor )?applications.{0,70}20\d{2} season|20\d{2} (?:vendor )?applications (?:are )?open|apply for (?:our|the) 20\d{2} season)\b',re.I)
 GATE_RE=re.compile(r'\b(?:must sign in|sign in to continue|you need permission|request access|cannot access this form)\b',re.I)
+DIRECTORY_PATHS={'applications','vendor-info','vendor-information','opportunities','vendor-opportunities'}
 MULTI_RE=re.compile(r'\b(?:select (?:your |the )?(?:event )?dates?|choose (?:event )?dates?|multiple market dates|different (?:event )?dates|market series|Cary Night Market Dates|please only choose the markets)\b',re.I)
 
 def diagnose_one(lead,fetcher,now=None,allow_target=True):
@@ -38,7 +39,7 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
   return out('source_unavailable','Official organizer page could not be read: '+source_error(error)+'.')
  if target not in root.root.links(source):
   return out('unlinked','The current official organizer page does not link this exact application; an old saved URL cannot establish current availability.')
- if not APP_RE.search(name) and not supported_form(target):
+ if not APP_RE.search(name) and not supported_form(target) and urlparse(target).path.strip('/').split('/')[-1].lower() not in DIRECTORY_PATHS:
   return out('needs_evidence','The organizer links a page but has not identified this link as an open vendor application.')
  text=visible_text(root.root)
  linked_text=''
@@ -85,6 +86,14 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
   if CLOSE_RE.search(status_text) or re.search(
       r'\bApplications\s+closed!|Application for the new year will be open in January',status_text,re.I):
    return out('closed','Official linked application-status page confirms this intake is closed; generic organizer Apply navigation does not establish an open window.')
+ # A general index is a research source, not a dated opportunity.
+ # Recheck the index daily and examine its child applications separately.
+ path_tail=urlparse(target).path.rstrip('/').split('/')[-1].lower()
+ if path_tail in DIRECTORY_PATHS and not supported_form(target):
+  outgoing={url for url in doc.root.links(target) if valid_url(url) and url!=target}
+  if outgoing:
+   return out('application_directory',
+              'Official organizer application index contains more links; research its individual market and vendor forms rather than publishing the index as a market.')
  if GATE_RE.search(linked_text):
   return out('form_gated','The linked form requests sign-in or permissions, so its submission state cannot be independently verified.')
  if ROLL_RE.search(linked_text) or ROLL_RE.search(text):
