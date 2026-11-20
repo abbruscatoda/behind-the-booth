@@ -46,6 +46,12 @@ class ShortcutRegressionTests(unittest.TestCase):
   fetch=Fetch(mapping={SHORT:error})
   self.assertEqual(resolve_shortcut(SHORT,fetch),FULL)
 
+ def test_safe_google_share_query_can_canonicalize(self):
+  self.assertEqual(google_form_identity(FULL+'?usp=sf_link'),FULL)
+  self.assertEqual(google_form_identity(FULL+'?usp=sharing'),FULL)
+  self.assertIsNone(google_form_identity(FULL+'?entry.221=private'))
+  self.assertIsNone(google_form_identity(FULL+'?usp=sf_link&entry.221=private'))
+
  def test_unlinked_saved_shortcut_is_not_trusted(self):
   self.assertEqual(reconcile_shortcuts([lead()],Fetch(linked=False),{ROOT}),[])
 
