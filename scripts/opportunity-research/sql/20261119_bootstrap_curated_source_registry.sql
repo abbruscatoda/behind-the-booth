@@ -1,6 +1,6 @@
 -- Bootstrap the exact 25 source tuples reviewed in discovery.py so
 -- publication and lead intake share the same registry from deployment.
-insert into btb_private.triangle_research_sources(source_url,organizer,city,active)
+insert into btb_private.triangle_research_sources(source_url,organizer,city)
 values
 ('https://www.trianglepopup.com/applications','Triangle Pop-Up','Raleigh'),
 ('https://thenightmarketcompany.com/','Night Market Company','Cary'),
