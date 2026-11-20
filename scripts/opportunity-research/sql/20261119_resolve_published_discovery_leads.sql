@@ -6,7 +6,7 @@ alter table btb_private.triangle_discovery_leads
  add column if not exists resolved_at timestamptz;
 
 create or replace function btb_private.resolve_published_discovery_leads()
-returns integer language plpgsql security definer set search_path='' as $
+returns integer language plpgsql security definer set search_path='' as $reconcile$
 begin
  with matching as (
   select l.id as lead_id, o.id as opportunity_id,
@@ -41,7 +41,7 @@ begin
  from matching m
  where l.id=m.lead_id and m.precedence=1 and l.review_state='new';
  return 1;
-end $;
+end $reconcile$;
 
 revoke all on function btb_private.resolve_published_discovery_leads() from public,anon,authenticated;
 
