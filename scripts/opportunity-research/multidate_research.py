@@ -24,9 +24,9 @@ PROVIDERS=(
   'venue':'Downtown Cary Park'},
 )
 MONTHS='|'.join(month_name[i] for i in range(1,13))
-DATED=re.compile(r'\\b('+MONTHS+r')\\s+(\\d{1,2}),?\\s+(20\\d{2})\\s+(?:Market|\\(Holiday[^)]*\\))',re.I)
-FEE=re.compile(r'\\$\\s*(\\d{1,4})(?:\\.\\d{2})?')
-SUBMIT=re.compile(r'\\bSubmit Form\\b',re.I)
+DATED=re.compile(r'\b('+MONTHS+r')\s+(\d{1,2}),?\s+(20\d{2})\s+(?:Market|\(Holiday[^)]*\))',re.I)
+FEE=re.compile(r'\$\s*(\d{1,4})(?:\.\d{2})?')
+SUBMIT=re.compile(r'\bSubmit Form\b',re.I)
 CLOSED=re.compile(r'no longer accepting responses|form.{0,30}closed|applications? are closed',re.I)
 
 def verify_provider(provider,fetcher,now=None):
@@ -59,7 +59,7 @@ def verify_provider(provider,fetcher,now=None):
   raise Uncertain('The linked form does not identify the approved 2026 market season.')
  if not SUBMIT.search(details):
   raise Uncertain('Public form has no readable Submit Form action.')
- app_fee=re.search(r'Application Fee.{0,180}?\\$\\s*10(?:\\.00)?',details,re.I|re.S)
+ app_fee=re.search(r'Application Fee.{0,180}?\$\s*10(?:\.00)?',details,re.I|re.S)
  if not app_fee:raise Uncertain('Application fee has changed and needs verification.')
  results=[]
  seen=set()
