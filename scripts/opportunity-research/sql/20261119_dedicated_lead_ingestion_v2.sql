@@ -8,9 +8,8 @@ BEGIN
  IF current_definition IS NULL
  OR position('create or replace function public.btb_research_record_discovery_leads(' in lower(current_definition))=0
  THEN RAISE EXCEPTION 'Approved two-argument ingestion RPC missing';END IF;
- dedicated_definition:=regexp_replace(current_definition,
-  'btb_research_record_discovery_leads\\(','btb_research_record_discovery_leads_v2(',
-  'i');
+ dedicated_definition:=replace(current_definition,
+  'btb_research_record_discovery_leads(','btb_research_record_discovery_leads_v2(');
  IF dedicated_definition=current_definition THEN
   RAISE EXCEPTION 'Unable to name dedicated ingestion function';END IF;
  EXECUTE dedicated_definition;
