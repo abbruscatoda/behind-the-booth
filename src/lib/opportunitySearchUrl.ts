@@ -2,14 +2,15 @@ import { VENDOR_CATEGORIES, type OpportunityFilters, type OpportunitySort } from
 
 export const defaultOpportunityFilters: OpportunityFilters = {
  search: "", city: "", month: "", category: "", status: "active",
- includeUnconfirmed: true, maxBoothFee: "", deadlineBefore: "", priceAvailability: "all",
+ includeUnconfirmed: true, maxBoothFee: "", deadlineBefore: "", priceAvailability: "all", schedule: "all",
 };
 export const defaultOpportunitySort: OpportunitySort = "date";
 
-const keys = ["q", "city", "month", "category", "status", "unconfirmed", "price", "maxFee", "deadline", "sort"] as const;
+const keys = ["q", "city", "month", "category", "status", "unconfirmed", "price", "maxFee", "deadline", "sort", "schedule"] as const;
 const statuses = new Set(["active", "all", "open", "limited", "waitlist", "needs_recheck", "closed"]);
 const sorts = new Set<OpportunitySort>(["date", "deadline", "fee_asc", "rating_desc"]);
 const prices = new Set(["all", "published", "unpublished"]);
+const schedules = new Set(["all", "dated", "seasonal", "ongoing"]);
 const isoMonth = /^\d{4}-(0[1-9]|1[0-2])$/;
 const isoDate = /^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/;
 function validDate(value: string) {
@@ -35,6 +36,7 @@ export function readOpportunitySearch(params: URLSearchParams): {filters: Opport
    status: statuses.has(status) ? status : "active",
    includeUnconfirmed: get("unconfirmed") !== "0",
    priceAvailability: prices.has(price) ? price as OpportunityFilters["priceAvailability"] : "all",
+   schedule: schedules.has(get("schedule")) ? get("schedule") as OpportunityFilters["schedule"] : "all",
    maxBoothFee: validFee(maxFee) ? maxFee : "",
    deadlineBefore: validDate(deadline) ? deadline : "",
   },
@@ -55,5 +57,6 @@ export function writeOpportunitySearch(url: URL, filters: OpportunityFilters, so
  if (filters.maxBoothFee && validFee(filters.maxBoothFee)) put("maxFee", filters.maxBoothFee);
  if (filters.deadlineBefore && validDate(filters.deadlineBefore)) put("deadline", filters.deadlineBefore);
  if (sort !== defaultOpportunitySort && sorts.has(sort)) put("sort", sort);
+ if (filters.schedule && filters.schedule !== "all" && schedules.has(filters.schedule)) put("schedule",filters.schedule);
  return next;
 }
