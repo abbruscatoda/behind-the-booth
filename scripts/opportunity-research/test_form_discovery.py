@@ -98,6 +98,7 @@ class AutoPublicFormTests(unittest.TestCase):
     calls.append(name)
     if name=='btb_research_context':return {'enabled':True,'items':[]}
     if name=='btb_research_discovery_backlog':return []
+    if name=='btb_research_market_gaps':return {'markets':[],'count':0}
     if name=='btb_research_run':return 'run'
     if name=='btb_research_publish_form':
      assert body['p_result']['policy']=='triangle-form-auto-v1'
