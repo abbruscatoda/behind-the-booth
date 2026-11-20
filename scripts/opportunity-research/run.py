@@ -308,6 +308,7 @@ def run(dry_run=False):
   if getattr(fetcher,'browser_enabled',False):
    discovery_stats['browser_forms']={'attempts':fetcher.browser_attempts,
     'successful_public_renders':fetcher.browser_successes,
+    'failure_reasons':getattr(fetcher,'browser_failures',{}),
     'attempt_limit':fetcher.browser_max_attempts,
     'brewgaloo_form_probe':form_probe}
   summary={'dry_run':dry_run,'counts':dict(counts),'issues':problems[:12],'source_requests':fetcher.requests,'discovery':discovery_stats}
