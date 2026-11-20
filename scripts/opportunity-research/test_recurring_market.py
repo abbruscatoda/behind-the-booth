@@ -124,6 +124,7 @@ class RecurringWaitlistTests(unittest.TestCase):
     if name=='btb_research_context':return {'enabled':True,'items':[]}
     if name=='btb_research_run':return 'test-run'
     if name=='btb_research_discovery_backlog':return []
+    if name=='btb_research_market_gaps':return {'markets':[],'count':0}
     if name=='btb_research_publish_recurring':
      assert body['p_result']['policy']==recurring.POLICY
      return {'action':'publish','reason':'Recurring verified waitlist published.'}
