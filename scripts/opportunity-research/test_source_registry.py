@@ -32,6 +32,7 @@ class SourceRegistryTests(unittest.TestCase):
     if name=='btb_research_run':
      return 'test-run'
     if name=='btb_research_discovery_backlog':return []
+    if name=='btb_research_market_gaps':return {'markets':[],'count':0}
     if name=='btb_research_coverage_context':return []
     if name=='btb_research_finalize_discovery_leads':return {'resolved':0}
     if name=='btb_research_record_discovery_leads_v2':
