@@ -1,6 +1,7 @@
 import type { ResearchCoverage } from "./researchCoverage";
 import { opportunityCategoryStatus, type CategoryEvidence } from "./opportunityCategories";
 import { opportunityDeadline } from "./opportunityPresentation";
+import { deadlineForInput } from "./opportunityDeadline";
 
 export const VENDOR_CATEGORIES = ["Food & Beverages", "Food Trucks", "Art & Photography", "Handmade Crafts", "Jewelry & Accessories", "Clothing & Vintage", "Bath, Body & Beauty", "Plants & Farm Products", "Pet Products", "Services", "Other"];
 export type Opportunity = {
@@ -50,8 +51,7 @@ export function filterOpportunities(items: Opportunity[], filters: OpportunityFi
   if (filters.deadlineBefore) {
    const cutoff = opportunityDeadline(item).sortAt;
    // Unknown / series deadlines are not confirmed to fall before the date.
-   const limit = Date.parse(`${filters.deadlineBefore}T23:59:59-05:00`);
-   if (!Number.isFinite(limit) || !Number.isFinite(cutoff) || cutoff > limit) return false;
+   if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(filters.deadlineBefore) || !Number.isFinite(cutoff) || deadlineForInput(item.deadline ?? "") > filters.deadlineBefore) return false;
   }
   return true;
  });
