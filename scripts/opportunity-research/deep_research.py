@@ -39,8 +39,6 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
   return out('source_unavailable','Official organizer page could not be read: '+source_error(error)+'.')
  if target not in root.root.links(source):
   return out('unlinked','The current official organizer page does not link this exact application; an old saved URL cannot establish current availability.')
- if not APP_RE.search(name) and not supported_form(target) and urlparse(target).path.strip('/').split('/')[-1].lower() not in DIRECTORY_PATHS:
-  return out('needs_evidence','The organizer links a page but has not identified this link as an open vendor application.')
  text=visible_text(root.root)
  linked_text=''
  doc=None
@@ -52,6 +50,18 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
    return out('source_unavailable','Linked organizer application or form could not be read: '+source_error(error)+'.')
  if doc is None:
   return out('needs_evidence','The linked target could not be examined as a supported public application URL; further official-source evidence is required.')
+ # Classify the actual application type before concluding that a vendor
+ # market is missing dates. Workshop enrollment and permanent retail
+ # consignment are distinct programs, not event booth opportunities.
+ if (re.search(r'\\b(?:workshop|master class|printing session)\\b',linked_text,re.I)
+     and re.search(r'\\b(?:register|registration|participants?|printing day|master class)\\b',linked_text,re.I)
+     and re.search(r'\\b(?:tuition|printing|woodblock|master class)\\b',linked_text,re.I)):
+  return out('not_application','Not a vendor market: this is an instructional workshop registration, not an event booth application.')
+ if (re.search(r'you are applying to have your products sold (?:in|at)',linked_text,re.I)
+     and re.search(r'(?:at.will contract|no stated ending date|initial inventory|products sold in the store|products sold at the store)',linked_text,re.I)):
+  return out('not_application','Not a vendor market: this is a permanent retail store placement or consignment application, not an event booth.')
+ if not APP_RE.search(name) and not supported_form(target) and urlparse(target).path.strip('/').split('/')[-1].lower() not in DIRECTORY_PATHS:
+  return out('needs_evidence','The linked source is not identified as an open vendor-market application.')
  combined=' '.join([text,linked_text])
  # Restriction/closure on the *target* page outweighs the menu label.
  # A menu link *labeled* "Applications Closed" is navigation, not
