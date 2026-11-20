@@ -7,9 +7,9 @@ import { activeCategoryEvidence, categoryEvidenceLabel, categoryHighlights, list
 import { currentCoverage, coverageLabels, coverageStatus } from "../lib/researchCoverage";
 import { opportunityDeadline, opportunityBoothPrice, opportunityDetailSections } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
-import { filterOpportunities, sortOpportunities, fee, safeExternalUrl, statusLabel, VENDOR_CATEGORIES, type Opportunity, type OpportunitySort } from "../lib/opportunities";
+import { filterOpportunities, sortOpportunities, fee, safeExternalUrl, statusLabel, VENDOR_CATEGORIES, type Opportunity, type OpportunityFilters, type OpportunitySort } from "../lib/opportunities";
 
-const defaultFilters = {search:"",city:"",month:"",category:"",status:"active",includeUnconfirmed:true,maxBoothFee:"",deadlineBefore:"",priceAvailability:"all" as const};
+const defaultFilters: OpportunityFilters = {search:"",city:"",month:"",category:"",status:"active",includeUnconfirmed:true,maxBoothFee:"",deadlineBefore:"",priceAvailability:"all"};
 
 export default function OpportunityBoard({ marketId, compact = false }: { marketId?: string; compact?: boolean }) {
  const [items,setItems]=useState<Opportunity[]>([]), [loading,setLoading]=useState(true), [error,setError]=useState("");
