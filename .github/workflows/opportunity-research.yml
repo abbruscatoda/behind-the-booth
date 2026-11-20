@@ -29,11 +29,16 @@ jobs:
           persist-credentials: false
       - name: Check verifier rules
         run: python3 -m unittest discover -s scripts/opportunity-research -p 'test_*.py'
+      - name: Install read-only Chromium fallback
+        run: |
+          python3 -m pip install --disable-pip-version-check 'playwright>=1.56,<2'
+          python3 -m playwright install --with-deps chromium
       - name: Verify official sources
         env:
           BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
           BTB_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.BTB_SUPABASE_PUBLISHABLE_KEY }}
           BTB_RESEARCH_SECRET: ${{ secrets.BTB_RESEARCH_SECRET }}
+          BTB_BROWSER_FALLBACK: '1'
           BTB_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         shell: bash
         run: |
