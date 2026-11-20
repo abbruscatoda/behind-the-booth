@@ -102,6 +102,22 @@ class DiagnosticsTests(unittest.TestCase):
   result=research.diagnose_one({'source_url':source,'target_url':target,'title':'Vendor Info'},pages)
   self.assertEqual(result['status'],'unlinked')
 
+ def test_be_a_vendor_label_is_actually_read_before_classification(self):
+  pages=Pages(reason='Applications for 2026 market season are now closed.')
+  entry={**lead(),'title':'Be A Vendor'}
+  self.assertEqual(research.diagnose_one(entry,pages)['status'],'closed')
+  self.assertEqual(pages.requests,2)
+
+ def test_guest_vendors_label_is_checked_and_closed(self):
+  pages=Pages(reason='The Market is not currently accepting guest vendor applications.')
+  entry={**lead(),'title':'Guest Vendors'}
+  self.assertEqual(research.diagnose_one(entry,pages)['status'],'closed')
+  self.assertEqual(pages.requests,2)
+
+ def test_currently_not_accepting_word_order_is_recognized(self):
+  pages=Pages(reason='Our market is currently not accepting new applications.')
+  self.assertEqual(research.diagnose_one(lead(),pages)['status'],'closed')
+
  def test_old_unlinked_form_is_not_used_as_current_evidence(self):
   pages=Pages(linked=False)
   self.assertEqual(research.diagnose_one(lead(),pages)['status'],'unlinked')
