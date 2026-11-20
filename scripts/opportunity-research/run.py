@@ -5,6 +5,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler
+from urllib.error import HTTPError
 from research_quality import apply_quality_gate,add_review_suggestions
 from review_policy import defer_inconclusive_review, transient_source_failure
 from verifier import Fetcher, discover, verify, canonical_event, canonical_application, application_key, norm, Uncertain, verify_artspace
@@ -27,9 +28,22 @@ class Database:
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
    with build_opener(NoRedirect()).open(request,timeout=30) as response:return json.load(response)
-  except Exception as cause:
-   # Do not emit response bodies, headers or credentials into GitHub logs.
-   raise RuntimeError(f'{name} failed; inspect configuration and the admin run history.') from None
+  except HTTPError as cause:
+   # Only expose known PostgREST / SQLSTATE *codes*. Response messages can
+   # contain user-controlled URLs, secrets or SQL parameters, so never log
+   # message, details, hints, request/response headers or response bodies.
+   error_code='unknown'
+   try:
+    payload=json.loads(cause.read(4096).decode('utf-8','replace'))
+    received=payload.get('code','') if isinstance(payload,dict) else ''
+    allowed={'23505','23503','23514','23502','22023','22001','22003',
+             '23P01','42501','42804','42703','42702','42P01','P0001',
+             'P0002','PGRST116','PGRST202','PGRST203'}
+    if received in allowed:error_code=received
+   except (ValueError,UnicodeError,OSError):pass
+   raise RuntimeError(f'{name} failed (HTTP {cause.code}, code {error_code}); inspect database diagnostics.') from None
+  except Exception:
+   raise RuntimeError(f'{name} failed (network or response error); inspect database diagnostics.') from None
 
 def existing_result(item,found,fetcher,now):
  if item.get('verification_policy')=='seasonal-official-v1':
