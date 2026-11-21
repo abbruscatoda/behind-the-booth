@@ -107,6 +107,17 @@ class OfficialProgramsTests(unittest.TestCase):
   self.assertIsNone(r['candidate']['application_fee'])
   self.assertIsNone(r['candidate']['booth_fee'])
 
+ def test_unreadable_google_form_is_not_assumed_to_have_no_published_fees(self):
+  r=verify_program('south-durham-winter-craft',Fetch(),NOW)
+  self.assertIn('access_restricted',r['candidate']['research_notes'])
+  self.assertIn('does not establish',r['candidate']['fee_notes'])
+ def test_form_reporting_closed_prevents_advertising_an_open_application(self):
+  f=Fetch()
+  form=PROGRAMS['south-durham-winter-craft']['application']
+  f.docs[form]='<h1>South Durham Craft Vendor Application</h1><p>This form is no longer accepting responses</p>'
+  with self.assertRaises(Uncertain):
+   verify_program('south-durham-winter-craft',f,NOW)
+
  def test_unrecognized_organizer_cannot_become_approved_program(self):
   with self.assertRaises(Uncertain):
    verify_program('fabricated-vendor-program',Fetch(),NOW)
