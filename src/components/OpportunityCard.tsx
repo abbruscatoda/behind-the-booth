@@ -4,6 +4,7 @@ import Link from "next/link";
 import { categoryEvidenceLabel, categoryHighlights, activeCategoryEvidence, listedOpportunityCategories, opportunityCategoryStatus } from "../lib/opportunityCategories";
 import { opportunityDeadline, opportunityBoothPrice } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
+import { isNewlyPosted } from "../lib/opportunityRecency";
 import { fee, safeExternalUrl, statusLabel, type Opportunity } from "../lib/opportunities";
 
 /** Quick comparison card: verified facts first; detailed evidence lives in a modal. */
@@ -35,7 +36,10 @@ export default function OpportunityCard({
      : "border-[#252521]/20 bg-[#252521]/5 text-[#55554E]";
  return <article id={item.id} className="heritage-card flex h-full min-w-0 scroll-mt-8 flex-col [overflow-wrap:anywhere]">
    <div className="flex flex-wrap items-center justify-between gap-2">
-     <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#626C57]">{isRolling?"Ongoing market":item.schedule_type==="seasonal_application"?"Seasonal application":item.schedule_type==="recurring_season"?"Seasonal waitlist":"Vendor opportunity"}</p>
+     <div className="flex flex-wrap items-center gap-2">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#626C57]">{isRolling?"Ongoing market":item.schedule_type==="seasonal_application"?"Seasonal application":item.schedule_type==="recurring_season"?"Seasonal waitlist":"Vendor opportunity"}</p>
+      {isNewlyPosted(item)&&<span className="border border-[#AD573B]/35 bg-[#AD573B]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#7A3A29]" title="First published within the last 7 days">New</span>}
+     </div>
      <span className={`rounded-sm border px-2 py-1 text-[11px] font-semibold leading-snug ${statusTone}`}>{statusLabel(item.effective_status)}</span>
    </div>
    <div className="mt-3 h-px bg-[#252521]/15" />
