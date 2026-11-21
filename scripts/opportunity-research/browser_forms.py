@@ -28,6 +28,43 @@ def public_google_form(url):
  return (p.hostname=='forms.gle'
      or (p.hostname=='docs.google.com' and GOOGLE_FORM.fullmatch(p.path) is not None))
 
+def _collect_public_pages(page, first_visible, max_extra_pages=5):
+ """Capture only public text/links while optionally advancing a Next control.
+
+ No field is filled. POST/PUT/DELETE requests remain blocked by the caller.
+ A required field usually prevents advancing and leaves the walk incomplete.
+ The Submit button is NEVER clicked.
+ """
+ snapshots=[(page.content(), first_visible)]
+ current=first_visible
+ reached_submit=False
+ for _ in range(max_extra_pages+1):
+  submit=page.get_by_role('button',name='Submit',exact=True)
+  if submit.count():
+   reached_submit=True
+   break
+  nxt=page.get_by_role('button',name='Next',exact=True)
+  if not nxt.count() or len(snapshots)>max_extra_pages:
+   break
+  try:
+   nxt.first.click(timeout=1800)
+   page.wait_for_timeout(350)
+   updated=page.locator('body').inner_text(timeout=3000)
+  except Exception:
+   break
+  if not public_google_form(page.url.split('?')[0]):
+   break
+  if not updated.strip() or updated.strip()==current.strip():
+   break
+  if re.search(r'you need permission|request access|sign in to continue',updated,re.I):
+   break
+  if any(updated == previous for _,previous in snapshots):
+   break
+  snapshots.append((page.content(),updated))
+  current=updated
+ return snapshots,reached_submit
+
+
 def render_public_form(url,timeout_ms=16000):
  """Return Document/hash only when a public form loaded successfully."""
  if not public_google_form(url):raise BrowserUnavailable('Not a public Google Form')
@@ -73,14 +110,19 @@ def render_public_form(url,timeout_ms=16000):
     landed=page.url
     if not public_google_form(landed.split('?')[0]):
      raise BrowserUnavailable('Form requires authorization or redirected')
-    html=page.content()
     visible=page.locator('body').inner_text(timeout=5000)
     if re.search(r'(?:you need permission|request access|sign in to continue|you must sign in)',visible,re.I):
      raise BrowserUnavailable('Form requires authorization')
     if not visible.strip():raise BrowserUnavailable('No public form text rendered')
-    # Rendered text is included even when the form framework mounts text
-    # outside regular HTML nodes. It remains public page content only.
-    combined=html+'<section data-btb-rendered-public-form="true">'+escape(visible)+'</section>'
+    pages,all_read=_collect_public_pages(page,visible)
+    # Keep actual visible HTML anchors/fee-document links from each reached
+    # page, plus rendered text. This is not a form submission and contains
+    # no answers because none are entered and all POSTs are blocked.
+    combined=''.join(
+      html+'<section data-btb-rendered-public-form="true">'+escape(text)+'</section>'
+      for html,text in pages)
+    if all_read:
+     combined+='<span data-btb-all-public-pages-read="true"></span>'
     raw=combined.encode('utf-8')
     if len(raw)>MAX_SOURCE_BYTES:raise BrowserUnavailable('Rendered form exceeds size limit')
     return Document(combined),sha256(raw).hexdigest()
