@@ -50,7 +50,7 @@ export default function OpportunityCard({
    </div>
    <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-y border-[#252521]/15 py-3">
      <div className="min-w-0"><dt className="text-[11px] font-medium text-[#626C57]">{booth.label}</dt><dd className="mt-1 text-base font-bold leading-tight text-[#252521]">{booth.value}</dd></div>
-     <div className="min-w-0"><dt className="text-[11px] font-medium text-[#626C57]">Application fee</dt><dd className="mt-1 text-sm font-semibold leading-snug">{fee(item.application_fee)}</dd></div>
+     <div className="min-w-0"><dt className="text-[11px] font-medium text-[#626C57]">Application fee</dt><dd className="mt-1 text-sm font-semibold leading-snug">{fee(item.application_fee)}</dd>{item.application_fee!==null&&/waived for current vendors/i.test(item.fee_notes)&&<p className="mt-1 text-[11px] leading-snug text-[#626C57]">Waived for current vendors</p>}</div>
      {item.deposit!==null&&<div className="col-span-2 text-xs text-[#55554E]">Deposit: <span className="font-semibold">{fee(item.deposit)}</span></div>}
      {booth.note&&<p className="col-span-2 text-xs text-[#07472B]">{booth.note}</p>}
    </dl>
