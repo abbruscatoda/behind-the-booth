@@ -1,5 +1,7 @@
 """Official rolling-market verification contract: never infer a booked date."""
 import unittest
+from unittest.mock import patch
+import run as worker
 from datetime import datetime,timezone
 from verifier import Document,Uncertain
 from ongoing_market import verify_raleigh,ROOT,SOURCE,APPLICATION,POLICY
@@ -37,6 +39,14 @@ class RollingTests(unittest.TestCase):
   self.assertEqual(result['candidate']['starts_on'],'2026-01-01')
   self.assertEqual(result['candidate']['ends_on'],'2027-12-31')
   self.assertIn('$50',result['candidate']['fee_notes'])
+ def test_legacy_manual_rolling_record_uses_dedicated_verifier(self):
+  item={'market_slug':'the-raleigh-market','schedule_type':'rolling_market',
+        'verification_policy':'manual','source_url':SOURCE,
+        'application_url':APPLICATION}
+  result=worker.existing_result(item,{},Fetch(),datetime(2026,11,20,tzinfo=timezone.utc))
+  self.assertEqual(result['decision'],'publish')
+  self.assertEqual(result['policy'],POLICY)
+
  def test_closure_blocks_publishing(self):
   with self.assertRaises(Uncertain):
    verify_raleigh(Fetch(source=VENDOR+'<p>Temporary vendor applications are closed.</p>'))
