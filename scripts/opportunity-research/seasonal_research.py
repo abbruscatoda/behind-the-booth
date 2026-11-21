@@ -211,8 +211,10 @@ def _official_year_round_embedded(provider,root,root_hash,vendor,vendor_hash,fet
  from urllib.error import HTTPError
  market=visible_text(root.root);text=visible_text(vendor.root)
  name=provider['name']
- if not re.search(re.escape(name),market,re.I):
-  raise Uncertain('Official market identity is not present on its organizer page.')
+ # Some official landing pages use a generic heading. Trust the linked vendor
+ # page or the readable, same-market form as an alternative identity witness;
+ # never accept an anonymous/blocked form without an official named page.
+ official_identity=bool(re.search(re.escape(name),market+' '+text,re.I))
  if not re.search(r'(?:Saturdays?.{0,35}year.round|year.round.{0,35}Saturdays?)',market,re.I):
   raise Uncertain('A year-round Saturday schedule is not explicitly confirmed.')
  if not re.search(r'(?:market vendors?|regular market vendors?)',text,re.I):
@@ -253,6 +255,9 @@ def _official_year_round_embedded(provider,root,root_hash,vendor,vendor_hash,fet
   if not active:
    raise Uncertain('No enabled Next or Submit control was visible on the public application.')
   form_access='readable_first_page'
+  official_identity=official_identity or bool(re.search(re.escape(name),ft,re.I))
+ if not official_identity:
+  raise Uncertain('Market identity is missing from both official pages and the public application.')
  today=now.astimezone(ZoneInfo('America/New_York')).date()
  horizon_start=date(today.year,1,1)
  horizon_end=date(today.year+1,12,31)
