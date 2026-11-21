@@ -8,7 +8,7 @@ import re
 from decimal import Decimal
 from category_rules import visible_text,nodes_with_parents
 from verifier import Uncertain,clean
-from form_fees import extract_labeled_fees, extract_fee_conditions
+from form_fees import extract_amount_first_fees, extract_fee_conditions
 
 MONEY=r'\$\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)'
 BLOCK=r'must sign in|sign in to continue|allow google forms access|can.t access this content|request access|you need permission'
@@ -56,7 +56,7 @@ def read_public_form(doc):
  # label, with extra conditions (e.g. "$30 per event: 10x10 booth fee").
  # Capture only unambiguous prices in the first public page. A form whose
  # navigation says "Next" is still *incomplete*, even with readable fees.
- labeled=extract_labeled_fees(text)
+ labeled=extract_amount_first_fees(text)
  for key in ('booth_fee','application_fee'):
   match=labeled.get(key)
   if match is not None:
