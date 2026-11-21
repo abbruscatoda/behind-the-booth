@@ -11,6 +11,19 @@ DOLLARS = r"\$\s*([0-9]{1,5}(?:\.[0-9]{1,2})?)"
 APPLICATION = r"(?:non[- ]?refundable\s+)?(?:(?:vendor|craft)\s+)?application\s+fee"
 BOOTH = r"(?<!Second )(?<!Additional )(?:(?:event|per[- ]event|standard|daily|single[- ]day)\s+)?(?:booth|stall|table|space)\s+fee"
 
+# Absence of a published price is never evidence that the price is zero.
+# Explicit free-intake wording in the *same verified application* is evidence.
+FREE_APPLICATION = re.compile(
+    r"\\b(?:there\\s*(?:is|['’]s)\\s+|(?:we\\s+)?charge\\s+)?no\\s+(?:(?:vendor|craft|registration)\\s+)?application\\s+fee\\b"
+    r"|\\bapplication\\s+fee\\s*[:=]\\s*\\$\\s*0(?:\\.00)?\\b"
+    r"|\\b\\$\\s*0(?:\\.00)?\\s+application\\s+fee\\b", re.I,
+)
+
+def explicitly_free_application(text):
+    """True only for explicit zero-cost application wording, not missing prices."""
+    normalized = ' '.join((text or '').split())
+    return bool(FREE_APPLICATION.search(normalized))
+
 def _patterns(label):
     # Amount before label, e.g. "$28 NON-REFUNDABLE Application Fee"
     # or "$35 Event Booth Fee".
@@ -112,8 +125,13 @@ def extract_labeled_fees(text):
     booth = (None if len({m.group(1) for m in event_options}) > 1
              else standard if per_event is None
              else per_event if standard is None or standard == per_event else None)
+    application_fee = _amount(normalized, APPLICATION)
+    # Both a positive charge and an explicit free-intake statement are
+    # contradictory; do not pick one arbitrarily.
+    if explicitly_free_application(normalized):
+        application_fee = 0.0 if application_fee is None else None
     return {
-        "application_fee": _amount(normalized, APPLICATION),
+        "application_fee": application_fee,
         "booth_fee": booth,
     }
 
