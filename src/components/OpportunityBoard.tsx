@@ -1,22 +1,32 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import OpportunityCard from "./OpportunityCard";
 import OpportunityDetailsDialog from "./OpportunityDetailsDialog";
 import { createClient } from "../lib/supabase/client";
 import { opportunityCategoryStatus } from "../lib/opportunityCategories";
-import { filterOpportunities, sortOpportunities, statusLabel, VENDOR_CATEGORIES, type Opportunity, type OpportunitySort } from "../lib/opportunities";
+import { filterOpportunities, sortOpportunities, statusLabel, VENDOR_CATEGORIES, type Opportunity, type OpportunitySort, type OpportunityFilters } from "../lib/opportunities";
 import { defaultOpportunityFilters, defaultOpportunitySort, readOpportunitySearch, writeOpportunitySearch } from "../lib/opportunitySearchUrl";
 
+/** Counts only selections tucked into the optional panel. */
+function additionalFilterCount(filters: OpportunityFilters): number {
+ return Number(Boolean(filters.month))
+  + Number((filters.schedule??"all")!=="all")
+  + Number((filters.priceAvailability??"all")!=="all")
+  + Number(Boolean(filters.maxBoothFee))
+  + Number(Boolean(filters.deadlineBefore));
+}
 export default function OpportunityBoard({ marketId, compact = false }: { marketId?: string; compact?: boolean }) {
  const [items,setItems]=useState<Opportunity[]>([]), [loading,setLoading]=useState(true), [error,setError]=useState("");
  const [filters,setFilters]=useState({...defaultOpportunityFilters});
  const [urlReady,setUrlReady]=useState(false),[shareMessage,setShareMessage]=useState("");
  const [sort,setSort]=useState<OpportunitySort>(defaultOpportunitySort),[refresh,setRefresh]=useState(0),[saved,setSaved]=useState<string[]>([]),[saving,setSaving]=useState<string|null>(null),[message,setMessage]=useState("");
  const [selectedOpportunity,setSelectedOpportunity]=useState<Opportunity|null>(null);
+ const [moreFiltersOpen,setMoreFiltersOpen]=useState(false);
+ const moreFiltersId=useId();
  useEffect(()=>{
   if(compact || marketId)return;
-  const fromUrl=()=>{const state=readOpportunitySearch(new URLSearchParams(window.location.search));setFilters(state.filters);setSort(state.sort);};
+  const fromUrl=()=>{const state=readOpportunitySearch(new URLSearchParams(window.location.search));setFilters(state.filters);setSort(state.sort);setMoreFiltersOpen(additionalFilterCount(state.filters)>0);};
   fromUrl();
   setUrlReady(true);
   window.addEventListener("popstate",fromUrl);
@@ -50,25 +60,121 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  },[loading,error,items]);
  const visible=sortOpportunities(filterOpportunities(items,filters),sort);
  const unconfirmedCount=filters.category ? visible.filter(item=>opportunityCategoryStatus(item,filters.category)==="unknown").length : 0;
- const input="mt-2 w-full min-w-0 border border-[#252521]/25 bg-[#FFFCF6] px-3 py-3 text-sm outline-none focus:border-[#07472B]";
+ const additionalCount=additionalFilterCount(filters);
+ const input="mt-1.5 h-11 w-full min-w-0 rounded-none border border-[#252521]/25 bg-[#FFFCF6] px-3 text-sm font-medium text-[#252521] outline-none transition-colors focus:border-[#07472B] focus-visible:ring-1 focus-visible:ring-[#07472B]";
+ const controlLabel="block min-w-0 text-[11px] font-bold uppercase tracking-[0.055em] text-[#626C57]";
+ const action="inline-flex min-h-10 items-center text-sm font-semibold text-[#07472B] underline underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]";
+ const resetAll=()=>{setFilters({...defaultOpportunityFilters});setSort(defaultOpportunitySort);setMoreFiltersOpen(false);setShareMessage("");};
+ const additionalChips:{label:string;clear:()=>void}[]=[];
+ if(filters.month)additionalChips.push({label:"Month: "+filters.month,clear:()=>setFilters(previous=>({...previous,month:""}))});
+ if((filters.schedule??"all")!=="all")additionalChips.push({
+  label:"Type: "+(filters.schedule==="dated"?"Dated events":filters.schedule==="seasonal"?"Seasonal":"Ongoing"),
+  clear:()=>setFilters(previous=>({...previous,schedule:"all"}))
+ });
+ if((filters.priceAvailability??"all")!=="all")additionalChips.push({
+  label:filters.priceAvailability==="published"?"With booth prices":"Unverified booth prices",
+  clear:()=>setFilters(previous=>({...previous,priceAvailability:"all"}))
+ });
+ if(filters.maxBoothFee)additionalChips.push({label:"Max booth: $"+filters.maxBoothFee,clear:()=>setFilters(previous=>({...previous,maxBoothFee:""}))});
+ if(filters.deadlineBefore)additionalChips.push({label:"Deadline by: "+filters.deadlineBefore,clear:()=>setFilters(previous=>({...previous,deadlineBefore:""}))});
  return <div>
- {!compact&&<div className="mt-6 border-y border-[#252521]/20 py-4"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
- <label className="text-xs font-bold text-[#626C57]">SEARCH MARKETS OR ORGANIZERS<input className={input} value={filters.search} onChange={event=>setFilters({...filters,search:event.target.value})} placeholder="Market, organizer, city, or venue…"/></label>
- <label className="text-xs font-bold text-[#626C57]">LOCATION<select className={input} value={filters.city} onChange={event=>setFilters({...filters,city:event.target.value})}><option value="">All locations</option>{[...new Set(items.map(item=>item.city))].sort().map(city=><option key={city}>{city}</option>)}</select></label>
- <label className="text-xs font-bold text-[#626C57]">EVENT MONTH<input type="month" className={input} value={filters.month} onChange={event=>setFilters({...filters,month:event.target.value})}/></label>
- <label className="text-xs font-bold text-[#626C57]">VENDOR CATEGORY<select className={input} value={filters.category} onChange={event=>setFilters({...filters,category:event.target.value})}><option value="">All categories</option>{VENDOR_CATEGORIES.map(category=><option key={category}>{category}</option>)}</select></label>
- <label className="text-xs font-bold text-[#626C57]">OPPORTUNITY TYPE<select className={input} value={filters.schedule ?? "all"} onChange={event=>setFilters({...filters,schedule:event.target.value as "all" | "dated" | "seasonal" | "ongoing"})}><option value="all">All opportunities</option><option value="dated">Dated events</option><option value="seasonal">Seasonal applications / waitlists</option><option value="ongoing">Ongoing / rolling applications</option></select></label>
- <label className="text-xs font-bold text-[#626C57]">APPLICATION STATUS<select className={input} value={filters.status} onChange={event=>setFilters({...filters,status:event.target.value})}><option value="active">Open, limited or waitlist</option>{["all","open","limited","waitlist","needs_recheck","closed"].map(status=><option key={status} value={status}>{status==="all"?"All statuses":statusLabel(status)}</option>)}</select></label>
- <label className="text-xs font-bold text-[#626C57]">SORT<select className={input} value={sort} onChange={event=>setSort(event.target.value as OpportunitySort)}><option value="date">Upcoming event date</option><option value="deadline">Application deadline (confirmed first)</option><option value="fee_asc">Booth fee (lowest published first)</option><option value="rating_desc">Vendor rating (reviewed first)</option></select></label>
- </div>
- <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
- <label className="text-xs font-bold text-[#626C57]">BOOTH PRICE<select className={input} value={filters.priceAvailability} onChange={event=>setFilters({...filters,priceAvailability:event.target.value as "all" | "published" | "unpublished"})}><option value="all">All prices</option><option value="published">Published prices only</option><option value="unpublished">Price not published</option></select></label>
- <label className="text-xs font-bold text-[#626C57]">MAXIMUM PUBLISHED BOOTH FEE ($)<input className={input} type="number" min="0" step="1" inputMode="numeric" value={filters.maxBoothFee} onChange={event=>setFilters({...filters,maxBoothFee:event.target.value,priceAvailability:event.target.value?"all":filters.priceAvailability})} placeholder="No maximum" /></label>
- <label className="text-xs font-bold text-[#626C57]">APPLICATION DEADLINE ON OR BEFORE<input className={input} type="date" value={filters.deadlineBefore} onChange={event=>setFilters({...filters,deadlineBefore:event.target.value})}/></label>
- </div>
- {(filters.maxBoothFee || filters.deadlineBefore || sort==="fee_asc" || sort==="rating_desc")&&<p className="mt-3 text-xs leading-relaxed text-[#626C57]">Fee filters use only published standard booth prices; unknown prices are not treated as free. Deadline filtering uses confirmed event-specific cutoffs only. Unreviewed markets appear last when sorting by rating.</p>}
- {filters.category&&<div className="mt-4"><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={filters.includeUnconfirmed} onChange={event=>setFilters({...filters,includeUnconfirmed:event.target.checked})} aria-describedby="unconfirmed-category-help"/>Include opportunities with unconfirmed categories</label><p id="unconfirmed-category-help" className="text-xs leading-relaxed text-[#626C57]">Unconfirmed listings may accept your category; check with the organizer. They are not confirmed matches.</p></div>}
- <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p role="status" className="text-sm text-[#55554E]">{loading?"Checking opportunities…":`${visible.length} ${visible.length===1?"opportunity":"opportunities"}${unconfirmedCount?` · ${unconfirmedCount} with unconfirmed categories`:""}`}</p><div className="flex flex-wrap gap-x-5"><button type="button" onClick={()=>void copySearchLink()} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Copy search link</button><button type="button" onClick={()=>{setFilters({...defaultOpportunityFilters});setSort(defaultOpportunitySort);}} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Clear filters</button>{filters.status!=="all"&&<button type="button" onClick={()=>setFilters({...filters,status:"all"})} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Show all statuses</button>}</div></div>{shareMessage&&<p role="status" className="mt-2 text-xs text-[#07472B]">{shareMessage}</p>}</div>}
+ {!compact&&<section aria-label="Search and filter vendor opportunities" className="mt-6 border-y border-[#252521]/20 py-4">
+  <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
+   <label className={controlLabel+" sm:col-span-2 lg:col-span-1"}>Search opportunities
+    <input className={input} type="search" value={filters.search} onChange={event=>setFilters({...filters,search:event.target.value})} placeholder="Market, organizer, city, or venue…" />
+   </label>
+   <label className={controlLabel}>Vendor category
+    <select className={input} value={filters.category} onChange={event=>setFilters({...filters,category:event.target.value})}>
+     <option value="">All categories</option>
+     {VENDOR_CATEGORIES.map(category=><option key={category}>{category}</option>)}
+    </select>
+   </label>
+   <label className={controlLabel}>Location
+    <select className={input} value={filters.city} onChange={event=>setFilters({...filters,city:event.target.value})}>
+     <option value="">All locations</option>
+     {[...new Set(items.map(item=>item.city))].sort().map(city=><option key={city}>{city}</option>)}
+    </select>
+   </label>
+  </div>
+  <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-3">
+   <label className={controlLabel+" min-w-[175px] flex-[1_1_190px] sm:max-w-[290px]"}>Application status
+    <select className={input} value={filters.status} onChange={event=>setFilters({...filters,status:event.target.value})}>
+     <option value="active">Open, limited or waitlisted</option>
+     {["all","open","limited","waitlist","needs_recheck","closed"].map(status=><option key={status} value={status}>{status==="all"?"All statuses":statusLabel(status)}</option>)}
+    </select>
+   </label>
+   <label className={controlLabel+" min-w-[175px] flex-[1_1_190px] sm:max-w-[290px]"}>Sort by
+    <select className={input} value={sort} onChange={event=>setSort(event.target.value as OpportunitySort)}>
+     <option value="date">Upcoming event date</option>
+     <option value="deadline">Application deadline (confirmed first)</option>
+     <option value="fee_asc">Booth fee (lowest verified first)</option>
+     <option value="rating_desc">Vendor rating (reviewed first)</option>
+    </select>
+   </label>
+   <button type="button" aria-expanded={moreFiltersOpen} aria-controls={moreFiltersId}
+    onClick={()=>setMoreFiltersOpen(open=>!open)}
+    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 border border-[#07472B]/45 bg-[#E9E7DA] px-4 text-sm font-bold text-[#07472B] hover:border-[#07472B] hover:bg-[#DFE2D5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">
+    <span aria-hidden="true" className="text-lg leading-none">{moreFiltersOpen?"−":"+"}</span>
+    {moreFiltersOpen?"Fewer filters":"More filters"}
+    {additionalCount>0&&<span className="flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#07472B] px-1 text-[11px] font-bold text-white" aria-label={additionalCount+" additional filters selected"}>{additionalCount}</span>}
+   </button>
+  </div>
+  {filters.category&&<div className="mt-3">
+   <label className="flex min-h-8 cursor-pointer items-center gap-2 text-xs font-medium text-[#55554E]">
+    <input type="checkbox" checked={filters.includeUnconfirmed} onChange={event=>setFilters({...filters,includeUnconfirmed:event.target.checked})} aria-describedby="opportunity-unconfirmed-category-help" className="accent-[#07472B]" />
+    Include opportunities where this category is unconfirmed
+   </label>
+   <p id="opportunity-unconfirmed-category-help" className="text-xs leading-relaxed text-[#626C57]">Unconfirmed categories are possible matches, not organizer-approved categories.</p>
+  </div>}
+  <div id={moreFiltersId} role="region" aria-label="Additional opportunity filters"
+   className={(moreFiltersOpen?"grid":"hidden")+" mt-4 gap-x-4 gap-y-4 border-t border-[#252521]/15 bg-[#E9E7DA]/45 px-3 py-4 sm:grid-cols-2 lg:grid-cols-3 sm:px-4"}>
+   <label className={controlLabel}>Opportunity type
+    <select className={input} value={filters.schedule??"all"} onChange={event=>setFilters({...filters,schedule:event.target.value as "all"|"dated"|"seasonal"|"ongoing"})}>
+     <option value="all">All opportunities</option><option value="dated">Dated events</option>
+     <option value="seasonal">Seasonal applications / waitlists</option>
+     <option value="ongoing">Ongoing / rolling applications</option>
+    </select>
+   </label>
+   <label className={controlLabel}>Event month
+    <input className={input} type="month" value={filters.month} onChange={event=>setFilters({...filters,month:event.target.value})} />
+   </label>
+   <label className={controlLabel}>Booth price information
+    <select className={input} value={filters.priceAvailability} onChange={event=>setFilters({...filters,priceAvailability:event.target.value as "all"|"published"|"unpublished"})}>
+     <option value="all">Any price information</option>
+     <option value="published">Verified price only</option>
+     <option value="unpublished">Price not verified</option>
+    </select>
+   </label>
+   <label className={controlLabel}>Maximum verified booth fee ($)
+    <input className={input} type="number" min="0" step="1" inputMode="numeric" value={filters.maxBoothFee} onChange={event=>setFilters({...filters,maxBoothFee:event.target.value,priceAvailability:event.target.value?"all":filters.priceAvailability})} placeholder="No maximum" />
+   </label>
+   <label className={controlLabel}>Application deadline on or before
+    <input className={input} type="date" value={filters.deadlineBefore} onChange={event=>setFilters({...filters,deadlineBefore:event.target.value})} />
+   </label>
+   <p className="self-end pb-1 text-xs leading-relaxed text-[#626C57]">
+    Booth prices must be independently verified; missing prices are never treated as free. Deadline filters use confirmed cutoffs, not estimated dates.
+   </p>
+  </div>
+  {!moreFiltersOpen&&additionalChips.length>0&&<div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Selected additional filters">
+   <span className="mr-1 text-xs font-semibold text-[#626C57]">Also filtering by:</span>
+   {additionalChips.map(chip=><button type="button" key={chip.label} onClick={chip.clear}
+    aria-label={"Remove "+chip.label+" filter"}
+    className="inline-flex min-h-8 items-center gap-2 border border-[#07472B]/25 bg-[#E9E7DA] px-2.5 py-1 text-xs font-semibold text-[#07472B] hover:border-[#07472B] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">
+     {chip.label}<span aria-hidden="true">×</span>
+    </button>)}
+  </div>}
+  <div className="mt-4 flex flex-wrap items-center justify-between gap-x-5 gap-y-2 border-t border-[#252521]/15 pt-3">
+   <p role="status" className="text-sm text-[#55554E]">
+    {loading?"Checking opportunities…":<><strong className="text-[#252521]">{visible.length}</strong> {visible.length===1?"opportunity":"opportunities"}{unconfirmedCount?" · "+unconfirmedCount+" categories unconfirmed":""}</>}
+   </p>
+   <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+    <button type="button" onClick={()=>void copySearchLink()} className={action}>Copy search link</button>
+    <button type="button" onClick={resetAll} className={action}>Clear filters</button>
+    {filters.status!=="all"&&<button type="button" onClick={()=>setFilters(previous=>({...previous,status:"all"}))} className={action}>Show all statuses</button>}
+   </div>
+  </div>
+  {shareMessage&&<p role="status" className="mt-2 text-xs text-[#07472B]">{shareMessage}</p>}
+ </section>}
  {!compact&&sort==="deadline"&&<p className="mt-3 text-xs leading-relaxed text-[#626C57]">Event-specific deadlines appear first. Series deadlines and unconfirmed cutoffs appear afterward, ordered by event date.</p>}
  {message&&<p role="status" className="my-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{message} <Link href="/login" className="font-semibold underline">My Account →</Link></p>}
  {error?<div role="alert" className="mt-6"><p>{error}</p><button onClick={()=>setRefresh(value=>value+1)} className="mt-3 font-semibold underline">Refresh opportunities</button></div>:loading?<p role="status" className="mt-6">Loading opportunities…</p>:visible.length===0?<p className="mt-6 text-[#55554E]">{compact?"No recently verified vendor applications or waitlists are listed for this market right now.":"No opportunities match these filters. Try another location or month, include unconfirmed categories, or show all statuses."}</p>:<div className={`mt-5 grid items-stretch gap-5 ${compact?"":"md:grid-cols-2 lg:grid-cols-3"}`}>
