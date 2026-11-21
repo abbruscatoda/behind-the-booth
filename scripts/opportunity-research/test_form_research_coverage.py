@@ -30,6 +30,18 @@ class CoverageTests(unittest.TestCase):
   self.assertFalse(facts['complete'])
   self.assertGreaterEqual(facts['published_schema_fee_sections'],2)
 
+ def test_researches_author_linked_table_of_fees_on_later_page(self):
+  form=Document('<h1>Vendor Application</h1>'
+    '<div role="button">Next</div>'
+    '<script>var FB_PUBLIC_LOAD_DATA_ = [null,[null,[["Page 2",'
+    '"See &lt;a href=\\"https://westernwakefarmersmarket.org/s/Vendor-Fee-Schedule-v01-2025.pdf\\"&gt;Table of Fees&lt;/a&gt;."],'
+    '["Requirement","Food vendors must provide current liability insurance and NC Sales Tax ID."]]]];</script>')
+  links=fee_document_links(form,FORM,ORGANIZER)
+  self.assertEqual(links,[PDF])
+  facts=read_public_form(form)
+  self.assertIn('insurance',facts['eligibility'])
+  self.assertFalse(facts['complete'])
+
  def test_do_not_promote_raw_hidden_script_or_random_json(self):
   doc=Document('<h1>Other public form</h1><p>Please register</p>'
                '<script>var OTHER_DATA = [null,[["$999 booth fee"]]];</script>'
