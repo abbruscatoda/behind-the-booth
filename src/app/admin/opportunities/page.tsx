@@ -93,9 +93,9 @@ export default function AdminOpportunities(){
  {research.runs[0]?.summary?.issues?.map((issue,index)=><p key={index} className="mt-2 text-sm">{issue}</p>)}</section>}
 
  <section className="mt-12" aria-label="Triangle market discovery leads">
- <h2 className="font-serif text-3xl font-bold">New vendor-application leads</h2>
- <p className="mt-3 text-sm leading-relaxed text-[#55554E]">The worker checks official organizer pages across the Triangle and searches across Triangle communities for vendor applications, market calendars, festivals, food-truck calls, and seasonal or rolling openings. Strongly verified new events are automatically published with a market profile; links without independently confirmed dates, organizer, and live application details remain here. These are research leads, not confirmed open applications. The worker also follows approved event calendars, researches seasonal and rolling applications, and records a specific reason whenever evidence is insufficient. Automatically verified listings are published without manual approval.</p>
- <p className="mt-3 text-sm font-semibold">{discoveryGroups.length} markets with {discoveryLeads.length} application leads awaiting review</p>
+ <h2 className="font-serif text-3xl font-bold">Vendor lead research</h2>
+ <p className="mt-3 text-sm leading-relaxed text-[#55554E]">The worker independently monitors research links from official Triangle sources, follows supported vendor forms and fee documents, and publishes vendor opportunities when current application evidence is sufficient. Calendar-only pages, unrelated public-art or government forms, closed applications, and unverified links remain in the private monitoring/audit records—not your action queue. A source link by itself is never a confirmed open vendor application. This section is reserved for exceptional findings that genuinely require an administrative decision.</p>
+ <p className="mt-3 text-sm font-semibold">{discoveryLeads.length===0?"No vendor-application leads need your review":discoveryGroups.length+" organizer groups with "+discoveryLeads.length+" unresolved application leads"}</p>
  {discoveryGroups.length>0&&<div className="mt-5 space-y-3">{discoveryGroups.map(group=><article key={group.key} className="border border-[#252521]/20 p-4 sm:p-5">
   <h3 className="font-serif text-xl font-bold">{group.name}</h3>
   <p className="mt-1 text-sm text-[#55554E]">{group.city} · {group.leads.length} application {group.leads.length===1?"link":"links"} requiring verification</p>
