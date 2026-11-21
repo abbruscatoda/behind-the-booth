@@ -14,7 +14,7 @@ class Fetch:
    link='<a href="'+cfg['application']+'">Official Vendor Application</a>'
    if key=='wake-forest-2027-food':
     body='Town of Wake Forest PRCR will accept food vendors for 2027 PRCR events from Nov. 9 through Nov. 27, 2026.'
-   elif key=='durham-2026-holiday-food':
+   elif key=='durham-food-vendor-program':
     body='Durham Parks and Recreation Food Vendors: for current food vendor opportunities apply online.'
     self.docs[cfg['application']]=(
      '<h1>Durham Parks and Recreation - Food Vendor Application</h1>'
@@ -51,12 +51,20 @@ class OfficialProgramsTests(unittest.TestCase):
   self.assertEqual(r['candidate']['schedule_type'],'seasonal_application')
   self.assertEqual(r['candidate']['starts_on'],'2027-01-01')
   self.assertIn('Nov',r['candidate']['fee_notes'] or '') if False else None
- def test_dated_durham_food_form_requires_exact_selectable_event(self):
+ def test_durham_program_form_requires_real_vendor_application_identity(self):
   f=Fetch()
-  url=PROGRAMS['durham-2026-holiday-food']['application']
-  f.docs[url]=f.docs[url].replace('December 12, 2026','December 10, 2026')
+  url=PROGRAMS['durham-food-vendor-program']['application']
+  f.docs[url]=f.docs[url].replace('Food Vendor Application','General Contact Form')
   with self.assertRaises(Uncertain):
-   verify_program('durham-2026-holiday-food',f,NOW)
+   verify_program('durham-food-vendor-program',f,NOW)
+
+ def test_durham_program_is_not_a_guaranteed_holiday_parade_booth(self):
+  f=Fetch()
+  r=verify_program('durham-food-vendor-program',f,NOW)
+  self.assertEqual(r['candidate']['schedule_type'],'rolling_market')
+  self.assertIsNone(r['candidate']['deadline'])
+  self.assertIsNone(r['candidate']['booth_fee'])
+
  def test_closed_date_is_never_represented_as_still_open(self):
   f=Fetch()
   r=verify_program('wake-forest-2027-food',f,datetime(2026,11,28,19,tzinfo=timezone.utc))
