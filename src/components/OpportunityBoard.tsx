@@ -1,21 +1,19 @@
 "use client";
-import ExternalLinkIcon from "./ExternalLinkIcon";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import OpportunityCard from "./OpportunityCard";
+import OpportunityDetailsDialog from "./OpportunityDetailsDialog";
 import { createClient } from "../lib/supabase/client";
-import { activeCategoryEvidence, categoryEvidenceLabel, categoryHighlights, listedOpportunityCategories, opportunityCategoryStatus } from "../lib/opportunityCategories";
-import { currentCoverage, coverageLabels, coverageStatus } from "../lib/researchCoverage";
-import { opportunityDeadline, opportunityBoothPrice, opportunityDetailSections } from "../lib/opportunityPresentation";
-import { formatAttendanceDate } from "../lib/attendanceDate";
-import { filterOpportunities, sortOpportunities, fee, safeExternalUrl, statusLabel, VENDOR_CATEGORIES, type Opportunity, type OpportunitySort } from "../lib/opportunities";
+import { opportunityCategoryStatus } from "../lib/opportunityCategories";
+import { filterOpportunities, sortOpportunities, VENDOR_CATEGORIES, type Opportunity, type OpportunitySort } from "../lib/opportunities";
 import { defaultOpportunityFilters, defaultOpportunitySort, readOpportunitySearch, writeOpportunitySearch } from "../lib/opportunitySearchUrl";
-
 
 export default function OpportunityBoard({ marketId, compact = false }: { marketId?: string; compact?: boolean }) {
  const [items,setItems]=useState<Opportunity[]>([]), [loading,setLoading]=useState(true), [error,setError]=useState("");
  const [filters,setFilters]=useState({...defaultOpportunityFilters});
  const [urlReady,setUrlReady]=useState(false),[shareMessage,setShareMessage]=useState("");
  const [sort,setSort]=useState<OpportunitySort>(defaultOpportunitySort),[refresh,setRefresh]=useState(0),[saved,setSaved]=useState<string[]>([]),[saving,setSaving]=useState<string|null>(null),[message,setMessage]=useState("");
+ const [selectedOpportunity,setSelectedOpportunity]=useState<Opportunity|null>(null);
  useEffect(()=>{
   if(compact || marketId)return;
   const fromUrl=()=>{const state=readOpportunitySearch(new URLSearchParams(window.location.search));setFilters(state.filters);setSort(state.sort);};
@@ -73,96 +71,17 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p role="status" className="text-sm text-[#55554E]">{loading?"Checking opportunities…":`${visible.length} ${visible.length===1?"opportunity":"opportunities"}${unconfirmedCount?` · ${unconfirmedCount} with unconfirmed categories`:""}`}</p><div className="flex flex-wrap gap-x-5"><button type="button" onClick={()=>void copySearchLink()} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Copy search link</button><button type="button" onClick={()=>{setFilters({...defaultOpportunityFilters});setSort(defaultOpportunitySort);}} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Clear filters</button>{filters.status!=="all"&&<button type="button" onClick={()=>setFilters({...filters,status:"all"})} className="min-h-11 text-sm font-semibold text-[#07472B] underline">Show all statuses</button>}</div></div>{shareMessage&&<p role="status" className="mt-2 text-xs text-[#07472B]">{shareMessage}</p>}</div>}
  {!compact&&sort==="deadline"&&<p className="mt-3 text-xs leading-relaxed text-[#626C57]">Event-specific deadlines appear first. Series deadlines and unconfirmed cutoffs appear afterward, ordered by event date.</p>}
  {message&&<p role="status" className="my-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{message} <Link href="/login" className="font-semibold underline">My Account →</Link></p>}
- {error?<div role="alert" className="mt-6"><p>{error}</p><button onClick={()=>setRefresh(value=>value+1)} className="mt-3 font-semibold underline">Refresh opportunities</button></div>:loading?<p role="status" className="mt-6">Loading opportunities…</p>:visible.length===0?<p className="mt-6 text-[#55554E]">{compact?"No recently verified vendor applications or waitlists are listed for this market right now.":"No opportunities match these filters. Try another location or month, include unconfirmed categories, or show all statuses."}</p>:<div className={`mt-5 grid items-start gap-5 ${compact?"":"lg:grid-cols-2"}`}>
- {(compact?visible.slice(0,3):visible).map(item=>{
-   const deadline=opportunityDeadline(item);
-   const booth=opportunityBoothPrice(item);
-   const detail=opportunityDetailSections(item);
-   const deadlineNotes=[...new Set([deadline.note,...detail.notes].filter(Boolean))];
-   const evidence=activeCategoryEvidence(item);
-   const listed=listedOpportunityCategories(item);
-   const highlights=categoryHighlights(item);
-   const coverage=currentCoverage(item.research_coverage);
-   const selected=filters.category ? evidence[filters.category] : undefined;
-   const categoryText=filters.category
-     ? opportunityCategoryStatus(item,filters.category)==="eligible" ? `${filters.category} — listed by organizer` : `${filters.category} — unconfirmed`
-     : listed.length ? `${listed.slice(0,3).join(", ")}${listed.length>3?` +${listed.length-3} more`:""}` : "Unconfirmed — check with organizer";
-   return <article key={item.id} id={item.id} className="heritage-card min-w-0 scroll-mt-8 flex flex-col [overflow-wrap:anywhere]">
-     <div className="flex flex-wrap items-center justify-between gap-3">
-       <p className="heritage-label">{item.schedule_type==="rolling_market"?"Ongoing market · "+statusLabel(item.effective_status):statusLabel(item.effective_status)}</p>
-       <p className="text-xs text-[#626C57]">{item.verified_at?`Checked ${new Date(item.verified_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}`:"Not verified"}</p>
-     </div>
-     <h2 className="mt-4 font-serif text-2xl font-bold sm:text-3xl"><Link href={`/markets/${item.market_slug}`} className="text-inherit hover:text-[#07472B] hover:underline underline-offset-4">{item.title}</Link></h2>
-     <p className="mt-2 text-sm font-semibold text-[#07472B]">{item.organizer}</p>
-     <p className="mt-3 text-base font-semibold">{item.schedule_type==="rolling_market"
-  ?"Ongoing market · rolling vendor applications"
-  :<>{["recurring_season","seasonal_application"].includes(item.schedule_type??"")?"Market season: ":""}{formatAttendanceDate(item.starts_on)}{item.ends_on!==item.starts_on?` – ${formatAttendanceDate(item.ends_on)}`:""}</>}</p>
-     {["recurring_season","seasonal_application","rolling_market"].includes(item.schedule_type??"")&&<p className="mt-1 text-xs text-[#626C57]">Recurring market application. Participation on individual market dates and booth assignment are not guaranteed; check with the organizer.</p>}
-     <p className="mt-1 text-sm text-[#55554E]">{item.venue} · {item.city}, {item.state}</p>
-     <p className="mt-3 text-sm"><strong>{deadline.label}:</strong> {deadline.value}</p>
-     <p className="mt-2 text-sm"><strong>Listed categories:</strong> {categoryText}</p>
-     <p className="mt-1 text-xs text-[#626C57]">Other categories may be considered.</p>
-     {selected?.note&&!highlights.some(([category])=>category===filters.category)&&<p className="mt-2 text-xs leading-relaxed text-[#626C57]">{selected.note}</p>}
-     <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-3 border-y border-[#252521]/15 py-3 text-sm">
-       <div className="min-w-0"><dt className="text-xs text-[#626C57]">{booth.label}</dt><dd className="font-semibold">{booth.value}</dd></div>
-       {item.application_fee!==null&&<div><dt className="text-xs text-[#626C57]">Application fee</dt><dd>{fee(item.application_fee)}</dd></div>}
-       {item.deposit!==null&&<div><dt className="text-xs text-[#626C57]">Deposit</dt><dd>{fee(item.deposit)}</dd></div>}
-     </dl>
-     {booth.note&&<p className="mt-1 text-xs font-semibold text-[#07472B]">{booth.note}</p>}
-     {highlights.length>0&&<ul className="mt-3 space-y-2 border-l-2 border-[#AD573B] pl-3 text-xs leading-relaxed">{highlights.map(([category,entry])=><li key={category}>
-       <span className="font-semibold">{category}: {categoryEvidenceLabel(entry)}.</span> {entry.note}
-       {entry.application_deadline&&Number.isFinite(Date.parse(entry.application_deadline))&&<span> Separate deadline: {new Date(entry.application_deadline).toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"})}.</span>}
-       {entry.application_state&&safeExternalUrl(entry.source_url)&&<> <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#07472B] underline">View separate application <ExternalLinkIcon /></a></>}
-     </li>)}</ul>}
-     <div className="mt-4 flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
-       {["open","limited","waitlist"].includes(item.effective_status)&&safeExternalUrl(item.application_url)
-         ? <a href={safeExternalUrl(item.application_url)!} target="_blank" rel="noopener noreferrer" className="heritage-button min-h-11 w-full sm:w-auto">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} <ExternalLinkIcon /></a>
-         : <span className="text-sm text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Recheck with organizer before applying"}</span>}
-       <button disabled={saving!==null} onClick={()=>void toggle(item.id)} className="min-h-11 text-sm font-semibold text-[#07472B] underline disabled:opacity-50 sm:px-1">{saved.includes(item.id)?"Saved — remove":"Save opportunity"}</button>
-     </div>
-     <details className="mt-4 border-t border-[#252521]/15 pt-1 text-sm">
-       <summary className="min-h-11 cursor-pointer py-3 font-semibold text-[#07472B]">More details<span className="sr-only"> for {item.title}, {formatAttendanceDate(item.starts_on)}</span></summary>
-       <div className="space-y-4 pb-2 leading-relaxed text-[#55554E]">
-         {deadlineNotes.length>0&&<div><h3 className="font-semibold text-[#252521]">Deadline notes</h3><ul className="mt-2 list-disc space-y-2 pl-5">{deadlineNotes.map(note=><li key={note}>{note}</li>)}</ul></div>}
-         <div><h3 className="font-semibold text-[#252521]">Fee details</h3>
-           <dl className="mt-2 space-y-1 text-xs">
-             {item.application_fee===null&&<div><dt className="inline font-semibold">Application fee: </dt><dd className="inline">Not published</dd></div>}
-             {item.deposit===null&&<div><dt className="inline font-semibold">Deposit: </dt><dd className="inline">Not published</dd></div>}
-           </dl>
-           {detail.fees.length>0&&<ul className="mt-2 list-disc space-y-2 pl-5">{detail.fees.map(note=><li key={note}>{note}</li>)}</ul>}
-           <p className="mt-2 text-xs">{item.booth_fee===null||item.application_fee===null||item.deposit===null?"Some costs aren’t published. Confirm the total with the organizer.":"Confirm the total with the organizer, including required add-ons and processing fees."}</p>
-         </div>
-         <div className="text-sm"><Link href={`/markets/${item.market_slug}#vendor-reviews`} className="font-semibold text-[#07472B] underline">{item.history.review_count?"Read vendor reviews →":"View market & add a review →"}</Link>
-           <p className="mt-1 text-xs text-[#626C57]">{item.history.review_count?`${item.history.overall}/5 · ${item.history.review_count} reviews from ${item.history.reviewer_count} vendors`:"No approved reviews yet"}</p>
-         </div>
-         <div><h3 className="font-semibold text-[#252521]">Vendor requirements</h3>{detail.requirements.length>0?<ul className="mt-2 list-disc space-y-2 pl-5">{detail.requirements.map(note=><li key={note}>{note}</li>)}</ul>:<p className="mt-1 text-xs">Specific requirements are unconfirmed. Check with the organizer.</p>}</div>
-         {(listed.length>0||Object.keys(evidence).length>0||coverage.length>0)&&<details className="border-t border-[#252521]/15 pt-1">
-           <summary className="min-h-11 cursor-pointer py-3 font-semibold text-[#07472B]">Category evidence & source checks<span className="sr-only"> for {item.title}, {formatAttendanceDate(item.starts_on)}</span></summary>
-           <div className="space-y-4 pb-2">
-         <div><h3 className="font-semibold text-[#252521]">Category eligibility</h3>
-           {listed.length>0&&<p className="mt-1">Listed categories: {listed.join(", ")}.</p>}
-
-           {Object.entries(evidence).length>0&&<ul className="mt-3 space-y-3">{Object.entries(evidence).map(([category,entry])=><li key={category}>
-             <p className="font-semibold">{category}: {categoryEvidenceLabel(entry)}</p><p className="mt-1">{entry.note}</p>
-             <p className="mt-1 text-xs text-[#626C57]">Category checked {new Date(entry.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(entry.source_url)&&<> · <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="underline">Category source <ExternalLinkIcon /></a></>}</p>
-           </li>)}</ul>}
-         </div>
-         {coverage.length>0&&<div><h3 className="font-semibold text-[#252521]">What the sources confirm</h3>
-           <p className="mt-1 text-xs">Partial checks may not cover every price, requirement, or category.</p>
-           <ul className="mt-3 grid gap-3 sm:grid-cols-2">{coverage.map(([key,fact])=><li key={key} className="border border-[#252521]/15 p-3">
-             <p className="font-semibold">{coverageLabels[key]}: {coverageStatus[fact.status]}</p>
-             <p className="mt-1 text-xs leading-relaxed">{fact.summary}</p>
-             <p className="mt-2 text-xs">Checked {new Date(fact.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(fact.source_url)&&<> · <a href={safeExternalUrl(fact.source_url)!} target="_blank" rel="noopener noreferrer" className="text-[#07472B] underline">Official source <ExternalLinkIcon /></a></>}</p>
-           </li>)}</ul>
-         </div>}
-           </div>
-         </details>}
-         <p className="text-xs">Organizer approval is required. Confirm current terms and availability before applying; reviews describe past experiences.</p>
-         {safeExternalUrl(item.source_url)&&<a href={safeExternalUrl(item.source_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">Official source <ExternalLinkIcon /></a>}
-       </div>
-     </details>
-   </article>;
- })}
+ {error?<div role="alert" className="mt-6"><p>{error}</p><button onClick={()=>setRefresh(value=>value+1)} className="mt-3 font-semibold underline">Refresh opportunities</button></div>:loading?<p role="status" className="mt-6">Loading opportunities…</p>:visible.length===0?<p className="mt-6 text-[#55554E]">{compact?"No recently verified vendor applications or waitlists are listed for this market right now.":"No opportunities match these filters. Try another location or month, include unconfirmed categories, or show all statuses."}</p>:<div className={`mt-5 grid items-stretch gap-5 ${compact?"":"md:grid-cols-2 lg:grid-cols-3"}`}>
+ {(compact?visible.slice(0,3):visible).map(item=><OpportunityCard
+   key={item.id}
+   item={item}
+   categoryFilter={filters.category}
+   saved={saved.includes(item.id)}
+   saving={saving!==null}
+   onSave={()=>void toggle(item.id)}
+   onViewDetails={()=>setSelectedOpportunity(item)}
+ />)}
  </div>}
+ {selectedOpportunity&&<OpportunityDetailsDialog item={selectedOpportunity} onClose={()=>setSelectedOpportunity(null)} />}
  </div>;
 }
