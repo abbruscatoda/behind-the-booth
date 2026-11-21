@@ -25,6 +25,7 @@ export default function OpportunityCard({
  const displayTitle=item.schedule_type==="rolling_market"
    ? item.title.replace(/\s*[—–-]\s*Rolling Vendor Applications$/i,"") : item.title;
  const isRolling=item.schedule_type==="rolling_market";
+ const isProgram=item.schedule_type==="seasonal_application"||item.schedule_type==="recurring_season";
  const available=["open","limited","waitlist"].includes(item.effective_status);
  const applicationUrl=safeExternalUrl(item.application_url);
  const statusTone=item.effective_status==="open"
@@ -43,10 +44,10 @@ export default function OpportunityCard({
    <p className="mt-2 text-sm font-medium text-[#55554E]">{item.city}, {item.state}</p>
    {item.venue && item.venue.toLocaleLowerCase()!==`${item.city}, ${item.state}`.toLocaleLowerCase()&&<p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[#626C57]">{item.venue}</p>}
    <div className="mt-4 border-t border-[#252521]/15 pt-3">
-     <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#626C57]">{isRolling?"When to apply":"Market dates"}</p>
+     <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#626C57]">{isRolling?"When to apply":isProgram?"Application / program season":"Market dates"}</p>
      <p className="mt-1 text-sm font-semibold leading-snug">{isRolling?"Ongoing · rolling applications":formatAttendanceDate(item.starts_on)+(item.ends_on!==item.starts_on?" – "+formatAttendanceDate(item.ends_on):"")}</p>
      {!isRolling&&<p className="mt-2 text-xs leading-relaxed text-[#55554E]"><span className="font-semibold">{deadline.label}:</span> {deadline.value}</p>}
-     {isRolling&&<p className="mt-1 text-xs text-[#626C57]">No individual date or booth is guaranteed.</p>}
+     {(isRolling||isProgram)&&<p className="mt-1 text-xs text-[#626C57]">Individual market dates and booths are subject to organizer approval.</p>}
    </div>
    <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-y border-[#252521]/15 py-3">
      <div className="min-w-0"><dt className="text-[11px] font-medium text-[#626C57]">{booth.label}</dt><dd className="mt-1 text-base font-bold leading-tight text-[#252521]">{booth.value}</dd></div>
