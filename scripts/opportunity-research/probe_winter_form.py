@@ -28,3 +28,11 @@ try:
  print('WINTER_FORM_CHROMIUM '+json.dumps(inspect('chromium',visible_text(doc.root)))[:8000])
 except BrowserUnavailable as exc:
  print('WINTER_FORM_BROWSER_ERROR '+str(exc)[:150])
+
+try:
+ from western_craft_fair import read_fee_pdf,craft_fee_from_pdf
+ pdf_text,digest=read_fee_pdf('https://westernwakefarmersmarket.org/s/Vendor-Fee-Schedule-v01-2025.pdf')
+ print('WESTERN_CRAFT_PDF_FEE '+str(craft_fee_from_pdf(pdf_text)))
+ print('WESTERN_CRAFT_PDF_LENGTH '+str(len(pdf_text)))
+except Exception as exc:
+ print('WESTERN_CRAFT_PDF_ERROR '+type(exc).__name__+': '+str(exc)[:120])
