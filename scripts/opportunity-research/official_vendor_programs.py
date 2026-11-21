@@ -109,6 +109,25 @@ def verified_guest_rates(fetcher):
         raise Uncertain('Out-of-range fee in official guest-vendor rules.')
     return {'application':app,'summer':summer,'winter':winter,'hash':digest}
 
+def inspect_public_application(fetcher,url):
+    """Try the actual public Google Form, including Fetcher's read-only browser fallback.
+
+    A Google sign-in barrier is recorded as inaccessible, never as evidence that
+    the organizer omitted fees, questions, or deadlines. No application is submitted.
+    """
+    try:
+        doc,digest=fetcher.get(url)
+        text=visible_text(doc.root)
+        if re.search(r'(you must sign in|request access|you need permission|allow google forms access)',text,re.I):
+            return 'access_restricted',None
+        if re.search(r'(this form is no longer accepting responses|form is closed)',text,re.I):
+            return 'submissions_closed',digest
+        if len(text.strip())<100 or not re.search(r'(application|vendor|craft|south durham)',text,re.I):
+            return 'unreadable',None
+        return 'public_questions_visible',digest
+    except (OSError,ValueError,AttributeError):
+        return 'access_restricted',None
+
 def verify_program(program,fetcher,now=None):
     if program not in PROGRAMS:
         raise Uncertain('Unrecognized vendor program.')
@@ -155,6 +174,11 @@ def verify_program(program,fetcher,now=None):
                 and re.search(r'guest vendor applications are reviewed',text,re.I)):
             raise Uncertain('South Durham guest vendor application intake not confirmed.')
 
+    form_state,form_hash=(inspect_public_application(fetcher,cfg['application'])
+        if program in ('south-durham-winter-craft','south-durham-guest-vendors')
+        else ('not_applicable',None))
+    if form_state=='submissions_closed':
+        raise Uncertain('The official Google Form says submissions are closed; do not advertise an open application.')
     rates=(verified_guest_rates(fetcher) if program=='south-durham-guest-vendors' else None)
 
     # Don't reuse stale pre-2027 periods indefinitely. Only real event/program
@@ -178,6 +202,10 @@ def verify_program(program,fetcher,now=None):
         'are not guaranteed. Application window checked '+now.date().isoformat()+
         '. External forms were not submitted or filled.'),
     }
+    if program in ('south-durham-winter-craft','south-durham-guest-vendors'):
+      candidate['research_notes']+=(' Read-only public Google Form check: '+form_state+
+          '. An access barrier does not establish that the organizer omitted fee, '
+          'deadline, or event-selection details. No application was submitted.')
     if rates:
       candidate['application_fee']=rates['application']
       # Database/website must label this as a WINTER rate, not the annual rate.
@@ -194,6 +222,7 @@ def verify_program(program,fetcher,now=None):
           'against the official organizer-linked Market Rules, SHA-256 '+rates['hash']+
           '. These guest fees do not automatically apply to the separate Winter Craft application.')
     return {'decision':'publish','policy':POLICY,'program':program,'candidate':candidate,
+            'form_state':form_state, 'form_hash':form_hash,
             'rules_hash':rates['hash'] if rates else None,
             'source_hash':digest,'checked_at':now.isoformat(),
             'evidence':('The currently linked official organizer vendor page independently identifies '
