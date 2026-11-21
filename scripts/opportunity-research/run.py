@@ -66,7 +66,13 @@ def existing_result(item,found,fetcher,now):
   if result['candidate']['application_url']!=item.get('application_url') or result['candidate']['source_url']!=item.get('source_url'):
    raise Uncertain('Rolling application source or identity changed; preserve the existing listing for review.')
   return result
- if item.get('verification_policy')=='raleigh-rolling-official-v1':
+ # Legacy manually published Raleigh rolling listing: recognize its exact
+ # previously approved source chain and adopt the dedicated verifier.
+ if (item.get('market_slug')=='the-raleigh-market'
+     and item.get('schedule_type')=='rolling_market'
+     and item.get('source_url')=='https://www.theraleighmarket.com/sell-with-us'
+     and item.get('application_url')=='https://form.jotform.com/200075436464149'
+     and item.get('verification_policy') in ('manual','raleigh-rolling-official-v1')):
   from ongoing_market import verify_raleigh
   result=verify_raleigh(fetcher,now)
   if item.get('market_slug')!='the-raleigh-market' or item.get('application_url')!=result['candidate']['application_url']:
