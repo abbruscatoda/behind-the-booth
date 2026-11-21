@@ -61,6 +61,28 @@ def _event_booth_amount(text):
     return next(iter(values)) if len(values) == 1 else None
 
 
+def extract_amount_first_fees(text):
+    """Extract ONLY amounts that precede their fee labels on a public form.
+
+    Other extractors handle exact label-first fields. This avoids taking the
+    dollar amount of the NEXT question ("Application fee: $0. Deposit: $40")
+    as if it were the current question's price.
+    """
+    normalized = " ".join((text or "").split())
+    def unique(patterns):
+        amounts = set()
+        for pattern in patterns:
+            for match in pattern.finditer(normalized):
+                amount = round(float(match.group(1)), 2)
+                if 0 < amount <= 10000:
+                    amounts.add(amount)
+        return next(iter(amounts)) if len(amounts) == 1 else None
+    return {
+        "application_fee": unique((_patterns(APPLICATION)[0],)),
+        "booth_fee": unique((_patterns(BOOTH)[0], EVENT_BOOTH)),
+    }
+
+
 def extract_labeled_fees(text):
     """Return unambiguous standalone vendor application and booth fees.
 
