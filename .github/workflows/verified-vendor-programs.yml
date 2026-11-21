@@ -1,0 +1,55 @@
+name: Publish verified municipal and seasonal vendor programs
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verified-vendor-programs.yml'
+  schedule:
+    - cron: '39 14 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: btb-verified-public-vendor-programs
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test official vendor application policies
+        run: python3 -m unittest discover -s scripts/opportunity-research -p 'test_official_vendor_programs.py' -v
+      - name: Verify sources and publish supported public intake
+        env:
+          BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
+          BTB_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.BTB_SUPABASE_PUBLISHABLE_KEY }}
+          BTB_RESEARCH_SECRET: ${{ secrets.BTB_RESEARCH_SECRET }}
+        run: |
+          python3 - <<'PY'
+          import json,sys
+          from datetime import datetime,timezone
+          sys.path.insert(0,'scripts/opportunity-research')
+          from verifier import Fetcher
+          from run import Database
+          from official_vendor_programs import discover_programs
+          now=datetime.now(timezone.utc)
+          fetcher=Fetcher(limit=28)
+          results,notes=discover_programs(fetcher,now)
+          db=Database()
+          published=0
+          problems=[]
+          for result in results:
+              try:
+                  response=db.rpc('btb_research_publish_official_program',{'p_result':result})
+                  published+=int(response.get('action')=='publish')
+                  print(json.dumps({'program':result['program'],'action':response.get('action','unknown')},ensure_ascii=False))
+              except Exception:
+                  problems.append(result['program'])
+                  print(json.dumps({'program':result['program'],'error':'Secure publication failed; inspect database audit and verification policy.'}))
+          print(json.dumps({'programs_verified':len(results),'published_or_reverified':published,'inconclusive':notes,'publication_failed':problems},ensure_ascii=False))
+          if not results or problems:
+              raise RuntimeError('At least one official vendor program could not be verified or published. Previously verified listings remain protected.')
+          PY
