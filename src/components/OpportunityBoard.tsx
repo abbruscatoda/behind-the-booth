@@ -5,7 +5,7 @@ import OpportunityCard from "./OpportunityCard";
 import OpportunityDetailsDialog from "./OpportunityDetailsDialog";
 import { createClient } from "../lib/supabase/client";
 import { opportunityCategoryStatus } from "../lib/opportunityCategories";
-import { filterOpportunities, sortOpportunities, VENDOR_CATEGORIES, type Opportunity, type OpportunitySort } from "../lib/opportunities";
+import { filterOpportunities, sortOpportunities, statusLabel, VENDOR_CATEGORIES, type Opportunity, type OpportunitySort } from "../lib/opportunities";
 import { defaultOpportunityFilters, defaultOpportunitySort, readOpportunitySearch, writeOpportunitySearch } from "../lib/opportunitySearchUrl";
 
 export default function OpportunityBoard({ marketId, compact = false }: { marketId?: string; compact?: boolean }) {
