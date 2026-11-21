@@ -25,6 +25,62 @@ class FakeOpener:
   return FakeResponse(self.body)
 
 class PublicBrowserTests(unittest.TestCase):
+ def test_read_only_navigation_collects_public_pages_without_submit(self):
+  from browser_forms import _collect_public_pages
+  class Fake:
+   url=FORM
+   def __init__(self,stuck=False):
+    self.pages=['Page 1: $10 craft application fee',
+                'Page 2: $30 per event: 10x10 booth fee',
+                'Page 3: Insurance required; Submit']
+    self.index=0
+    self.clicked=[]
+    self.stuck=stuck
+   def content(self):
+    return '<h1>'+self.pages[self.index]+'</h1>'
+   def locator(self,selector):
+    assert selector=='body'
+    return self
+   def inner_text(self,timeout=3000):
+    return self.pages[self.index]
+   def wait_for_timeout(self,ms):
+    pass
+   def get_by_role(self,kind,name,exact):
+    assert kind=='button' and exact
+    self.label=name
+    return self
+   def count(self):
+    return int((self.label=='Submit' and self.index==2)
+               or (self.label=='Next' and self.index<2))
+   @property
+   def first(self):
+    return self
+   def click(self,timeout=1800):
+    if self.label!='Next':
+     raise AssertionError('A public-form reader must not click Submit')
+    self.clicked.append(self.label)
+    if not self.stuck:
+     self.index+=1
+  page=Fake()
+  snapshots,finished=_collect_public_pages(page,page.pages[0])
+  self.assertEqual(len(snapshots),3)
+  self.assertTrue(finished)
+  self.assertEqual(page.clicked,['Next','Next'])
+  blocked=Fake(stuck=True)
+  snapshots,finished=_collect_public_pages(blocked,blocked.pages[0])
+  self.assertEqual(len(snapshots),1)
+  self.assertFalse(finished)
+
+ def test_full_page_marker_is_only_accepted_with_submit_control(self):
+  from google_forms import read_public_form
+  partial=read_public_form(Document('<h1>Vendor form</h1><div role="button">Next</div>'
+       '<span data-btb-all-public-pages-read="true"></span>'))
+  self.assertFalse(partial['complete'])
+  complete=read_public_form(Document('<h1>Vendor form</h1><div role="button">Next</div>'
+       '<p>Booth fee: $30</p><div role="button">Submit</div>'
+       '<span data-btb-all-public-pages-read="true"></span>'))
+  self.assertTrue(complete['complete'])
+
  def test_public_forms_only_no_prefill_or_google_docs(self):
   self.assertTrue(public_google_form(FORM))
   self.assertTrue(public_google_form(SHORT))
