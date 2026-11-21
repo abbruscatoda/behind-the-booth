@@ -16,6 +16,31 @@ SOURCE="https://www.theraleighmarket.com/sell-with-us"
 APPLICATION="https://form.jotform.com/200075436464149"
 SLUG="the-raleigh-market"
 
+def _temporary_rates(text):
+ """Read only the organizer's temporary-outdoor rate section.
+
+ Never confuse permanent-vendor rent with temporary booth pricing.
+ The format may change independently of vendor intake availability.
+ """
+ section=re.split(r'PERMANENT OUTDOOR VENDORS',text.split('TEMPORARY OUTDOOR VENDORS',1)[-1],maxsplit=1,flags=re.I)[0]
+ weekend=re.search(r'\bWeekend\s*\$\s*(\d{1,4}(?:\.\d{1,2})?)\s*/\s*10',section,re.I)
+ daily=re.search(r'\$\s*(\d{1,4}(?:\.\d{1,2})?)\s*/\s*day\b',section,re.I)
+ day=float(daily.group(1)) if daily else None
+ weekend_rate=float(weekend.group(1)) if weekend else None
+ if day is not None and not (0<day<=1000):day=None
+ if weekend_rate is not None and not (0<weekend_rate<=1000):weekend_rate=None
+ return day,weekend_rate
+
+def _form_rate_conflict(text,day,weekend):
+ """A missing or differently formatted price is not a closure signal."""
+ option=re.search(r'Outdoor\s*10.{0,8}20.{0,90}',text,re.I)
+ if not option:return False
+ form=option.group(0)
+ d=re.search(r'\$\s*(\d{1,4}(?:\.\d{1,2})?)\s*/\s*day\b',form,re.I)
+ w=re.search(r'\$\s*(\d{1,4}(?:\.\d{1,2})?)\s*/\s*weekend\b',form,re.I)
+ return bool((d and day is not None and float(d.group(1))!=day)
+          or (w and weekend is not None and float(w.group(1))!=weekend))
+
 def verify_raleigh(fetcher,now=None):
  now=now or datetime.now(timezone.utc)
  homepage,home_hash=fetcher.get(ROOT)
@@ -37,8 +62,10 @@ def verify_raleigh(fetcher,now=None):
         if n.tag=='a' and n.attrs.get('href') and re.search(r'(?:request to be a vendor|request to become a vendor)',clean(n.text()),re.I)}
  if links!={APPLICATION}:
   raise Uncertain("Official vendor page no longer links the expected application.")
- if not re.search(r'Weekend\s*\$50\s*/\s*10',text,re.I) or not re.search(r'\$30\s*/\s*day',text,re.I):
-  raise Uncertain("Temporary outdoor booth prices have changed or cannot be verified.")
+ # Pricing can change without closing the application. Extract current rates
+ # from the official organizer page; do not turn price formatting into a
+ # user-facing "Needs rechecking" status.
+ day_rate,weekend_rate=_temporary_rates(text)
  if not re.search(r'Food trucks and vendors wishing to sell food or beverages may NOT drop in',text,re.I):
   raise Uncertain("Category-specific food restrictions changed.")
  form,form_hash=fetcher.get(APPLICATION)
@@ -47,11 +74,27 @@ def verify_raleigh(fetcher,now=None):
   raise Uncertain("Application no longer names the verified organizer.")
  if not re.search(r'(?:Submit Application|Submit)',form_text,re.I):
   raise Uncertain("Public Jotform does not expose its submission control.")
- if not re.search(r'Outdoor 10.{0,6}20.{0,30}\$50/weekend.{0,20}\$30/day',form_text,re.I):
-  raise Uncertain("Application pricing no longer matches organizer pricing.")
+ # A responsive Jotform can render price labels in a different order,
+ # punctuation or HTML layout. The official organizer's pricing page is
+ # sufficient evidence; a clearly conflicting named form option is disclosed
+ # without wrongly claiming that the APPLICATION is closed.
+ price_conflict=_form_rate_conflict(form_text,day_rate,weekend_rate)
  if re.search(r'(?:form is closed|no longer accepting submissions|submission disabled)',form_text,re.I):
   raise Uncertain("Official vendor form says applications are closed.")
  year=now.astimezone(ZoneInfo("America/New_York")).year
+ money=lambda amount: f"${amount:,.2f}".removesuffix(".00")
+ if price_conflict:
+  fee_notes=("The official vendor page and application list conflicting temporary-outdoor prices. "
+             "Verify the amount charged with the organizer before paying; a booth price is deliberately not displayed. "
+             "Permanent spaces and food concessions have separate pricing.")
+ elif day_rate is not None and weekend_rate is not None:
+  fee_notes=(f"Temporary outdoor 10 × 20 ft space: {money(day_rate)} for one day or "
+             f"{money(weekend_rate)} for the weekend. Permanent outdoor spaces have different pricing. "
+             "Food concessions require advance approval and may have different fees.")
+ else:
+  fee_notes=("The organizer still accepts temporary outdoor vendor requests, but a complete standard "
+             "outdoor booth fee could not be confirmed from the official page. "
+             "Confirm current daily/weekend charges before paying; food and permanent spaces have different fees.")
  candidate={
   "title":"The Raleigh Market — Rolling Vendor Applications",
   "market_slug":SLUG,"market_name":"The Raleigh Market",
@@ -61,13 +104,16 @@ def verify_raleigh(fetcher,now=None):
   "starts_on":date(year,1,1).isoformat(),
   "ends_on":date(year+1,12,31).isoformat(),
   "schedule_type":"rolling_market","availability":"open","deadline":None,
-  "booth_fee":30,"application_fee":None,"deposit":None,"categories":[],
-  "fee_notes":"Temporary outdoor 10 × 20 ft space: $30 for one day or $50 for the weekend. Permanent outdoor spaces have different pricing. Food concessions require advance approval and may have different fees.",
+  "booth_fee":day_rate if weekend_rate is not None and not price_conflict else None,
+  "application_fee":None,"deposit":None,"categories":[],
+  "fee_notes":fee_notes,
   "eligibility":"Temporary vendors submit the organizer's request form once for weekly vendor communication. Individual weekend placements depend on availability. Food trucks and food or beverage vendors require advance reservation and approval; no drop-in food vendors. CBD and hemp products are not accepted.",
   "research_notes":"Saturday and Sunday year-round market, 9 a.m.–5 p.m. Rolling request to become a temporary vendor; no single bookable date or application cutoff is implied. Internal start/end dates are verification coverage dates, not confirmed attendance. Apply only with the organizer."
  }
  return {"decision":"publish","policy":POLICY,"candidate":candidate,
          "checked_at":now.isoformat(),"source_hash":source_hash,
          "market_source_hash":home_hash,"application_hash":form_hash,
-         "evidence":"Official market home links the live Sell With Us page; organizer explicitly invites one-time temporary vendor requests and publishes matching $30/day, $50/weekend prices; live official Jotform names the same market and exposes its submit control.",
+         "official_source_prices":{"day":day_rate,"weekend":weekend_rate},
+         "form_price_discrepancy":price_conflict,
+         "evidence":"Official market home links the live Sell With Us page; the organizer explicitly invites ongoing one-time temporary-vendor requests. Its official Jotform identifies the same market and exposes an active Submit Application control. Any missing or disputed prices are disclosed separately rather than treated as a closed application.",
          "reason":"Verified rolling temporary vendor intake; no guaranteed weekend space."}
