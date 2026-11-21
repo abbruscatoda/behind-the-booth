@@ -35,6 +35,26 @@ class RollingSourceTests(unittest.TestCase):
   self.assertEqual(c['schedule_type'],'rolling_market')
   self.assertEqual((c['booth_fee'],c['application_fee'],c['deadline']),(None,None,None))
   self.assertEqual((c['starts_on'],c['ends_on']),('2026-01-01','2027-12-31'))
+ def test_year_round_with_explicit_open_intake_is_ongoing(self):
+  home=HOME.replace('Become a Vendor</a>','Become a Vendor</a><p>Open every week</p>')
+  page=PAGE.replace('Vendor applications are accepted on a rolling basis. Apply as a vendor.',
+                    'We are now accepting new vendors. Apply as a vendor.')
+  result=verify_generic_market(MARKET,Fake(home=home,page=page))
+  self.assertEqual(result['candidate']['availability'],'open')
+
+ def test_current_intake_without_recurring_schedule_is_not_rolling(self):
+  page=PAGE.replace('Vendor applications are accepted on a rolling basis. Apply as a vendor.',
+                    'We are now accepting new vendors. Apply as a vendor.')
+  with self.assertRaises(Uncertain):
+   verify_generic_market(MARKET,Fake(page=page))
+
+ def test_year_round_without_explicit_open_intake_is_not_enough(self):
+  home=HOME+'<p>Open every week</p>'
+  page=PAGE.replace('Vendor applications are accepted on a rolling basis. Apply as a vendor.',
+                    'Learn about our vendors.')
+  with self.assertRaises(Uncertain):
+   verify_generic_market(MARKET,Fake(home=home,page=page))
+
  def test_closed_or_specific_event_not_ongoing(self):
   for warning in ["Vendor applications are closed.", "Application deadline on December 1, 2026"]:
    with self.subTest(warning=warning),self.assertRaises(Uncertain):
