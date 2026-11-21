@@ -14,7 +14,7 @@ from category_rules import visible_text
 POLICY = "explore-rolling-official-v1"
 APPLICATION_WORDS = re.compile(
  r'\b(?:vendor application|apply (?:to be|as) (?:a )?vendor|vendor registration|'
- r'become a vendor|sell with us|apply now|apply to vend|new vendor form)\b',re.I)
+ r'become a vendor|sell with us|apply now|apply here|application form|apply to vend|new vendor form)\b',re.I)
 ROLLING_WORDS = re.compile(
  r'\b(?:year[- ]round (?:vendor )?applications?|(?:vendor )?applications? (?:are )?accepted '
  r'(?:on a rolling basis|year[- ]round|all year|anytime|throughout the year)|'
@@ -22,6 +22,11 @@ ROLLING_WORDS = re.compile(
  r'(?:apply|applications?) (?:at )?any time|'
  r'rolling (?:vendor )?applications?|weekly call[- ]for[- ]vendors|'
  r'no need to re[- ]submit each week)\b',re.I)
+# A year-round schedule PLUS explicit current vendor intake can establish an
+# ongoing application even if the organizer never writes the word 'rolling'.
+# A recurring schedule alone never qualifies.
+YEAR_ROUND = re.compile(r'\b(?:year[- ]round|every (?:saturday|sunday|week)|weekly market|open (?:all year|every week))\b',re.I)
+CURRENT_INTAKE = re.compile(r'\b(?:now accepting (?:new )?vendors?|(?:vendor )?applications? (?:are )?(?:now |currently )?open|accepting (?:new )?vendor applications?)\b',re.I)
 CLOSED_WORDS = re.compile(
  r'\b(?:applications? (?:are|have|is) (?:now )?closed|'
  r'no longer accepting (?:new )?(?:vendor )?applications?|'
@@ -89,7 +94,9 @@ def verify_generic_market(market,fetcher,now=None):
   # an old form is still reachable.
   if CLOSED_WORDS.search(source_text) or DATE_LOCK.search(source_text):
    continue
-  if not ROLLING_WORDS.search(source_text):
+  if not (ROLLING_WORDS.search(source_text) or
+          (YEAR_ROUND.search(root_text+' '+source_text) and
+           CURRENT_INTAKE.search(source_text))):
    continue
   if not APPLICATION_WORDS.search(source_text):
    continue
@@ -118,8 +125,8 @@ def verify_generic_market(market,fetcher,now=None):
     "schedule_type":"rolling_market","availability":"open","deadline":None,
     "booth_fee":None,"application_fee":None,"deposit":None,"categories":[],
     "fee_notes":"No universal standard vendor booth or application fee verified. Ask the organizer about category-specific rates, required extras, and the total cost before applying.",
-    "eligibility":"The official organizer currently advertises a rolling vendor application. Individual event dates, vendor eligibility, food permits, booth acceptance and available spaces must be confirmed directly with the organizer.",
-    "research_notes":"Rolling organizer intake verified from the named market's official website and linked readable application. Dates saved internally are a verification horizon, not bookable market dates. No fixed application deadline or guaranteed booth is represented."
+    "eligibility":"The official organizer currently advertises ongoing vendor intake for a recurring market. Individual event dates, vendor eligibility, food permits, booth acceptance and available spaces must be confirmed directly with the organizer.",
+    "research_notes":"Ongoing organizer intake verified from the named market's official website and linked readable application. Dates saved internally are a verification horizon, not bookable market dates. No fixed application deadline or guaranteed booth is represented."
    }
    return {"decision":"publish","policy":POLICY,"candidate":candidate,
     "checked_at":now.isoformat(),"market_source_hash":root_hash,
