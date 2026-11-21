@@ -1,10 +1,14 @@
 """Permanent regressions for source-linked vendor programs lacking one event date."""
 import unittest
+from unittest.mock import patch
 from datetime import datetime,timezone
 from verifier import Document,Uncertain
-from official_vendor_programs import PROGRAMS, verify_program, discover_programs
+from official_vendor_programs import PROGRAMS, verify_program, discover_programs, SOUTH_RULES_PAGE, SOUTH_RULES_DOC
 
 NOW=datetime(2026,11,21,17,tzinfo=timezone.utc)
+GUEST_RULES=('Market Rules Feb 2026. 9. Guest Vendor Applications. '
+ 'The market manager will invoice the applicant a $30 fee upon receipt of the application. '
+ 'A Guest Vendor shall pay a daily space fee of $30 for summer season and $25 for winter season.')
 class Fetch:
  def __init__(self):
   self.docs={}
@@ -29,20 +33,31 @@ class Fetch:
     self.docs[cfg['source']]+=body+' '+link
    else:
     self.docs[cfg['source']]='<h1>'+body+'</h1>'+link
+  self.docs[SOUTH_RULES_PAGE]='<h1>Market Rules</h1><a href="'+SOUTH_RULES_DOC+'">Market Rules Feb 2026</a>'
  def get(self,url):
   self.requests+=1
   if url not in self.docs:raise IOError('Source absent')
   return Document(self.docs[url]),'a'*64
 
 class OfficialProgramsTests(unittest.TestCase):
+ def setUp(self):
+  proxy=patch('official_vendor_programs.fetch_public_google_document',return_value=(GUEST_RULES,'b'*64))
+  proxy.start()
+  self.addCleanup(proxy.stop)
  def test_all_five_official_intakes_are_publishable_with_separate_known_links(self):
   results,notes=discover_programs(Fetch(),NOW)
   self.assertEqual(len(results),len(PROGRAMS))
   self.assertEqual(notes,[])
   self.assertEqual({r['program'] for r in results},set(PROGRAMS))
   for result in results:
-   self.assertEqual(result['candidate']['booth_fee'],None)
-   self.assertEqual(result['candidate']['application_fee'],None)
+   if result['program']=='south-durham-guest-vendors':
+    self.assertEqual(result['candidate']['booth_fee'],25)
+    self.assertEqual(result['candidate']['application_fee'],30)
+    self.assertIn('$30 per stall per summer',result['candidate']['fee_notes'])
+    self.assertEqual(result['rules_hash'],'b'*64)
+   else:
+    self.assertIsNone(result['candidate']['booth_fee'])
+    self.assertIsNone(result['candidate']['application_fee'])
    self.assertEqual(result['decision'],'publish')
    self.assertEqual(result['source_hash'],'a'*64)
  def test_municipal_food_2027_never_claims_specific_booths_or_fees(self):
@@ -77,6 +92,21 @@ class OfficialProgramsTests(unittest.TestCase):
   f.docs[url]=f.docs[url].replace('Official Vendor Application</a>','Other link</a>').replace('https://www.cognitoforms.com','https://www.example.com')
   with self.assertRaises(Uncertain):
    verify_program('wake-forest-2027-food',f,NOW)
+ def test_missing_linked_document_prevents_unverified_guest_fee(self):
+  f=Fetch()
+  f.docs[SOUTH_RULES_PAGE]='<h1>Rules removed</h1>'
+  with self.assertRaises(Uncertain):
+   verify_program('south-durham-guest-vendors',f,NOW)
+ def test_missing_numeric_fee_in_rules_prevents_guessing(self):
+  with patch('official_vendor_programs.fetch_public_google_document',
+             return_value=(GUEST_RULES.replace('a $30 fee','an unspecified fee'),'c'*64)):
+   with self.assertRaises(Uncertain):
+    verify_program('south-durham-guest-vendors',Fetch(),NOW)
+ def test_winter_craft_does_not_inherit_guest_stall_prices(self):
+  r=verify_program('south-durham-winter-craft',Fetch(),NOW)
+  self.assertIsNone(r['candidate']['application_fee'])
+  self.assertIsNone(r['candidate']['booth_fee'])
+
  def test_unrecognized_organizer_cannot_become_approved_program(self):
   with self.assertRaises(Uncertain):
    verify_program('fabricated-vendor-program',Fetch(),NOW)
