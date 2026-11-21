@@ -146,8 +146,16 @@ def verify_western_craft(fetcher,now=None,pdf_reader=read_fee_pdf):
   if form_conditions.get('booth_size_10x10'):
    cost+=' Standard space is 10 × 10 ft.'
  if pdf_options.get('second_space') is not None:
-  cost+=' Organizer-linked fee schedule lists an additional second-space charge of 
- if form_access=='http_auth_blocked':cost+=' Automated Google Form access is blocked; confirm other terms with the organizer.'
+  cost+=(' Organizer-linked fee schedule lists an additional second-space charge of $'
+         +format(pdf_options['second_space'],',.2f')+' when space permits.')
+ if pdf_options.get('co_op_tent') is not None:
+  cost+=(' Organizer-linked fee schedule lists a co-op vending arrangement charge of $'
+         +format(pdf_options['co_op_tent'],',.2f')+' per tent.')
+ if pdf_options:
+  cost+=' Confirm whether the general fee schedule optional-space terms apply to this specific craft fair.'
+ cost+=' Application registration ends November 28, 2026, or sooner if full; no cutoff time was published.'
+ if form_access=='http_auth_blocked':
+  cost+=' Automated Google Form access is blocked; confirm other terms with the organizer.'
  candidate={
   'title':'Winter Wonderland Craft Fair — Western Wake Farmers Market',
   'market_slug':'western-wake-farmers-market','organizer':'Western Wake Farmers Market',
