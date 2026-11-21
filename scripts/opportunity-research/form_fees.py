@@ -21,15 +21,26 @@ def _patterns(label):
     return first, second
 
 def _amount(text, label):
+    before, after = _patterns(label)
+    # The "$28 application fee $35 booth fee" sequence must not attach
+    # $35 to the preceding "application fee" label. Prefer amount-first
+    # evidence when available, and otherwise reject a label-first match if
+    # the dollar amount is immediately followed by a *different* fee label.
+    matches = list(before.finditer(text))
+    if not matches:
+        other_fee = re.compile(
+            r"\s*(?:(?:non[- ]?refundable|event|per[- ]event|standard|daily)\s+)?"
+            r"(?:application|booth|stall|table|space)\s+fee\b", re.I)
+        matches = [match for match in after.finditer(text)
+                   if not other_fee.match(text[match.end():])]
     candidates = set()
-    for pattern in _patterns(label):
-        for match in pattern.finditer(text):
-            try:
-                amount = round(float(match.group(1)), 2)
-            except (ValueError, OverflowError):
-                continue
-            if 0 < amount <= 10000:
-                candidates.add(amount)
+    for match in matches:
+        try:
+            amount = round(float(match.group(1)), 2)
+        except (ValueError, OverflowError):
+            continue
+        if 0 < amount <= 10000:
+            candidates.add(amount)
     # Conflicting values may be different packages; don't call one "standard".
     return next(iter(candidates)) if len(candidates) == 1 else None
 
