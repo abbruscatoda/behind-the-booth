@@ -2,6 +2,7 @@ import type { ResearchCoverage } from "./researchCoverage";
 import { opportunityCategoryStatus, type CategoryEvidence } from "./opportunityCategories";
 import { opportunityDeadline } from "./opportunityPresentation";
 import { deadlineForInput } from "./opportunityDeadline";
+import { firstPublishedTime, isNewlyPosted, isPostedSince } from "./opportunityRecency";
 
 export const VENDOR_CATEGORIES = ["Food & Beverages", "Food Trucks", "Art & Photography", "Handmade Crafts", "Jewelry & Accessories", "Clothing & Vintage", "Bath, Body & Beauty", "Plants & Farm Products", "Pet Products", "Services", "Other"];
 export type Opportunity = {
@@ -10,7 +11,7 @@ export type Opportunity = {
  research_coverage?: ResearchCoverage;
  category_evidence?: Record<string, CategoryEvidence>;
  categories: string[]; booth_fee: number | null; application_fee: number | null; deposit: number | null;
- fee_notes: string; eligibility: string; verified_at: string | null; effective_status: string;
+ fee_notes: string; eligibility: string; verified_at: string | null; published_at: string | null; effective_status: string;
  occurrence_id: string; market_id: string; market_slug: string;
  history: { review_count: number; reviewer_count: number; overall: number | null };
 };
@@ -23,15 +24,20 @@ export type OpportunityFilters = {
  includeUnconfirmed?: boolean; maxBoothFee?: string; deadlineBefore?: string;
  priceAvailability?: "all" | "published" | "unpublished";
  schedule?: "all" | "dated" | "seasonal" | "ongoing";
+ posted?: "all" | "week" | "since";
 };
-export type OpportunitySort = "date" | "deadline" | "fee_asc" | "rating_desc";
+export type OpportunitySort = "date" | "deadline" | "fee_asc" | "rating_desc" | "posted_desc";
 
-export function filterOpportunities(items: Opportunity[], filters: OpportunityFilters) {
+export function filterOpportunities(
+ items: Opportunity[], filters: OpportunityFilters, lastVisit: string | null = null, now = Date.now(),
+) {
  const query = filters.search.trim().toLocaleLowerCase();
  const max = filters.maxBoothFee?.trim() ? Number(filters.maxBoothFee) : null;
  return items.filter(item => {
   if (query && ![item.title,item.organizer,item.city,item.venue].join(" ").toLocaleLowerCase().includes(query)) return false;
   if (filters.city && item.city !== filters.city) return false;
+  if (filters.posted === "week" && !isNewlyPosted(item, now)) return false;
+  if (filters.posted === "since" && !isPostedSince(item, lastVisit, now)) return false;
   // ISO calendar dates compare lexically; use the actual month's final day.
   if (filters.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(filters.month)) {
    const [year,month] = filters.month.split("-").map(Number);
@@ -64,6 +70,7 @@ export function filterOpportunities(items: Opportunity[], filters: OpportunityFi
 export function sortOpportunities(items: Opportunity[], sort: OpportunitySort): Opportunity[] {
  const dateOrder = (a:Opportunity,b:Opportunity) => (a.schedule_type === "rolling_market" ? 1 : 0) - (b.schedule_type === "rolling_market" ? 1 : 0) || a.starts_on.localeCompare(b.starts_on) || a.title.localeCompare(b.title);
  return [...items].sort((a,b) => {
+  if (sort === "posted_desc") return (firstPublishedTime(b) ?? 0) - (firstPublishedTime(a) ?? 0) || dateOrder(a,b);
   if (sort === "deadline") return opportunityDeadline(a).sortAt - opportunityDeadline(b).sortAt || dateOrder(a,b);
   if (sort === "fee_asc") return (a.booth_fee ?? Infinity) - (b.booth_fee ?? Infinity) || dateOrder(a,b);
   if (sort === "rating_desc") return (b.history.review_count ? (b.history.overall ?? -1) : -1) - (a.history.review_count ? (a.history.overall ?? -1) : -1) || dateOrder(a,b);
