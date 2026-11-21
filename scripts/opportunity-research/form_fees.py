@@ -20,13 +20,25 @@ def _patterns(label):
     second = re.compile(label + r"\b(?:(?!\b(?:fee|deposit|booth|stall|table)\b)[^.$]){0,45}" + DOLLARS, re.I)
     return first, second
 
+PRIOR_PRICE_LABEL = re.compile(
+    r"\b(?:application|booth|stall|table|space|ticket|deposit|admission)"
+    r"\s+(?:fee|cost|price|tickets?)\s*[:=]\s*$", re.I,
+)
+
+def _amount_attached_to_previous_label(text, start):
+    # "Booth fee: $125 Application fee: $0" has TWO label-first amounts.
+    # The $125 must not also become an application price.
+    return bool(PRIOR_PRICE_LABEL.search(text[max(0,start-60):start]))
+
+
 def _amount(text, label):
     before, after = _patterns(label)
     # The "$28 application fee $35 booth fee" sequence must not attach
     # $35 to the preceding "application fee" label. Prefer amount-first
     # evidence when available, and otherwise reject a label-first match if
     # the dollar amount is immediately followed by a *different* fee label.
-    matches = list(before.finditer(text))
+    matches = [m for m in before.finditer(text)
+               if not _amount_attached_to_previous_label(text,m.start())]
     if not matches:
         other_fee = re.compile(
             r"\s*(?:(?:non[- ]?refundable|event|per[- ]event|standard|daily)\s+)?"
@@ -57,7 +69,8 @@ EVENT_BOOTH = re.compile(
 
 
 def _event_booth_amount(text):
-    values = {round(float(match.group(1)), 2) for match in EVENT_BOOTH.finditer(text)}
+    values = {round(float(match.group(1)), 2) for match in EVENT_BOOTH.finditer(text)
+              if not _amount_attached_to_previous_label(text,match.start())}
     return next(iter(values)) if len(values) == 1 else None
 
 
@@ -73,6 +86,8 @@ def extract_amount_first_fees(text):
         amounts = set()
         for pattern in patterns:
             for match in pattern.finditer(normalized):
+                if _amount_attached_to_previous_label(normalized,match.start()):
+                    continue
                 amount = round(float(match.group(1)), 2)
                 if 0 < amount <= 10000:
                     amounts.add(amount)
