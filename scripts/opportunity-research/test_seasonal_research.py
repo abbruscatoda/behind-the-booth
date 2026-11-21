@@ -118,6 +118,27 @@ class SeasonalTests(unittest.TestCase):
   self.assertTrue(result['form_readable'])
   self.assertIn('$28',result['candidate']['fee_notes'])
 
+ def test_embedded_market_generic_landing_title_can_use_verified_form_identity(self):
+  fetch=Fetch()
+  fetch.pages[seasonal.WF_ROOT]=WAKE_ROOT.replace('Wake Forest Farmers Market','Farmers Market')
+  fetch.pages[seasonal.WF_VENDOR]=WAKE_VENDOR
+  fetch.pages[WAKE_FORM]=WAKE_FORM_HTML
+  result=seasonal.check_provider(seasonal.PROVIDERS[2],fetch,NOW)
+  self.assertEqual(result['decision'],'publish')
+  self.assertEqual(result['candidate']['availability'],'open')
+
+ def test_embedded_market_unidentified_and_blocked_form_stays_unverified(self):
+  fetch=Fetch()
+  fetch.pages[seasonal.WF_ROOT]=WAKE_ROOT.replace('Wake Forest Farmers Market','Farmers Market')
+  fetch.pages[seasonal.WF_VENDOR]=WAKE_VENDOR
+  original=fetch.get
+  def blocked(url):
+   if url==WAKE_FORM:raise HTTPError(url,401,'Unauthorized',{},None)
+   return original(url)
+  fetch.get=blocked
+  with self.assertRaises(Uncertain):
+   seasonal.check_provider(seasonal.PROVIDERS[2],fetch,NOW)
+
  def test_embedded_year_round_can_use_exact_official_iframe_when_google_returns_401(self):
   from urllib.error import HTTPError
   fetch=Fetch()
