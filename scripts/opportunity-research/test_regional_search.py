@@ -44,6 +44,11 @@ class RegionalTests(unittest.TestCase):
  def test_generic_tourism_search_result_is_not_an_actionable_lead(self):
   hits,_=regional.search_results(NOW,Search(b'<rss><channel><item><title>Raleigh Wikipedia</title><description>Capital city of North Carolina</description><link>https://en.wikipedia.org/wiki/Raleigh</link></item></channel></rss>'))
   self.assertFalse(hits)
+ def test_generic_and_out_of_region_rss_results_do_not_count_as_vendor_discovery(self):
+  query='"Clayton" North Carolina vendor applications 2026'
+  self.assertFalse(regional.relevant_result('https://www.theclayton.com/chicago','Fulton Market Chicago','Discover Chicago membership',query))
+  self.assertFalse(regional.relevant_result('https://www.gartner.com/','Gartner','Market insights for executives','"Garner" NC vendor applications'))
+  self.assertTrue(regional.relevant_result('https://organizer.example/apply','Clayton vendor application','Craft market in Clayton, NC',query))
  def test_independent_fallback_recovers_vendor_results_from_generic_rss(self):
   class Engines:
    def open(self,request,timeout):

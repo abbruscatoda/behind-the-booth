@@ -32,6 +32,19 @@ def queries(now):
  return [f'"{city.title()}" North Carolina {INTENTS[(slot+i)%len(INTENTS)]} ({now.year} OR {now.year+1})'
          for i,city in enumerate(sorted(CITIES))]
 
+def relevant_result(url,title,description,query):
+ from discovery import SOURCES
+ from verifier import canonical_event,canonical_application
+ text=title+' '+description
+ topic=bool(re.search(r'\b(?:vendors?|artisan|craft|farmers?|market|markets|festival|pop.up|food.truck)\b',text,re.I))
+ if not topic:return False
+ if canonical_event(url) or canonical_application(url):return True
+ if urlparse(url).hostname in {urlparse(root).hostname for _,_,root in SOURCES}:return True
+ city=query.split('"')[1]
+ return bool(re.search(r'\b(?:vendors?|applications?|call for artists|sell with us)\b',text,re.I)
+             and re.search(r'\b'+re.escape(city)+r'\b',text,re.I)
+             and re.search(r'\b(?:NC|North Carolina|Triangle)\b',text,re.I))
+
 def html_search(query,opener):
  """Independent fallback, read-only; reject interstitials and unsafe links."""
  from verifier import Document
@@ -71,8 +84,7 @@ def search_results(now,opener=None):
    for item in root.findall('.//item')[:MAX_RESULTS_PER_QUERY]:
     url=(item.findtext('link') or '').strip()
     title=item.findtext('title') or 'Regional event lead'
-    context=title+' '+(item.findtext('description') or '')
-    if not re.search(r'\b(?:vendors?|artisan|craft|farmers?|market|markets|festival|pop.up|food.truck)\b',context,re.I):continue
+    if not relevant_result(url,title,item.findtext('description') or '',query):continue
     if is_safe_lead_url(url):
      hits.setdefault(url,title[:160]);relevant+=1
   except (OSError,ValueError,ET.ParseError):failures.append(query)
