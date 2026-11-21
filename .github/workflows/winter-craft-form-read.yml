@@ -21,3 +21,21 @@ jobs:
           python3 -m playwright install --with-deps chromium
       - name: Inspect official public form and current fee evidence
         run: python3 scripts/opportunity-research/probe_winter_form.py
+
+      - name: Publish vetted event to live database using evidence guard
+        env:
+          BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
+          BTB_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.BTB_SUPABASE_PUBLISHABLE_KEY }}
+          BTB_RESEARCH_SECRET: ${{ secrets.BTB_RESEARCH_SECRET }}
+        run: |
+          python3 - <<'PY'
+          import json,sys
+          sys.path.insert(0,'scripts/opportunity-research')
+          from verifier import Fetcher
+          from western_craft_fair import verify_western_craft
+          from run import Database
+          receipt=verify_western_craft(Fetcher(limit=12))
+          response=Database().rpc('btb_research_publish_western_craft',{'p_result':receipt})
+          print('WESTERN_CRAFT_PUBLISH '+json.dumps(response))
+          if response.get('action')!='publish':raise RuntimeError('Verified craft publisher did not confirm update')
+          PY
