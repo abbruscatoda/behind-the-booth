@@ -1,0 +1,62 @@
+"""Regression coverage for the held Western Wake December craft fair."""
+import unittest
+from datetime import datetime,timezone
+from urllib.error import HTTPError
+from verifier import Document,Uncertain
+import western_craft_fair as craft
+
+NOW=datetime(2026,11,21,14,tzinfo=timezone.utc)
+SOURCE='<h1>Winter Wonderland Craft Fair</h1><p>Saturday, December 12, 2026</p><p>Craft vendors: <a href="'+craft.EVENT_LINK+'">register here</a>. Registration deadline: 11/28/26 or until spots are filled.</p>'
+APPLY='<h2>Craft Fair Application</h2><a href="'+craft.CRAFT_LINK+'">Craft Fair Application</a><a href="https://westernwakefarmersmarket.org/s/Vendor-Fee-Schedule-v01-2025.pdf">Download Fees PDF</a>'
+PDF='Craft Vendor Application Fee Covers craft review costs $10 Returning Vendor Application Fee $25 Vendors applying specifically to our seasonal craft fairs will submit payment in the amount of $10 with their craft application. Regular market Guest Vendor Daily Rate $30.'
+FORM='<h1>Western Wake Farmers Market craft fair</h1><p>$12 application fee. $45 event booth fee.</p><button>Next</button>'
+
+class Fetch:
+ def __init__(self,event=SOURCE,apply=APPLY,form=FORM):
+  self.pages={craft.EVENT:event,craft.APPLY:apply,craft.FORM:form}
+ def get(self,url):
+  if url==craft.FORM and self.pages[url] is None:
+   raise HTTPError(url,401,'Unauthorized',{},None)
+  return Document(self.pages[url]),'a'*64
+
+def pdf(url):
+ return PDF,'b'*64
+
+class WesternCraftTests(unittest.TestCase):
+ def test_blocked_google_form_uses_only_pdf_craft_fee(self):
+  r=craft.verify_western_craft(Fetch(form=None),NOW,pdf)
+  self.assertEqual(r['candidate']['application_fee'],10)
+  self.assertIsNone(r['candidate']['booth_fee'])
+  self.assertEqual(r['candidate']['availability'],'open')
+  self.assertEqual(r['application_access'],'http_auth_blocked')
+  self.assertEqual(r['fee_pdf_hash'],'b'*64)
+  self.assertIn('not presumed',r['candidate']['fee_notes'])
+
+ def test_readable_public_form_pricing_takes_precedence(self):
+  r=craft.verify_western_craft(Fetch(),NOW,pdf)
+  self.assertEqual(r['candidate']['application_fee'],12)
+  self.assertEqual(r['candidate']['booth_fee'],45)
+  self.assertEqual(r['application_access'],'readable_first_page')
+
+ def test_after_published_registration_date_is_closed_automatically(self):
+  r=craft.verify_western_craft(Fetch(form=None),datetime(2026,11,29,15,tzinfo=timezone.utc),pdf)
+  self.assertEqual(r['candidate']['availability'],'closed')
+
+ def test_mismatched_official_form_link_stays_uncertain(self):
+  with self.assertRaises(Uncertain):
+   craft.verify_western_craft(Fetch(event=SOURCE.replace(craft.EVENT_LINK,'https://forms.gle/some-other-form')),NOW,pdf)
+
+ def test_no_unverified_regular_market_fee(self):
+  self.assertEqual(craft.craft_fee_from_pdf(PDF),10)
+  with self.assertRaises(Uncertain):
+   craft.craft_fee_from_pdf('New Vendor Application Fee $35 Guest Vendor Daily Rate $30')
+
+ def test_pdf_failure_does_not_close_application_or_guess_fee(self):
+  def blocked(_):
+   raise HTTPError('https://westernwakefarmersmarket.org',403,'Forbidden',{},None)
+  r=craft.verify_western_craft(Fetch(form=None),NOW,blocked)
+  self.assertEqual(r['candidate']['availability'],'open')
+  self.assertIsNone(r['candidate']['application_fee'])
+  self.assertIsNone(r['candidate']['booth_fee'])
+
+if __name__=='__main__':unittest.main()
