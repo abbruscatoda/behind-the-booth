@@ -23,7 +23,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads','btb_research_publish_ongoing','btb_research_market_gaps','btb_research_publish_verified_rolling','btb_research_publish_western_craft'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads','btb_research_publish_ongoing','btb_research_market_gaps','btb_research_publish_verified_rolling','btb_research_publish_western_craft','btb_research_publish_official_program'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -58,6 +58,16 @@ def register_discovery_sources(db,leads):
  return result
 
 def existing_result(item,found,fetcher,now):
+ if item.get('verification_policy')=='official-vendor-program-v1':
+  from official_vendor_programs import PROGRAMS,verify_program
+  eligible=[key for key,cfg in PROGRAMS.items()
+    if cfg['application']==item.get('application_url')
+    and cfg['source']==item.get('source_url')
+    and cfg['title']==item.get('title')
+    and cfg['starts']==item.get('starts_on')
+    and cfg['ends']==item.get('ends_on')]
+  if len(eligible)!=1:raise Uncertain('Official vendor program source identity has changed.')
+  return verify_program(eligible[0],fetcher,now)
  if item.get('verification_policy')=='western-wake-craft-official-v1':
   from western_craft_fair import verify_western_craft,EVENT,CRAFT_LINK,EVENT_DAY
   if (item.get('id')!='bf8b4727-556b-499a-af38-0902c997d13b'
@@ -198,7 +208,7 @@ def run(dry_run=False):
    # Seasonal waitlists use a separate, tightly scoped official-source
    # verification policy. The dated-event quality gate expects an exact
    # event deadline and must not silently downgrade a verified waitlist.
-   if result.get('policy') not in ('recurring-official-waitlist-v1','seasonal-official-v1','triangle-multidate-jotform-v1','raleigh-rolling-official-v1','explore-rolling-official-v1','western-wake-craft-official-v1'):
+   if result.get('policy') not in ('official-vendor-program-v1','recurring-official-waitlist-v1','seasonal-official-v1','triangle-multidate-jotform-v1','raleigh-rolling-official-v1','explore-rolling-official-v1','western-wake-craft-official-v1'):
     result=add_review_suggestions(item,apply_quality_gate(item,result))
    if defer_inconclusive_review(item,result):
     counts['deferred_inconclusive']+=1
@@ -208,7 +218,9 @@ def run(dry_run=False):
     counts['proposed_'+result['decision']]+=1
     print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'proposed':result['decision'],'reason':result.get('reason',''),'source':result.get('candidate',{}).get('source_url') or result.get('research_suggestions',{}).get('source_url'),'categories':result.get('candidate',{}).get('categories',[]),'category_states':{c:e['status'] for c,e in result.get('category_evidence',{}).get('categories',{}).items()},'category_warnings':result.get('category_warnings',[]),'research_quality':result.get('research_quality'),'quality_issues':result.get('quality_issues',[]),'fee_notes':result.get('candidate',{}).get('fee_notes',''),'requirements':result.get('candidate',{}).get('eligibility',''),'research_suggestions':result.get('research_suggestions')},ensure_ascii=False));return
    if result.get('category_warnings'):print(json.dumps({'title':item['title'] if item else result['candidate']['title'],'category_warnings':result['category_warnings']},ensure_ascii=False))
-   if result.get('policy')=='western-wake-craft-official-v1' and result.get('decision')=='publish':
+   if result.get('policy')=='official-vendor-program-v1' and result.get('decision')=='publish':
+    response=db.rpc('btb_research_publish_official_program',{'p_result':result})
+   elif result.get('policy')=='western-wake-craft-official-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_western_craft',{'p_result':result})
    if result.get('policy')=='explore-rolling-official-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_verified_rolling',{'p_result':result})
@@ -235,7 +247,21 @@ def run(dry_run=False):
    if item['ends_on']<now.astimezone(__import__('zoneinfo').ZoneInfo('America/New_York')).date().isoformat():
     apply(item,{'decision':'closed','reason':'Application deadline or event date has passed.'});continue
    try:result=existing_result(item,found,fetcher,now)
-   except Uncertain as error:result={'decision':'closed' if item.get('deadline') and datetime.fromisoformat(item['deadline'].replace('Z','+00:00'))<now else 'review','reason':str(error)}
+   except Uncertain as error:
+    if item.get('verification_policy')=='official-vendor-program-v1':
+     from official_vendor_programs import PROGRAMS
+     from zoneinfo import ZoneInfo
+     expiring=[cfg for cfg in PROGRAMS.values()
+       if cfg['application']==item.get('application_url') and cfg['source']==item.get('source_url')
+       and cfg.get('until') and now.astimezone(ZoneInfo('America/New_York')).date().isoformat()>cfg['until']]
+     if expiring:
+      apply(item,{'decision':'closed','reason':'The independently published vendor intake window has expired.'})
+     else:
+      counts['program_source_inconclusive']+=1
+      print(json.dumps({'action':'program_source_inconclusive','title':item['title'],
+       'reason':'Existing published facts retained; recheck will be retried automatically.'}))
+     continue
+    result={'decision':'closed' if item.get('deadline') and datetime.fromisoformat(item['deadline'].replace('Z','+00:00'))<now else 'review','reason':str(error)}
    except Exception as error:
     if not transient_source_failure(error):raise
     result={'decision':'closed' if item.get('deadline') and datetime.fromisoformat(item['deadline'].replace('Z','+00:00'))<now else 'review','reason':'Official source could not be read reliably. The next successful run can resolve this automatically.'}
@@ -286,6 +312,19 @@ def run(dry_run=False):
    key=(canonical_application(data['application_url']) or data['application_url'],data['starts_on'])
    if key in known or key in found:continue
    apply(None,candidate)
+  # Public, current vendor programs that do not expose one event date or
+  # use a non-Eventeny application (municipal pages, state PDFs, guest forms).
+  # Each program is independently source-bound and published through the
+  # evidence-gated backend; unverified pages do not become new leads.
+  from official_vendor_programs import discover_programs
+  official_programs,program_notes=discover_programs(fetcher,now)
+  discovery_stats['official_programs_checked']=len(official_programs)
+  discovery_stats['official_programs_unconfirmed']=program_notes
+  for candidate in official_programs:
+   data=candidate['candidate']
+   key=(data['application_url'],data['starts_on'])
+   if key not in known and key not in found:
+    apply(None,candidate)
   from recurring_market import discover_recurring
   recurring_diagnostics=[]
   for candidate in discover_recurring(fetcher,now,diagnostics=recurring_diagnostics):
