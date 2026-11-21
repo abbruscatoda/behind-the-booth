@@ -15,6 +15,8 @@ class Fetch:
  def __init__(self,event=SOURCE,apply=APPLY,form=FORM):
   self.pages={craft.EVENT:event,craft.APPLY:apply,craft.FORM:form}
  def get(self,url):
+  if url in (craft.CRAFT_LINK,craft.EVENT_LINK):
+   url=craft.FORM
   if url==craft.FORM and self.pages[url] is None:
    raise HTTPError(url,401,'Unauthorized',{},None)
   return Document(self.pages[url]),'a'*64
@@ -70,6 +72,22 @@ class WesternCraftTests(unittest.TestCase):
   self.assertEqual(craft.craft_fee_from_pdf(PDF),10)
   with self.assertRaises(Uncertain):
    craft.craft_fee_from_pdf('New Vendor Application Fee $35 Guest Vendor Daily Rate $30')
+
+ def test_official_shortlink_can_expose_public_form_if_direct_google_url_is_blocked(self):
+  class Alternate(Fetch):
+   def get(self,url):
+    if url==craft.FORM:
+     raise HTTPError(url,401,'Unauthorized',{},None)
+    return super().get(url)
+  form=('<h1>WWFM Craft Fair Vendor Registration</h1>'
+        '<p>Western Wake Farmers Market registration for 2026-27 winter craft fair in Morrisville.</p>'
+        '<p>Craft fair fees: $10 nonrefundable application fee (waived for current vendors).</p>'
+        "<p>$30 per event: 10'x10' booth fee, payable upon acceptance.</p>"
+        '<div role="button">Next</div>')
+  result=craft.verify_western_craft(Alternate(form=form),NOW,pdf)
+  self.assertEqual(result['application_access'],'readable_first_page')
+  self.assertEqual(result['candidate']['application_fee'],10)
+  self.assertEqual(result['candidate']['booth_fee'],30)
 
  def test_pdf_failure_does_not_close_application_or_guess_fee(self):
   def blocked(_):
