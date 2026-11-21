@@ -38,6 +38,8 @@ jobs:
           now=datetime.now(timezone.utc)
           fetcher=Fetcher(limit=28)
           results,notes=discover_programs(fetcher,now)
+          # Source-bound programs need a current official vendor CTA; a dynamic
+          # event selector is not evidence of any individually guaranteed date.
           db=Database()
           published=0
           problems=[]
