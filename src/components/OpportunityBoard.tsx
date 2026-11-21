@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import OpportunityCard from "./OpportunityCard";
 import OpportunityDetailsDialog from "./OpportunityDetailsDialog";
 import { createClient } from "../lib/supabase/client";
+import { isNewlyPosted, isPostedSince } from "../lib/opportunityRecency";
 import { opportunityCategoryStatus } from "../lib/opportunityCategories";
 import { filterOpportunities, sortOpportunities, statusLabel, VENDOR_CATEGORIES, type Opportunity, type OpportunitySort, type OpportunityFilters } from "../lib/opportunities";
 import { defaultOpportunityFilters, defaultOpportunitySort, readOpportunitySearch, writeOpportunitySearch } from "../lib/opportunitySearchUrl";
@@ -23,7 +24,31 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  const [sort,setSort]=useState<OpportunitySort>(defaultOpportunitySort),[refresh,setRefresh]=useState(0),[saved,setSaved]=useState<string[]>([]),[saving,setSaving]=useState<string|null>(null),[message,setMessage]=useState("");
  const [selectedOpportunity,setSelectedOpportunity]=useState<Opportunity|null>(null);
  const [moreFiltersOpen,setMoreFiltersOpen]=useState(false);
+ const [lastVisit,setLastVisit]=useState<string|null>(null);
  const moreFiltersId=useId();
+
+ // The baseline is browser-local and kept stable throughout this tab's session.
+ // Do not call a list "viewed": visiting the page isn't proof of reading every card.
+ useEffect(()=>{
+  if(compact || marketId)return;
+  const localKey="btb_opportunities_last_opened_v1";
+  const sessionKey="btb_opportunities_session_baseline_v1";
+  const now=Date.now();
+  let previous:string|null=null;
+  try{
+   const sessionBaseline=window.sessionStorage.getItem(sessionKey);
+   if(sessionBaseline!==null)previous=sessionBaseline||null;
+   else{
+    previous=window.localStorage.getItem(localKey);
+    window.sessionStorage.setItem(sessionKey,previous??"");
+   }
+   window.localStorage.setItem(localKey,new Date(now).toISOString());
+  }catch{
+   // Browsing remains fully functional with storage disabled.
+  }
+  const timestamp=previous?Date.parse(previous):NaN;
+  setLastVisit(Number.isFinite(timestamp)&&timestamp<=now?previous:null);
+ },[compact,marketId]);
  useEffect(()=>{
   if(compact || marketId)return;
   const fromUrl=()=>{const state=readOpportunitySearch(new URLSearchParams(window.location.search));setFilters(state.filters);setSort(state.sort);setMoreFiltersOpen(additionalFilterCount(state.filters)>0);};
@@ -39,7 +64,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  },[filters,sort,urlReady,compact,marketId]);
  async function copySearchLink(){
   const url=writeOpportunitySearch(new URL(window.location.href),filters,sort);
-  try{await navigator.clipboard.writeText(url.href);setShareMessage("Search link copied.");}
+  try{await navigator.clipboard.writeText(url.href);setShareMessage(filters.posted==="since"?"Search link copied. The since-last-visit view is specific to this browser, so it is not included in the link.":"Search link copied.");}
   catch{setShareMessage("Unable to copy automatically. Copy the address from your browser.");}
  }
  useEffect(()=>{let active=true;const client=createClient();const subscription=client.auth.onAuthStateChange(()=>{if(active)setSaved([]);});
@@ -58,7 +83,14 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
   const target=document.getElementById(id);
   if(target){target.scrollIntoView({block:"start"});followedHash.current=id;}
  },[loading,error,items]);
- const visible=sortOpportunities(filterOpportunities(items,filters),sort);
+ const visible=sortOpportunities(filterOpportunities(items,filters,lastVisit),sort);
+ const activeItems=items.filter(item=>["open","limited","waitlist"].includes(item.effective_status));
+ const recentCount=activeItems.filter(item=>isNewlyPosted(item)).length;
+ const sinceCount=lastVisit?activeItems.filter(item=>isPostedSince(item,lastVisit)).length:0;
+ const selectPosted=(mode:"week"|"since")=>{
+  setFilters(previous=>({...previous,posted:previous.posted===mode?"all":mode}));
+  setSort("posted_desc");
+ };
  const unconfirmedCount=filters.category ? visible.filter(item=>opportunityCategoryStatus(item,filters.category)==="unknown").length : 0;
  const additionalCount=additionalFilterCount(filters);
  const input="mt-1.5 h-11 w-full min-w-0 rounded-none border border-[#252521]/25 bg-[#FFFCF6] px-3 text-sm font-medium text-[#252521] outline-none transition-colors focus:border-[#07472B] focus-visible:ring-1 focus-visible:ring-[#07472B]";
@@ -78,6 +110,31 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  if(filters.maxBoothFee)additionalChips.push({label:"Max booth: $"+filters.maxBoothFee,clear:()=>setFilters(previous=>({...previous,maxBoothFee:""}))});
  if(filters.deadlineBefore)additionalChips.push({label:"Deadline by: "+filters.deadlineBefore,clear:()=>setFilters(previous=>({...previous,deadlineBefore:""}))});
  return <div>
+ {!compact&&<section aria-label="Newly posted vendor opportunities"
+  className="mt-5 border-y border-[#252521]/20 bg-[#E9E7DA]/55 px-4 py-3 sm:px-5">
+  <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+   <div>
+    <p className="text-[11px] font-bold uppercase tracking-[0.09em] text-[#626C57]">Newly posted opportunities</p>
+    <p className="mt-1 text-sm text-[#55554E]">{loading?"Checking recent postings…":recentCount===0?"No new open opportunities posted in the last 7 days.":`${recentCount} new ${recentCount===1?"opportunity":"opportunities"} posted in the last 7 days.`}</p>
+    {!lastVisit&&<p className="mt-1 text-xs text-[#626C57]">On a future visit in this browser, you can also see what appeared since today.</p>}
+   </div>
+   <div className="flex flex-wrap gap-2">
+    <button type="button" disabled={loading||recentCount===0} aria-pressed={filters.posted==="week"}
+     onClick={()=>selectPosted("week")}
+     className={`min-h-10 border px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B] disabled:cursor-not-allowed disabled:opacity-50 ${filters.posted==="week"?"border-[#07472B] bg-[#07472B] text-white":"border-[#07472B]/40 text-[#07472B] hover:bg-[#DFE2D5]"}`}>
+     New this week ({recentCount})
+    </button>
+    {lastVisit&&<button type="button" disabled={loading||sinceCount===0} aria-pressed={filters.posted==="since"}
+     onClick={()=>selectPosted("since")}
+     className={`min-h-10 border px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B] disabled:cursor-not-allowed disabled:opacity-50 ${filters.posted==="since"?"border-[#07472B] bg-[#07472B] text-white":"border-[#07472B]/40 text-[#07472B] hover:bg-[#DFE2D5]"}`}>
+     Since last visit ({sinceCount})
+    </button>}
+    {filters.posted&&filters.posted!=="all"&&<button type="button"
+     onClick={()=>setFilters(previous=>({...previous,posted:"all"}))}
+     className="min-h-10 px-2 text-xs font-semibold text-[#07472B] underline underline-offset-4">Show all</button>}
+   </div>
+  </div>
+ </section>}
  {!compact&&<section aria-label="Search and filter vendor opportunities" className="mt-6 border-y border-[#252521]/20 py-4">
   <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
    <label className={controlLabel+" sm:col-span-2 lg:col-span-1"}>Search opportunities
@@ -106,6 +163,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
    <label className={controlLabel+" min-w-[175px] flex-[1_1_190px] sm:max-w-[290px]"}>Sort by
     <select className={input} value={sort} onChange={event=>setSort(event.target.value as OpportunitySort)}>
      <option value="date">Upcoming event date</option>
+     <option value="posted_desc">Newest posted first</option>
      <option value="deadline">Application deadline (confirmed first)</option>
      <option value="fee_asc">Booth fee (lowest verified first)</option>
      <option value="rating_desc">Vendor rating (reviewed first)</option>
@@ -176,6 +234,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
   {shareMessage&&<p role="status" className="mt-2 text-xs text-[#07472B]">{shareMessage}</p>}
  </section>}
  {!compact&&sort==="deadline"&&<p className="mt-3 text-xs leading-relaxed text-[#626C57]">Event-specific deadlines appear first. Series deadlines and unconfirmed cutoffs appear afterward, ordered by event date.</p>}
+ {!compact&&filters.posted==="since"&&lastVisit&&<p className="mt-3 text-xs text-[#626C57]">Showing opportunities first published since your previous visit to this page on this browser.</p>}
  {message&&<p role="status" className="my-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{message} <Link href="/login" className="font-semibold underline">My Account →</Link></p>}
  {error?<div role="alert" className="mt-6"><p>{error}</p><button onClick={()=>setRefresh(value=>value+1)} className="mt-3 font-semibold underline">Refresh opportunities</button></div>:loading?<p role="status" className="mt-6">Loading opportunities…</p>:visible.length===0?<p className="mt-6 text-[#55554E]">{compact?"No recently verified vendor applications or waitlists are listed for this market right now.":"No opportunities match these filters. Try another location or month, include unconfirmed categories, or show all statuses."}</p>:<div className={`mt-5 grid items-stretch gap-5 ${compact?"":"md:grid-cols-2 lg:grid-cols-3"}`}>
  {(compact?visible.slice(0,3):visible).map(item=><OpportunityCard
