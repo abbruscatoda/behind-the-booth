@@ -110,19 +110,32 @@ def verify_western_craft(fetcher,now=None,pdf_reader=read_fee_pdf):
  form_access='http_auth_blocked'
  form_prices={'application_fee':None,'booth_fee':None}
  form_conditions={}
- try:
-  form,form_hash=fetcher.get(FORM)
- except (HTTPError,URLError,TimeoutError,OSError,ValueError):
-  pass
- else:
-  text=visible_text(form.root)
-  if re.search(r'no longer accepting responses|form (?:is )?closed',text,re.I):
+ # Both independently verified official organizer pages link public Google
+ # short URLs resolving to the same craft application. Trying these public
+ # URLs is not login/permission bypass. A valid organizer/form identity check
+ # is still required before extracting any prices or closure status.
+ for form_url in (FORM,CRAFT_LINK,EVENT_LINK):
+  try:
+   form,possible_hash=fetcher.get(form_url)
+  except (HTTPError,URLError,TimeoutError,OSError,ValueError):
+   continue
+  form_text=visible_text(form.root)
+  if re.search(r'you need permission|request access|sign in to continue',form_text,re.I):
+   continue
+  identity=bool(re.search(r'(?:WWFM|Western Wake Farmers Market).{0,70}Craft Fair',form_text,re.I))
+  if not identity:
+   # Never copy prices from a form with a changed organizer/event identity.
+   continue
+  if re.search(r'no longer accepting responses|form (?:is )?closed',form_text,re.I):
+   form_hash=possible_hash
    form_access='closed'
-  elif not re.search(r'you need permission|request access|sign in to continue',text,re.I):
-   if re.search(r'\b(?:Next|Submit)\b',text,re.I) and len(text)>120:
-    form_access='readable_first_page'
-    form_prices=extract_labeled_fees(text)
-    form_conditions=extract_fee_conditions(text)
+   break
+  if re.search(r'\b(?:Next|Submit)\b',form_text,re.I) and len(form_text)>120:
+   form_hash=possible_hash
+   form_access='readable_first_page'
+   form_prices=extract_labeled_fees(form_text)
+   form_conditions=extract_fee_conditions(form_text)
+   break
  closed=local>LAST_DAY or form_access=='closed' or bool(re.search(r'registration (?:is )?closed|no longer accepting.{0,40}craft vendors',source,re.I))
  app_fee=form_prices['application_fee'] if form_prices['application_fee'] is not None else pdf_fee
  booth_fee=form_prices['booth_fee'] if form_access=='readable_first_page' else None
