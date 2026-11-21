@@ -121,6 +121,19 @@ class SeasonalTests(unittest.TestCase):
   self.assertEqual(result['candidate']['booth_fee'],35.0)
   self.assertEqual(result['form_fee_evidence'],{'application_fee':28.0,'booth_fee':35.0})
 
+ def test_year_round_vendor_participation_is_sufficient_schedule_evidence(self):
+  # The official page may describe year-round member vendors but omit the
+  # exact "Saturdays Year Round" banner from parsed main content.
+  fetch=Fetch()
+  fetch.pages[seasonal.WF_ROOT]=WAKE_ROOT.replace(
+      'Join us on Saturdays Year Round',
+      'Our Market Vendors also known as Member Vendors participate in the market year-round or in winter.')
+  fetch.pages[seasonal.WF_VENDOR]=WAKE_VENDOR
+  fetch.pages[WAKE_FORM]=WAKE_FORM_HTML
+  result=seasonal.check_provider(seasonal.PROVIDERS[2],fetch,NOW)
+  self.assertEqual(result['decision'],'publish')
+  self.assertEqual(result['candidate']['booth_fee'],35)
+
  def test_embedded_market_generic_landing_title_can_use_verified_form_identity(self):
   fetch=Fetch()
   fetch.pages[seasonal.WF_ROOT]=WAKE_ROOT.replace('Wake Forest Farmers Market','Farmers Market')
