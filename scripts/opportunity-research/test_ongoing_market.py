@@ -51,7 +51,7 @@ class RollingTests(unittest.TestCase):
   with self.assertRaises(Uncertain):
    verify_raleigh(Fetch(source=VENDOR+'<p>Temporary vendor applications are closed.</p>'))
  def test_changed_official_price_is_automatically_republished(self):
-  result=verify_raleigh(Fetch(source=VENDOR.replace('$30/day','$35/day')))
+  result=verify_raleigh(Fetch(source=VENDOR.replace('$30/day','$35/day'),form=FORM.replace('$30/day','$35/day')))
   self.assertEqual(result['decision'],'publish')
   self.assertEqual(result['candidate']['availability'],'open')
   self.assertEqual(result['candidate']['booth_fee'],35)
