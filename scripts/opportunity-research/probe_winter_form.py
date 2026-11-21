@@ -36,3 +36,20 @@ try:
  print('WESTERN_CRAFT_PDF_LENGTH '+str(len(pdf_text)))
 except Exception as exc:
  print('WESTERN_CRAFT_PDF_ERROR '+type(exc).__name__+': '+str(exc)[:120])
+
+try:
+ from western_craft_fair import verify_western_craft
+ from verifier import Fetcher
+ reader=Fetcher(limit=12)
+ reader.browser_enabled=False
+ r=verify_western_craft(reader)
+ c=r['candidate']
+ print('WESTERN_CRAFT_FULL_VERIFICATION '+json.dumps({
+  'decision':r['decision'],'status':c['availability'],
+  'application_fee':c['application_fee'],'booth_fee':c['booth_fee'],
+  'pdf_verified':bool(r['fee_pdf_hash']),
+  'event_verified':bool(r['source_hash']),
+  'form_access':r['application_access'],
+ }))
+except Exception as exc:
+ print('WESTERN_CRAFT_FULL_ERROR '+type(exc).__name__+': '+str(exc)[:170])
