@@ -7,17 +7,17 @@ Ambiguous competing amounts for the same type remain unverified.
 from __future__ import annotations
 import re
 
-DOLLARS = r"\\$\\s*([0-9]{1,5}(?:\\.[0-9]{1,2})?)"
-APPLICATION = r"(?:non[- ]?refundable\\s+)?(?:vendor\\s+)?application\\s+fee"
-BOOTH = r"(?:(?:event|per[- ]event|standard|daily|single[- ]day)\\s+)?(?:booth|stall|table|space)\\s+fee"
+DOLLARS = r"\$\s*([0-9]{1,5}(?:\.[0-9]{1,2})?)"
+APPLICATION = r"(?:non[- ]?refundable\s+)?(?:vendor\s+)?application\s+fee"
+BOOTH = r"(?:(?:event|per[- ]event|standard|daily|single[- ]day)\s+)?(?:booth|stall|table|space)\s+fee"
 
 def _patterns(label):
     # Amount before label, e.g. "$28 NON-REFUNDABLE Application Fee"
     # or "$35 Event Booth Fee".
-    first = re.compile(DOLLARS + r"\\s*" + label + r"\\b", re.I)
+    first = re.compile(DOLLARS + r"\s*" + label + r"\b", re.I)
     # Label before amount, e.g. "Application fee: $28". Do not traverse
     # another fee label before picking up an unrelated dollar value.
-    second = re.compile(label + r"\\b(?:(?!\\b(?:fee|deposit|booth|stall|table)\\b)[^$]){0,45}" + DOLLARS, re.I)
+    second = re.compile(label + r"\b(?:(?!\b(?:fee|deposit|booth|stall|table)\b)[^$]){0,45}" + DOLLARS, re.I)
     return first, second
 
 def _amount(text, label):
