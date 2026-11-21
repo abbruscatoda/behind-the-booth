@@ -19,6 +19,13 @@ _FEE_TERMS = re.compile(
     r"per[- ]event|non[- ]?refundable|waived?\s+for|table of fees)"
 )
 _DATE_TERMS = re.compile(r"(?i)(?:applications?\s+(?:due|close|deadline)|registration\s+(?:due|close|deadline))")
+_REQUIREMENT_TERMS = re.compile(
+    r"(?i)\b(?:must|required|requirement|eligible|ineligible|prohibited|"
+    r"insurance|permit|license|sales tax|tax id|electricity|power|"
+    r"food vendors?|craft vendors?|artisans?|tent weights?|selection|"
+    r"payment|nonrefundable|non-refundable|set[- ]?up|load[- ]?in|"
+    r"category|categories|restrictions?)\b"
+)
 _MAX_SCRIPT = 500_000
 _MAX_STRINGS = 180
 _MAX_DEPTH = 18
@@ -31,7 +38,8 @@ def _authored_strings(value, depth=0):
     if isinstance(value, str):
         if 8 <= len(value) <= _MAX_TEXT:
             cleaned = clean(value)
-            if _FEE_TERMS.search(cleaned) or _DATE_TERMS.search(cleaned):
+            if (_FEE_TERMS.search(cleaned) or _DATE_TERMS.search(cleaned)
+                or _REQUIREMENT_TERMS.search(cleaned)):
                 yield cleaned
     elif isinstance(value, list):
         for child in value[:500]:
