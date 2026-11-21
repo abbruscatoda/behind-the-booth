@@ -54,7 +54,7 @@ export function publicOpportunityCopy(value: string): string {
 
 // The worker publishes both option prices together. Only show a range when its
 // minimum agrees with the saved fee; manual edits cannot leave a stale range.
-export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes: string}) {
+export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes: string; schedule_type?: string}) {
   const options = /Table options: half table \$([\d,]+(?:\.\d{1,2})?); full table \$([\d,]+(?:\.\d{1,2})?)\./i.exec(item.fee_notes);
   const money = (value: number) => new Intl.NumberFormat("en-US", {style:"currency", currency:"USD"}).format(value);
   if (options) {
@@ -63,7 +63,9 @@ export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes
       return {label:"Table options",value:half === full ? money(half) : `${money(half)}–${money(full)}`,note:`Half table ${money(half)} · Full table ${money(full)}`};
     }
   }
-  return {label:"Standard booth / table",value:item.booth_fee === null ? "Not published" : money(Number(item.booth_fee)),note:""};
+  const label = item.schedule_type === "rolling_market" && /(?:per[- ]event|each market|per market date)/i.test(item.fee_notes)
+    ? "Booth fee per event" : "Standard booth / table";
+  return {label,value:item.booth_fee === null ? "Not published" : money(Number(item.booth_fee)),note:""};
 }
 
 // Turn prose into readable bullets without guessing, truncating, or splitting
