@@ -68,7 +68,7 @@ PROGRAMS={
   'venue':'HUB RTP, 500 Park Offices Drive, Durham, NC','starts':'2026-11-01','ends':'2026-12-31',
   'schedule':'seasonal_application','until':'2026-12-31','price':None,
   'eligibility':'The organizer currently invites craft vendors for one or two holiday market dates from November through December 2026. Vendors must produce their work locally and meet market eligibility requirements. Exact dates and space are subject to organizer confirmation.',
-  'fees':'No verified standard craft booth price or application fee appears on the accessible official page. Confirm current dates and fees on the linked organizer application.',
+  'fees':'The organizer links a dedicated winter craft Google Form. Its questions, fees, and deadline were not independently readable to unauthenticated checks; this does not establish that the organizer published no prices or cutoff. The official guest-vendor fee schedule is a different intake and must not be copied to this application. Check the linked form for exact craft fees and dates.',
  },
  'south-durham-guest-vendors':{
   'source':SOUTH_SOURCE,'application':SOUTH_GUEST_FORM,'market_slug':'south-durham-farmers-market',
