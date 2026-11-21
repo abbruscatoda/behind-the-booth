@@ -9,7 +9,7 @@ NOW=datetime(2026,11,21,14,tzinfo=timezone.utc)
 SOURCE='<h1>Winter Wonderland Craft Fair</h1><p>Saturday, December 12, 2026</p><p>Craft vendors: <a href="'+craft.EVENT_LINK+'">register here</a>. Registration deadline: 11/28/26 or until spots are filled.</p>'
 APPLY='<h2>Craft Fair Application</h2><a href="'+craft.CRAFT_LINK+'">Craft Fair Application</a><a href="https://westernwakefarmersmarket.org/s/Vendor-Fee-Schedule-v01-2025.pdf">Download Fees PDF</a>'
 PDF='Craft Vendor Application Fee Covers craft review costs $10 Returning Vendor Application Fee $25 Vendors applying specifically to our seasonal craft fairs will submit payment in the amount of $10 with their craft application. Regular market Guest Vendor Daily Rate $30.'
-FORM='<h1>Western Wake Farmers Market craft fair</h1><p>$12 application fee. $45 event booth fee.</p><button>Next</button>'
+FORM='<h1>Western Wake Farmers Market craft fair</h1><p>2026 Craft Fair for artisans at Indian Creek Trailhead in Morrisville. Please provide business and contact information to register for the December 12 fair. $12 application fee. $45 event booth fee.</p><button>Next</button>'
 
 class Fetch:
  def __init__(self,event=SOURCE,apply=APPLY,form=FORM):
