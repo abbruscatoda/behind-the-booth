@@ -14,6 +14,7 @@ from urllib.parse import urljoin, urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.error import HTTPError, URLError
 import re
+from official_documents import export_url as public_doc_export_url, fetch_public_google_document
 
 MAX_PDF_BYTES = 2_500_000
 MAX_PAGES = 12
@@ -49,6 +50,14 @@ def _safe_pdf(url, organizer_url):
     return True
 
 
+def _safe_public_doc(url):
+    try:
+        public_doc_export_url(url)
+        return True
+    except (ValueError,TypeError):
+        return False
+
+
 def fee_document_links(document, page_url, organizer_url):
     """Find fee-named PDF links on an already approved organizer/form page."""
     links = []
@@ -60,6 +69,11 @@ def fee_document_links(document, page_url, organizer_url):
         )
         href = urljoin(page_url, node.attrs['href'])
         if FEE_LABEL.search(label) and _safe_pdf(href, organizer_url) and href not in links:
+            links.append(href)
+        elif (re.search(r'\\b(?:market|vendor|application)\\s+(?:rules|fees|pricing)\\b',label,re.I)
+              or FEE_LABEL.search(label)) and _safe_public_doc(href) and href not in links:
+            # Only an explicitly labeled *public* Doc, directly linked by
+            # a verified organizer/form page, may supply additional fee evidence.
             links.append(href)
         if len(links) >= MAX_LINKS:
             break
@@ -137,14 +151,15 @@ def inspect_official_fee_documents(pages, organizer_url, reader=read_official_pd
     blocked = 0
     for url in found[:MAX_LINKS]:
         try:
-            content, digest = reader(url, organizer_url)
+            content, digest = (fetch_public_google_document(url)
+                if _safe_public_doc(url) else reader(url, organizer_url))
             optional = extract_linked_fee_options(content)
             evidence.append({
                 'url': url,
                 'hash': digest,
                 'optional_fees': optional,
                 'text': content[:MAX_TEXT],
-                'source': 'organizer_linked_pdf',
+                'source': 'organizer_linked_public_document' if _safe_public_doc(url) else 'organizer_linked_pdf',
             })
         except Exception:
             # Unexpected PDF encoding/formatting is inconclusive evidence,
