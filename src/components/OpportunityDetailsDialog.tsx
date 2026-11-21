@@ -44,9 +44,10 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
   <div className="space-y-5 px-5 py-6 sm:px-7">
    <div className="grid gap-4 border-b border-[#252521]/15 pb-5 text-sm sm:grid-cols-2">
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">Organizer</p><p className="mt-1 font-semibold">{item.organizer}</p><p className="mt-1 text-[#55554E]">{item.venue} · {item.city}, {item.state}</p></div>
-    <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">{item.schedule_type==="rolling_market"?"Application window":"Market dates"}</p>
+    <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">{item.schedule_type==="rolling_market"?"Application window":item.schedule_type==="seasonal_application"||item.schedule_type==="recurring_season"?"Application / program season":"Market dates"}</p>
      <p className="mt-1 font-semibold">{item.schedule_type==="rolling_market"?"Ongoing — rolling vendor applications":formatAttendanceDate(item.starts_on)+(item.ends_on!==item.starts_on?" – "+formatAttendanceDate(item.ends_on):"")}</p>
      <p className="mt-1"><strong>{deadline.label}:</strong> {deadline.value}</p>
+     {(item.schedule_type==="seasonal_application"||item.schedule_type==="recurring_season")&&<p className="mt-1 text-xs text-[#626C57]">Program coverage does not guarantee individual vending dates or booths.</p>}
     </div>
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">{booth.label}</p><p className="mt-1 font-semibold">{booth.value}</p>{booth.note&&<p className="mt-1 text-xs">{booth.note}</p>}</div>
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">Application fee</p><p className="mt-1 font-semibold">{fee(item.application_fee)}</p>{item.deposit!==null&&<p className="mt-1">Deposit: {fee(item.deposit)}</p>}</div>
