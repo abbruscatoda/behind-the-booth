@@ -27,8 +27,9 @@ export function opportunityDeadline(item: DeadlineDetails) {
   if (item.deadline === null && item.schedule_type === "dated_event") {
     const match = /\b(?:(?:application\s+)?registration|applications?)\s+(?:closes|ends|deadline\s+is)\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(20\d{2})\b/i.exec(item.fee_notes ?? "");
     if (match) {
-      const date = new Date(`${match[1]} ${match[2]}, ${match[3]}`);
-      if (!Number.isNaN(date.valueOf()) && date.getUTCFullYear() === Number(match[3])) return {
+      const monthIndex = ["january","february","march","april","may","june","july","august","september","october","november","december"].indexOf(match[1].toLowerCase());
+      const date = new Date(Date.UTC(Number(match[3]),monthIndex,Number(match[2])));
+      if (monthIndex >= 0 && date.getUTCFullYear() === Number(match[3]) && date.getUTCMonth() === monthIndex && date.getUTCDate() === Number(match[2])) return {
         label: "Registration deadline",
         value: `${date.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"})} · time not published`,
         note: /(?:sooner|earlier).{0,20}(?:spots? fill|full)/i.test(item.fee_notes ?? "") ? "Registration may close earlier if spots fill." : "An exact submission time was not published.",
