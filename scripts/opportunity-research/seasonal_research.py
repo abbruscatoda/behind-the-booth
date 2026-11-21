@@ -215,7 +215,9 @@ def _official_year_round_embedded(provider,root,root_hash,vendor,vendor_hash,fet
  # page or the readable, same-market form as an alternative identity witness;
  # never accept an anonymous/blocked form without an official named page.
  official_identity=bool(re.search(re.escape(name),market+' '+text,re.I))
- if not re.search(r'(?:Saturdays?.{0,35}year.round|year.round.{0,35}Saturdays?)',market,re.I):
+ # Official market pages split their year-round schedule across the landing
+ # page and vendor application page. Both are independently organizer-hosted.
+ if not re.search(r'(?:Saturdays?.{0,50}year.round|year.round.{0,50}Saturdays?|market vendors?.{0,55}year.round)',market+' '+text,re.I):
   raise Uncertain('A year-round Saturday schedule is not explicitly confirmed.')
  if not re.search(r'(?:market vendors?|regular market vendors?)',text,re.I):
   raise Uncertain('The application page does not identify regular market vendors.')
@@ -233,7 +235,9 @@ def _official_year_round_embedded(provider,root,root_hash,vendor,vendor_hash,fet
   raise Uncertain('A single organizer-embedded public vendor application cannot be isolated.')
  app=next(iter(public))
  form_hash=None;form_access='http_auth_blocked'
+ fees={'application_fee':None,'booth_fee':None}
  from verifier import clean as clean_text
+ from form_fees import extract_labeled_fees
  try:
   form,form_hash=fetcher.get(app)
  except HTTPError as error:
@@ -255,17 +259,22 @@ def _official_year_round_embedded(provider,root,root_hash,vendor,vendor_hash,fet
   if not active:
    raise Uncertain('No enabled Next or Submit control was visible on the public application.')
   form_access='readable_first_page'
+  # Prices come only from explicitly labeled text in the actual public form.
+  # An inaccessible form cannot establish new or changed amounts.
+  fees=extract_labeled_fees(ft)
   official_identity=official_identity or bool(re.search(re.escape(name),ft,re.I))
  if not official_identity:
   raise Uncertain('Market identity is missing from both official pages and the public application.')
  today=now.astimezone(ZoneInfo('America/New_York')).date()
  horizon_start=date(today.year,1,1)
  horizon_end=date(today.year+1,12,31)
- details=('The public first page lists a $28 nonrefundable application fee and a $35 per-event booth fee. '
-          'Annual membership may apply; confirm complete prices before applying.'
-          if form_access=='readable_first_page' and '$28' in ft and '$35' in ft
-          else 'The organizer requires a nonrefundable application fee, annual membership for regular vendors, '
-               'and per-Saturday stall fees; confirm current amounts and attendance arrangements.')
+ details=('Official public application lists '
+          +(f'${fees["application_fee"]:,.2f} nonrefundable application fee due when applying; ' if fees['application_fee'] is not None else 'an application fee of unconfirmed amount; ')
+          +(f'${fees["booth_fee"]:,.2f} booth fee per event attended. ' if fees['booth_fee'] is not None else 'per-event booth fees of unconfirmed amount. ')
+          +('The application requires a valid NC Sales Tax ID. ' if form_access=='readable_first_page' and re.search(r'(?:valid NC Sales Tax ID|NC Sales Tax ID)',ft,re.I) else '')
+          +'The organizer also mentions annual membership for regular vendors; confirm other costs before applying.'
+          if form_access=='readable_first_page' else
+          'The official organizer requires a nonrefundable application fee, annual membership for regular vendors, and per-Saturday stall fees. The public form was inaccessible at this check; previously verified prices should be retained until independently rechecked.')
  candidate={
   'title':name+' — Rolling Vendor Applications',
   'market_slug':provider['slug'],'market_name':name,
@@ -274,8 +283,8 @@ def _official_year_round_embedded(provider,root,root_hash,vendor,vendor_hash,fet
   'market_url':provider['market_url'],'source_url':provider['vendor_url'],
   'application_url':app,'starts_on':horizon_start.isoformat(),
   'ends_on':horizon_end.isoformat(),'schedule_type':'rolling_market',
-  'availability':'open','deadline':None,'booth_fee':None,
-  'application_fee':None,'deposit':None,'categories':[],
+  'availability':'open','deadline':None,'booth_fee':fees['booth_fee'],
+  'application_fee':fees['application_fee'],'deposit':None,'categories':[],
   'fee_notes':details,
   'eligibility':'The official market seeks local farmers, makers and food producers. '
                 'Application, inspection, fee payment and organizer acceptance are required.',
@@ -284,7 +293,7 @@ def _official_year_round_embedded(provider,root,root_hash,vendor,vendor_hash,fet
       'individual market dates. Form status: '+form_access+'. '
       'No particular booth, market date or application cutoff is guaranteed.'
  }
- return candidate,form_hash,form_access
+ return candidate,form_hash,form_access,fees
 
 def check_provider(provider,fetcher,now=None):
  now=now or datetime.now(timezone.utc)
@@ -305,13 +314,14 @@ def check_provider(provider,fetcher,now=None):
  elif provider['kind']=='rolling':
   candidate,form_hash,form_access=_ww(provider,main,main_hash,vendor,vendor_hash,fetcher,now)
  elif provider['kind']=='embedded_year_round':
-  candidate,form_hash,form_access=_official_year_round_embedded(provider,main,main_hash,vendor,vendor_hash,fetcher,now)
+  candidate,form_hash,form_access,fee_evidence=_official_year_round_embedded(provider,main,main_hash,vendor,vendor_hash,fetcher,now)
  else:raise Uncertain('Unsupported seasonal provider type.')
  return {'decision':'publish','policy':POLICY,'candidate':candidate,
   'checked_at':now.isoformat(),'source_hash':vendor_hash,
   'market_source_hash':main_hash,'application_hash':form_hash,
   'form_complete':form_access=='readable_verified','form_readable':form_access in ('readable_verified','readable_first_page'),
   'application_access':form_access,
+  'form_fee_evidence':fee_evidence if provider['kind']=='embedded_year_round' and form_access=='readable_first_page' else {},
   'evidence':('Official organizer pages independently document year-round Saturday markets and a live linked regular-vendor Google application; server-side access to the form is blocked, so submission is NOT verified.' if form_access=='http_auth_blocked' else 'Official organizer pages and a public first-page Google application independently identify the year-round market, applicant pathway and an enabled Next/Submit control. No answers submitted.' if form_access=='readable_first_page' else 'Official market and vendor pages independently agree on active intake, location, participating season or rolling schedule, and an exact linked readable application with Submit.'),
   'reason':'Organizer-verified seasonal or rolling vendor intake, not guaranteed individual market dates.'}
 
