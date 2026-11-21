@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 import re
 from verifier import valid_url, Uncertain, clean, norm
 from category_rules import visible_text
+from form_fees import extract_labeled_fees
 
 POLICY = "explore-rolling-official-v1"
 APPLICATION_WORDS = re.compile(
@@ -114,7 +115,13 @@ def verify_generic_market(market,fetcher,now=None):
    if not _named(form_text,name):continue
    if not _form_controls(form):continue
    year=now.astimezone(ZoneInfo("America/New_York")).year
-   # No fees or vendor categories guessed by the generic adapter.
+   fees=extract_labeled_fees(form_text)
+   verified_fees=[]
+   if fees['application_fee'] is not None:
+    verified_fees.append(f"The linked official application lists a \${fees['application_fee']:,.2f} application fee.")
+   if fees['booth_fee'] is not None:
+    verified_fees.append(f"The linked official application lists a \${fees['booth_fee']:,.2f} booth fee per event.")
+   # Never guess a missing fee or vendor category.
    candidate={
     "title":name+" — Rolling Vendor Applications",
     "market_slug":slug,"market_name":name,"organizer":name,
@@ -123,8 +130,8 @@ def verify_generic_market(market,fetcher,now=None):
     "starts_on":date(year,1,1).isoformat(),
     "ends_on":date(year+1,12,31).isoformat(),
     "schedule_type":"rolling_market","availability":"open","deadline":None,
-    "booth_fee":None,"application_fee":None,"deposit":None,"categories":[],
-    "fee_notes":"No universal standard vendor booth or application fee verified. Ask the organizer about category-specific rates, required extras, and the total cost before applying.",
+    "booth_fee":fees['booth_fee'],"application_fee":fees['application_fee'],"deposit":None,"categories":[],
+    "fee_notes":" ".join(verified_fees)+" Confirm other category-specific rates, required extras, and the total cost before applying. Missing fee types are unconfirmed, not free." if verified_fees else "No universal standard vendor booth or application fee verified. Ask the organizer about category-specific rates, required extras, and the total cost before applying.",
     "eligibility":"The official organizer currently advertises ongoing vendor intake for a recurring market. Individual event dates, vendor eligibility, food permits, booth acceptance and available spaces must be confirmed directly with the organizer.",
     "research_notes":"Ongoing organizer intake verified from the named market's official website and linked readable application. Dates saved internally are a verification horizon, not bookable market dates. No fixed application deadline or guaranteed booth is represented."
    }
@@ -132,5 +139,6 @@ def verify_generic_market(market,fetcher,now=None):
     "checked_at":now.isoformat(),"market_source_hash":root_hash,
     "source_hash":source_hash,"application_hash":form_hash,
     "evidence":"Official market website identifies the named organizer, directly links a vendor page advertising rolling intake, and links a currently readable same-market application with enabled submission controls. No dated event, price, or guaranteed availability was inferred.",
+    "form_fee_evidence":fees,
     "reason":"Official market and application independently confirm current rolling vendor intake."}
  raise Uncertain("No current, fully readable organizer-linked rolling application verified.")
