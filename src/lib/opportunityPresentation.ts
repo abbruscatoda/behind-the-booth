@@ -72,9 +72,9 @@ export function publicOpportunityCopy(value: string): string {
 // minimum agrees with the saved fee; manual edits cannot leave a stale range.
 export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes: string; schedule_type?: string}) {
   // A documented seasonal price must never appear as one universal year-round fee.
-  if (item.booth_fee !== null && /displayed (?:booth price|\\$[\\d.]+) is the winter rate/i.test(item.fee_notes)) {
-    const summer = /\\$([\\d,]+(?:\\.\\d{1,2})?) per (?:stall|market day).*?summer market day/i.exec(item.fee_notes)
-      ?? /\\$([\\d,]+(?:\\.\\d{1,2})?) per market day in summer/i.exec(item.fee_notes);
+  if (item.booth_fee !== null && /displayed (?:booth price|\$[\d.]+) is the winter rate/i.test(item.fee_notes)) {
+    const summer = /\$([\d,]+(?:\.\d{1,2})?) per (?:stall|market day).*?summer market day/i.exec(item.fee_notes)
+      ?? /\$([\d,]+(?:\.\d{1,2})?) per market day in summer/i.exec(item.fee_notes);
     const money = (v: number) => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(v);
     return {label:"Winter booth / day",value:money(Number(item.booth_fee)),
       note: summer ? "Summer booth / day: "+money(Number(summer[1].replaceAll(",",""))) : "Seasonal rates vary; see full details."};
