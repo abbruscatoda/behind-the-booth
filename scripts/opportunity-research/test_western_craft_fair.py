@@ -38,6 +38,26 @@ class WesternCraftTests(unittest.TestCase):
   self.assertEqual(r['candidate']['booth_fee'],45)
   self.assertEqual(r['application_access'],'readable_first_page')
 
+ def test_real_2026_craft_form_extracts_event_fee_waiver_and_pdf_addons(self):
+  form=('<h1>WWFM Craft Fair Vendor Registration</h1>'
+        '<p>We are accepting craft vendors during the 2026-27 season.</p>'
+        "<h3>CRAFT FAIR FEES:</h3><p>$10 nonrefundable application fee, "
+        "payable when application is submitted (waived for current vendors).</p>"
+        "<p>$30 per event: 10'x10' booth fee, payable upon acceptance.</p>"
+        '<p>See Table of Fees for a second tent or cooperative vending.</p>'
+        '<p>Winter Wonderland Craft Fair (December 12), deadline November 28.</p>'
+        '<button>Next</button>')
+  pdf_full=(PDF+" Additional Fees Second Space Fee Available if space permits $20 "
+            "Co-op Vending Arrangement Fee Assessed per tent; see Rules for details. $10")
+  result=craft.verify_western_craft(Fetch(form=form),NOW,lambda url:(pdf_full,'b'*64))
+  self.assertEqual(result['candidate']['booth_fee'],30)
+  self.assertEqual(result['candidate']['application_fee'],10)
+  self.assertIn('waived for current vendors',result['candidate']['fee_notes'])
+  self.assertIn('$20.00',result['candidate']['fee_notes'])
+  self.assertIn('$10.00 per tent',result['candidate']['fee_notes'])
+  self.assertEqual(result['fee_evidence']['pdf_optional_fees'],
+                   {'second_space':20.0,'co_op_tent':10.0})
+
  def test_after_published_registration_date_is_closed_automatically(self):
   r=craft.verify_western_craft(Fetch(form=None),datetime(2026,11,29,15,tzinfo=timezone.utc),pdf)
   self.assertEqual(r['candidate']['availability'],'closed')
