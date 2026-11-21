@@ -1,7 +1,7 @@
--- Current production definitions: secure vendor-program auto-publication and
--- automatic monitoring of unverified discovery links (November 21, 2026).
--- Vendor applications require an official matching source; generic event links
--- never authorize publication. API RPC uses dedicated worker-secret checks.
+-- Current production definitions: secure official vendor-program publication and
+-- background-only monitoring of unverified discovery links.
+-- A source link alone does not authorize publication. Application identity,
+-- program period and fees are independently validated by worker-secret RPC.
 
 CREATE OR REPLACE FUNCTION public.btb_research_publish_official_program(p_result jsonb)
  RETURNS jsonb
@@ -33,14 +33,14 @@ begin
     'app','https://www.cognitoforms.com/TownOfWakeForestPRCR1/_2027TownOfWakeForestParksRecreationCulturalResourcesSpecialEventFoodVendingOpportun',
     'start','2027-01-01','end','2027-12-31','schedule','seasonal_application',
     'until','2026-11-27','description','Wake Forest Parks, Recreation & Cultural Resources runs community events throughout the year, including festivals, concerts and special event food-vendor programs.')
-  when 'durham-2026-holiday-food' then jsonb_build_object(
-    'slug','durham-holiday-parade','name','Durham Holiday Parade',
+  when 'durham-food-vendor-program' then jsonb_build_object(
+    'slug','durham-prcr-special-events','name','Durham Parks & Recreation Special Events',
     'city','Durham','organizer','Durham Parks & Recreation',
-    'title','Durham Holiday Parade — Food Vendor Applications',
+    'title','Durham Parks & Recreation — Food Vendor Applications',
     'source','https://www.dprplaymore.org/331/Vendor-Performer-Information',
     'app','https://www.dprplaymore.org/FormCenter/Vendor-Registration-8/Food-Vendor-Application-50',
-    'start','2026-12-12','end','2026-12-12','schedule','dated_event',
-    'until','2026-12-11','description','The City of Durham holiday parade includes food and community festivities. Food-vendor applicants apply to the Durham Parks & Recreation organizer.')
+    'start','2026-01-01','end','2027-12-31','schedule','rolling_market',
+    'until',null,'description','Durham Parks & Recreation operates seasonal festivals and public events across Durham and invites eligible food-vendor applications for current opportunities.')
   when 'state-raleigh-new-vendors' then jsonb_build_object(
     'slug','state-farmers-market','name','State Farmers Market',
     'city','Raleigh','organizer','North Carolina Department of Agriculture & Consumer Services',
@@ -104,11 +104,13 @@ begin
    or (p<>'state-raleigh-new-vendors' and expected->>'until' is not null and
      c->>'availability' is distinct from
        case when local_today>(expected->>'until')::date then 'closed' else 'open' end)
+   or (p<>'state-raleigh-new-vendors' and expected->>'until' is null
+      and c->>'availability' is distinct from 'open')
  then raise exception 'Application availability not consistent with official open dates' using errcode='22023';end if;
  perform pg_advisory_xact_lock(hashtextextended('official-program:'||p,9));
  select * into m from public.markets where slug=expected->>'slug' for update;
  if not found then
-   if p not in ('wake-forest-2027-food','durham-2026-holiday-food') then
+   if p not in ('wake-forest-2027-food','durham-food-vendor-program') then
      return jsonb_build_object('action','skipped','reason','Existing market profile not found');
    end if;
    insert into public.markets(slug,name,city,state,organizer,description,website_url)
@@ -161,7 +163,7 @@ begin
  update btb_private.triangle_discovery_leads set
    review_state='resolved',published_opportunity_id=opp_id,resolved_at=now(),
    research_status=case when p='state-raleigh-new-vendors' then 'confirmed_rolling'
-     when p='durham-2026-holiday-food' then 'confirmed_dated' else 'confirmed_seasonal' end,
+     when p='durham-food-vendor-program' then 'confirmed_rolling' else 'confirmed_seasonal' end,
    research_reason='Official program vendor application verified and published automatically.'
  where target_url=expected->>'app' and review_state in ('new','monitoring');
  insert into public.btb_research_audit(opportunity_id,action,reason,evidence)
