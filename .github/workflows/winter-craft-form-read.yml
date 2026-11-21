@@ -19,5 +19,5 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check 'playwright>=1.56,<2' 'pypdf==5.9.0'
           python3 -m playwright install --with-deps chromium
-      - name: Inspect official public form fee text only
+      - name: Inspect official public form and current fee evidence
         run: python3 scripts/opportunity-research/probe_winter_form.py
