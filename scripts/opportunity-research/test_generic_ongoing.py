@@ -55,6 +55,16 @@ class RollingSourceTests(unittest.TestCase):
   with self.assertRaises(Uncertain):
    verify_generic_market(MARKET,Fake(home=home,page=page))
 
+ def test_explicit_form_fees_publish_separate_structured_amounts(self):
+  form=FORM.replace('<button type="submit">Submit</button>',
+       '<p>$18 nonrefundable Application Fee</p><p>$42 Event Booth Fee</p>'
+       '<button type="submit">Submit</button>')
+  result=verify_generic_market(MARKET,Fake(form=form))
+  self.assertEqual(result['candidate']['application_fee'],18)
+  self.assertEqual(result['candidate']['booth_fee'],42)
+  self.assertEqual(result['form_fee_evidence']['booth_fee'],42)
+  self.assertIn('$42.00',result['candidate']['fee_notes'])
+
  def test_closed_or_specific_event_not_ongoing(self):
   for warning in ["Vendor applications are closed.", "Application deadline on December 1, 2026"]:
    with self.subTest(warning=warning),self.assertRaises(Uncertain):
