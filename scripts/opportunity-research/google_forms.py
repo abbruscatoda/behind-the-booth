@@ -45,7 +45,8 @@ def read_public_form(doc):
    label=clean(visible_text(n) or n.attrs.get('value',''))
    if label.lower() in {'submit','next'}:active.append(label.lower())
  # Next means not all sections have been read; do not submit/answer to advance.
- complete='submit' in active and 'next' not in active
+ all_public_pages_read=any(n.attrs.get('data-btb-all-public-pages-read')=='true' for n in doc.root.walk())
+ complete='submit' in active and ('next' not in active or all_public_pages_read)
  # Preserve whole fee/condition blocks. Never flatten a category-specific price
  # into the universal booth price or treat a refundable deposit as an app fee.
  fee_blocks=[];requirements=[];prices={key:set() for key in ('booth_fee','application_fee','deposit')}
@@ -81,4 +82,5 @@ def read_public_form(doc):
   'eligibility':bounded(requirements,2000),'issues':issues,
   'fee_conditions':extract_fee_conditions(text+' '+ ' '.join(schema_sections[:12])),
   'published_schema_fee_sections':len(schema_sections),
+  'all_public_pages_read':all_public_pages_read,
   **{k:float(next(iter(v))) if len(v)==1 else None for k,v in prices.items()}}
