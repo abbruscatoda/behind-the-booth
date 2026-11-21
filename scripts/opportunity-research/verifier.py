@@ -115,7 +115,7 @@ class SafeRedirect(HTTPRedirectHandler):
   return super().redirect_request(req,fp,code,msg,headers,newurl)
 class Fetcher:
  def __init__(self,limit=90):
-  self.limit=limit;self.requests=0;self.cache={};self.opener=build_opener(SafeRedirect())
+  self.limit=limit;self.requests=0;self.cache={};self.failures={};self.opener=build_opener(SafeRedirect())
   self.browser_enabled=os.environ.get('BTB_BROWSER_FALLBACK')=='1'
   self.browser_attempts=0;self.browser_successes=0;self.browser_failures={}
   self.browser_max_attempts=6
@@ -138,6 +138,7 @@ class Fetcher:
  def get(self,url):
   if not valid_url(url):raise ValueError('Untrusted URL')
   if url in self.cache:return self.cache[url]
+  if url in self.failures:raise self.failures[url]
   if self.requests>=self.limit:raise ValueError('Source request budget reached')
   self.requests+=1
   time.sleep(.2)
@@ -155,6 +156,10 @@ class Fetcher:
     if browser_result:
      self.cache[url]=browser_result
      return browser_result
+   self.failures[url]=exc
+   raise
+  except (OSError,ValueError) as exc:
+   self.failures[url]=exc
    raise
   html=raw.decode('utf-8',errors='replace')
   result=(Document(html),hashlib.sha256(raw).hexdigest())

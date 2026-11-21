@@ -44,6 +44,23 @@ class RegionalTests(unittest.TestCase):
  def test_generic_tourism_search_result_is_not_an_actionable_lead(self):
   hits,_=regional.search_results(NOW,Search(b'<rss><channel><item><title>Raleigh Wikipedia</title><description>Capital city of North Carolina</description><link>https://en.wikipedia.org/wiki/Raleigh</link></item></channel></rss>'))
   self.assertFalse(hits)
+ def test_independent_fallback_recovers_vendor_results_from_generic_rss(self):
+  class Engines:
+   def open(self,request,timeout):
+    if urlparse(request.full_url).hostname=='html.duckduckgo.com':
+     reply=Reply(b'<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fpopupraleigh.com%2F9-2%2F">Pop-Up Raleigh vendor applications</a>')
+     reply.url=request.full_url
+     return reply
+    return Reply(b'<rss><channel><item><title>Raleigh Wikipedia</title><link>https://en.wikipedia.org/wiki/Raleigh</link></item></channel></rss>')
+  hits,stats=regional.search_results(NOW,Engines())
+  self.assertIn(ROOT,hits)
+  self.assertEqual(stats['fallback_queries_attempted'],6)
+  self.assertEqual(stats['fallback_queries_with_results'],6)
+ def test_html_fallback_drops_unsafe_targets_and_interstitials(self):
+  class Engine:
+   def open(self,request,timeout):
+    r=Reply(b'<a class="result__a" href="https://127.0.0.1/market">Market</a><a class="result__a" href="javascript:alert(1)">Apply</a>');r.url=request.full_url;return r
+  self.assertFalse(regional.html_search('Raleigh',Engine()))
  def test_feed_errors_are_reported_not_silently_empty(self):
   hits,stats=regional.search_results(NOW,Search(b'<html>blocked</html>'))
   self.assertFalse(hits);self.assertEqual(len(stats['query_failures']),24)
@@ -68,6 +85,23 @@ class RegionalTests(unittest.TestCase):
   for i in range(20):seen.update(regional.rotate(range(65),NOW+timedelta(hours=12*i),8))
   self.assertEqual(seen,set(range(65)))
   self.assertNotEqual(regional.rotate(range(11),NOW,11),regional.rotate(range(11),NOW+timedelta(days=1),11))
+ def test_failed_official_fetch_is_cached_only_within_run(self):
+  from verifier import Fetcher,source_error
+  from urllib.error import HTTPError
+  class Blocked:
+   calls=0
+   def open(self,*args,**kwargs):
+    self.calls+=1;raise HTTPError(ROOT,403,'Forbidden',{},None)
+  blocked=Blocked();fetcher=Fetcher(limit=10);fetcher.opener=blocked
+  with patch('verifier.time.sleep'):
+   for _ in range(2):
+    with self.assertRaises(HTTPError) as caught:fetcher.get(ROOT)
+    self.assertEqual(source_error(caught.exception),'HTTP 403')
+   self.assertEqual(blocked.calls,1)
+   self.assertEqual(fetcher.requests,1)
+   later=Fetcher(limit=10);later.opener=blocked
+   with self.assertRaises(HTTPError):later.get(ROOT)
+   self.assertEqual(blocked.calls,2)
  def test_missed_sources_are_curated(self):
   roots={url for _,_,url in discovery.SOURCES}
   self.assertIn(ROOT,roots)

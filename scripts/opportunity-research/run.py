@@ -341,8 +341,10 @@ def run(dry_run=False):
    diagnostic_result=db.rpc('btb_research_diagnose_leads',{'p_diagnostics':research_rows})
    counts['leads_diagnosed']=diagnostic_result.get('updated',0)
   regional=discovery_stats.get('regional_search',{})
-  if regional.get('queries_attempted') and not regional.get('queries_succeeded'):
+  if regional.get('queries_attempted') and not regional.get('queries_succeeded') and not regional.get('fallback_queries_with_results'):
    regional['warning']='Regional web search was unavailable. Official-source checks continued; discovery coverage is incomplete.'
+  elif regional.get('queries_attempted') and not regional.get('result_urls'):
+   regional['warning']='Web search returned no relevant vendor leads. Official-source checks continued; this does not establish complete Triangle coverage.'
   if regional.get('unapproved_source_count'):
    counts['new_source_hints']=regional['unapproved_source_count']
    print(json.dumps({'action':'new_sources_need_review','sources':regional.get('unapproved_sources',[])}))
