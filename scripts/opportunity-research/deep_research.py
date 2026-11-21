@@ -21,6 +21,20 @@ ROLL_RE=re.compile(r'\b(?:applications (?:are )?accepted on a rolling basis|appl
 SEASON_RE=re.compile(r'\b(?:accepting (?:vendor )?applications.{0,70}20\d{2} season|20\d{2} (?:vendor )?applications (?:are )?open|apply for (?:our|the) 20\d{2} season)\b',re.I)
 GATE_RE=re.compile(r'\b(?:must sign in|sign in to continue|you need permission|request access|cannot access this form)\b',re.I)
 DIRECTORY_PATHS={'applications','vendor-info','vendor-information','opportunities','vendor-opportunities'}
+# These are generic municipal/public-art, cultural participation or event
+# calendar links, not applications for a market booth. Still retain them in
+# the private monitored discovery graph so a future official vendor link can
+# be researched automatically; never ask the site owner to approve them.
+NON_VENDOR_URL=re.compile(
+ r'/(?:planning|advisory[- ]boards?|publicartproposal|public[- ]spaces[- ]artwork|'
+ r'art[- ]transit[- ]bus[- ]shelters|parade[- ]participant|'
+ r'what[- ]are[- ]development[- ]applications|online[- ]application[- ]portal|'
+ r'registration[- ]instructions)(?:/|$)',re.I)
+EVENT_PAGE=re.compile(r'/(?:upcoming[- ]event|events)/',re.I)
+SPECIFIC_VENDOR=re.compile(
+ r'\b(?:vendor|vending|stall|booth|food[- ]truck|food[- ]vendor|artisan[- ]market|'
+ r'craft[- ]market|farmers?[- ]market)\b',re.I)
+
 MULTI_RE=re.compile(r'\b(?:select (?:your |the )?(?:event )?dates?|choose (?:event )?dates?|multiple market dates|different (?:event )?dates|market series|Cary Night Market Dates|please only choose the markets)\b',re.I)
 
 def diagnose_one(lead,fetcher,now=None,allow_target=True):
@@ -31,6 +45,14 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
  if not valid_url(source):return out('source_unavailable','Organizer source is not an approved HTTPS research URL.')
  if target.rstrip('/#')==source.rstrip('/#') or target.endswith('/#'):
   return out('not_application','This link points to the organizer directory itself or a page anchor, not a distinct vendor application.')
+ # Non-vendor government paperwork and general art/parade submissions are
+ # not market vendor applications even if their URL includes "application".
+ # The exact vendor identity is intentionally required for mixed-use pages.
+ if NON_VENDOR_URL.search(urlparse(target).path) and not SPECIFIC_VENDOR.search(name):
+  return out('not_application','Not a vendor market: this link is municipal planning, public art, or general participant paperwork.')
+ if (re.search(r'\b(?:Planning Board|Advisory Board|Development Applications?|Public Art Proposal|Bus Shelters?|Parade Participant)\b',name,re.I)
+     and not SPECIFIC_VENDOR.search(name)):
+  return out('not_application','Not a vendor market: this form is for public art, planning, or event participation, not a selling booth.')
  if EXCLUDE_RE.search(name) and not re.search(r'\bvendor\b',name,re.I):
   return out('not_application','The link is labeled for a non-vendor activity rather than a market booth application.')
  try:
@@ -60,6 +82,11 @@ def diagnose_one(lead,fetcher,now=None,allow_target=True):
  if (re.search(r'you are applying to have your products sold (?:in|at)',linked_text,re.I)
      and re.search(r'(?:at.will contract|no stated ending date|initial inventory|products sold in the store|products sold at the store)',linked_text,re.I)):
   return out('not_application','Not a vendor market: this is a permanent retail store placement or consignment application, not an event booth.')
+ if EVENT_PAGE.search(urlparse(target).path) and not supported_form(target):
+  # An event listing is useful discovery context, but is not itself a
+  # vendor application. Follow vendor CTAs in the calendar adapter; never
+  # advertise a generic event link as an application.
+  return out('event_only','Official event or market calendar page is not itself a current vendor application; monitor for a separately linked vendor intake.')
  if not APP_RE.search(name) and not supported_form(target) and urlparse(target).path.strip('/').split('/')[-1].lower() not in DIRECTORY_PATHS:
   return out('needs_evidence','The linked source is not identified as an open vendor-market application.')
  combined=' '.join([text,linked_text])
