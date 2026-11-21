@@ -159,10 +159,12 @@ def discover_programs(fetcher,now=None):
     """Try all vetted providers on every worker run; one failing site does not block others."""
     results=[]
     notes=[]
+    if not callable(getattr(fetcher,'get',None)):
+        return [],[{'program':'all','reason':'Fetcher unavailable for official vendor programs'}]
     for program in PROGRAMS:
         if getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',999999)-18:
             break
         try:results.append(verify_program(program,fetcher,now))
-        except (Uncertain,OSError,ValueError) as exc:
+        except (Uncertain,OSError,ValueError,AttributeError) as exc:
             notes.append({'program':program,'reason':str(exc)[:150]})
     return results,notes
