@@ -44,10 +44,76 @@ def _amount(text, label):
     # Conflicting values may be different packages; don't call one "standard".
     return next(iter(candidates)) if len(candidates) == 1 else None
 
+# Google Forms often writes "$30 per event: 10'x10' booth fee" rather
+# than "$30 booth fee". The price and the booth label must still occur in
+# the same bounded clause, and no other currency amount may intervene.
+EVENT_BOOTH = re.compile(
+    DOLLARS
+    + r"\s*(?:per|each)\s+event\s*[:\-–]?\s*"
+    + r"(?:[0-9]{1,2}\s*['′]?\s*[x×]\s*[0-9]{1,2}\s*['′]?\s*)?"
+    + r"(?:standard\s+)?(?:booth|stall|table|tent|space)\s*(?:fee|cost|price)\b",
+    re.I,
+)
+
+
+def _event_booth_amount(text):
+    values = {round(float(match.group(1)), 2) for match in EVENT_BOOTH.finditer(text)}
+    return next(iter(values)) if len(values) == 1 else None
+
+
 def extract_labeled_fees(text):
-    """Return only verified application and per-event booth fee amounts."""
+    """Return unambiguous standalone vendor application and booth fees.
+
+    Multitier, category-specific or conflicting prices are left unknown;
+    None never means free. Source ownership is verified by the caller.
+    """
     normalized = " ".join((text or "").split())
+    standard = _amount(normalized, BOOTH)
+    per_event = _event_booth_amount(normalized)
+    booth = standard if per_event is None else per_event if standard is None or standard == per_event else None
     return {
         "application_fee": _amount(normalized, APPLICATION),
-        "booth_fee": _amount(normalized, BOOTH),
+        "booth_fee": booth,
     }
+
+
+def extract_fee_conditions(text):
+    """Only the clear, local conditions attached to a fee, never guesses."""
+    normalized = " ".join((text or "").split())
+    application = re.search(
+        DOLLARS + r"\s*(?:non[- ]?refundable\s+)?(?:craft\s+|vendor\s+)?application\s+fee\b"
+        + r"[^.]{0,135}", normalized, re.I,
+    )
+    booth = re.search(EVENT_BOOTH.pattern + r"[^.]{0,100}", normalized, re.I)
+    application_context = application.group(0) if application else ""
+    booth_context = booth.group(0) if booth else ""
+    return {
+        "application_fee_waived_for_current_vendors": bool(
+            re.search(r"waived?\s+for\s+(?:current|existing)\s+vendors", application_context, re.I)
+        ),
+        "application_fee_nonrefundable": bool(re.search(r"non[- ]?refundable", application_context, re.I)),
+        "booth_fee_due_on_acceptance": bool(
+            re.search(r"payable\s+upon\s+acceptance|due\s+(?:upon|on)\s+acceptance", booth_context, re.I)
+        ),
+        "booth_size_10x10": bool(re.search(r"10\s*['′]?\s*[x×]\s*10\s*['′]?", booth_context, re.I)),
+    }
+
+
+def extract_linked_fee_options(text):
+    """Extract labeled add-on fees from a separately validated official PDF.
+
+    Does not treat regular market daily vendor tiers as craft-fair booth
+    pricing. These optional fees are notes, not standard booth fees.
+    """
+    normalized = " ".join((text or "").split())
+    labels = {
+        "second_space": r"\bSecond\s+Space\s+Fee\b",
+        "co_op_tent": r"\bCo[- ]?op\s+Vending\s+Arrangement\s+Fee\b",
+    }
+    result = {}
+    for key, label in labels.items():
+        matches = re.findall(label + r"(?:(?!\b(?:Fee|Vendor Tier)\b).){0,95}?" + DOLLARS, normalized, re.I)
+        values = {round(float(value), 2) for value in matches if 0 < float(value) < 1000}
+        if len(values) == 1:
+            result[key] = next(iter(values))
+    return result
