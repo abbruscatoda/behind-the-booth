@@ -1,0 +1,23 @@
+name: Inspect public winter craft application fees
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/winter-craft-form-read.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-form-read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install read-only Chromium
+        run: |
+          python3 -m pip install --disable-pip-version-check 'playwright>=1.56,<2'
+          python3 -m playwright install --with-deps chromium
+      - name: Inspect official public form fee text only
+        run: python3 scripts/opportunity-research/probe_winter_form.py
