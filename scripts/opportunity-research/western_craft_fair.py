@@ -16,7 +16,7 @@ import re
 
 from verifier import Uncertain
 from category_rules import visible_text
-from form_fees import extract_labeled_fees
+from form_fees import extract_labeled_fees,extract_fee_conditions,extract_linked_fee_options
 
 POLICY='western-wake-craft-official-v1'
 EVENT='https://westernwakefarmersmarket.org/events/winterwonderland2026'
@@ -99,14 +99,17 @@ def verify_western_craft(fetcher,now=None,pdf_reader=read_fee_pdf):
  pdf_url=fee_pdf_url(apply)
  pdf_hash=None
  pdf_fee=None
+ pdf_options={}
  try:
   pdf_text,pdf_hash=pdf_reader(pdf_url)
   pdf_fee=craft_fee_from_pdf(pdf_text)
+  pdf_options=extract_linked_fee_options(pdf_text)
  except (Uncertain,HTTPError,URLError,TimeoutError,OSError,ValueError):
   pass
  form_hash=None
  form_access='http_auth_blocked'
  form_prices={'application_fee':None,'booth_fee':None}
+ form_conditions={}
  try:
   form,form_hash=fetcher.get(FORM)
  except (HTTPError,URLError,TimeoutError,OSError,ValueError):
@@ -119,6 +122,7 @@ def verify_western_craft(fetcher,now=None,pdf_reader=read_fee_pdf):
    if re.search(r'\b(?:Next|Submit)\b',text,re.I) and len(text)>120:
     form_access='readable_first_page'
     form_prices=extract_labeled_fees(text)
+    form_conditions=extract_fee_conditions(text)
  closed=local>LAST_DAY or form_access=='closed' or bool(re.search(r'registration (?:is )?closed|no longer accepting.{0,40}craft vendors',source,re.I))
  app_fee=form_prices['application_fee'] if form_prices['application_fee'] is not None else pdf_fee
  booth_fee=form_prices['booth_fee'] if form_access=='readable_first_page' else None
@@ -132,6 +136,72 @@ def verify_western_craft(fetcher,now=None,pdf_reader=read_fee_pdf):
   cost+=' No event-specific booth price was verified; standard weekly-market guest rates are not presumed to apply to this craft fair.'
  if pdf_fee is not None and form_prices['application_fee'] is not None and pdf_fee!=form_prices['application_fee']:
   cost+=' The official application and general fee schedule differ; confirm the latest amount before paying.'
+ if form_access=='readable_first_page':
+  if form_conditions.get('application_fee_waived_for_current_vendors'):
+   cost+=' Application fee is waived for current vendors.'
+  if form_conditions.get('application_fee_nonrefundable'):
+   cost+=' Application fee is nonrefundable.'
+  if form_conditions.get('booth_fee_due_on_acceptance'):
+   cost+=' Booth fee is payable upon acceptance.'
+  if form_conditions.get('booth_size_10x10'):
+   cost+=' Standard space is 10 × 10 ft.'
+ if pdf_options.get('second_space') is not None:
+  cost+=' Organizer-linked fee schedule lists an additional second-space charge of 
+ if form_access=='http_auth_blocked':cost+=' Automated Google Form access is blocked; confirm other terms with the organizer.'
+ candidate={
+  'title':'Winter Wonderland Craft Fair — Western Wake Farmers Market',
+  'market_slug':'western-wake-farmers-market','organizer':'Western Wake Farmers Market',
+  'city':'Morrisville','state':'NC','venue':'Indian Creek Trailhead Park, 101 Town Hall Drive',
+  'starts_on':EVENT_DAY.isoformat(),'ends_on':EVENT_DAY.isoformat(),
+  'schedule_type':'dated_event','deadline':None,
+  'availability':'closed' if closed else 'open',
+  'source_url':EVENT,'application_url':CRAFT_LINK,
+  'application_fee':app_fee,'booth_fee':booth_fee,'deposit':None,
+  'categories':[],'fee_notes':cost,
+  'eligibility':'Craft vendors and artisans can register using the organizer-linked craft fair application. Selection and remaining places depend on approval.',
+  'research_notes':'The official December 12 event page and its organizer vendor page link the same public craft fair application through two verified short links. Event page states registration deadline November 28, 2026 or sooner if full. No cutoff time is inferred. Automated form access: '+form_access+'. Fee PDF: '+('readable' if pdf_hash else 'unreadable')+'.'
+ }
+ return {'policy':POLICY,'decision':'publish','candidate':candidate,
+  'checked_at':now.isoformat(),'source_hash':event_hash,
+  'application_page_hash':apply_hash,
+  'fee_pdf_url':pdf_url,'fee_pdf_hash':pdf_hash,
+  'application_hash':form_hash,'application_access':form_access,
+  'fee_evidence':{'application_fee':app_fee,'booth_fee':booth_fee,
+       'pdf_craft_fee':pdf_fee,'form_application_fee':form_prices['application_fee'],
+       'form_booth_fee':form_prices['booth_fee'],
+       'pdf_optional_fees':pdf_options,'form_fee_conditions':form_conditions},
+  'evidence':'The official dated event and organizer application page independently link the same craft fair form and specify a registration deadline. A linked current vendor fee PDF is checked for craft-specific fees without assuming ordinary market-day guest rates, and Google Form authorization restrictions cannot invent a closure.',
+  'reason':'Officially sourced craft-fair registration and fee details automatically checked.'}
++format(pdf_options['second_space'],',.2f')+' when space permits.'
+ if pdf_options.get('co_op_tent') is not None:
+  cost+=' Organizer-linked fee schedule lists a co-op vending charge of 
+ if form_access=='http_auth_blocked':cost+=' Automated Google Form access is blocked; confirm other terms with the organizer.'
+ candidate={
+  'title':'Winter Wonderland Craft Fair — Western Wake Farmers Market',
+  'market_slug':'western-wake-farmers-market','organizer':'Western Wake Farmers Market',
+  'city':'Morrisville','state':'NC','venue':'Indian Creek Trailhead Park, 101 Town Hall Drive',
+  'starts_on':EVENT_DAY.isoformat(),'ends_on':EVENT_DAY.isoformat(),
+  'schedule_type':'dated_event','deadline':None,
+  'availability':'closed' if closed else 'open',
+  'source_url':EVENT,'application_url':CRAFT_LINK,
+  'application_fee':app_fee,'booth_fee':booth_fee,'deposit':None,
+  'categories':[],'fee_notes':cost,
+  'eligibility':'Craft vendors and artisans can register using the organizer-linked craft fair application. Selection and remaining places depend on approval.',
+  'research_notes':'The official December 12 event page and its organizer vendor page link the same public craft fair application through two verified short links. Event page states registration deadline November 28, 2026 or sooner if full. No cutoff time is inferred. Automated form access: '+form_access+'. Fee PDF: '+('readable' if pdf_hash else 'unreadable')+'.'
+ }
+ return {'policy':POLICY,'decision':'publish','candidate':candidate,
+  'checked_at':now.isoformat(),'source_hash':event_hash,
+  'application_page_hash':apply_hash,
+  'fee_pdf_url':pdf_url,'fee_pdf_hash':pdf_hash,
+  'application_hash':form_hash,'application_access':form_access,
+  'fee_evidence':{'application_fee':app_fee,'booth_fee':booth_fee,
+       'pdf_craft_fee':pdf_fee,'form_application_fee':form_prices['application_fee'],
+       'form_booth_fee':form_prices['booth_fee']},
+  'evidence':'The official dated event and organizer application page independently link the same craft fair form and specify a registration deadline. A linked current vendor fee PDF is checked for craft-specific fees without assuming ordinary market-day guest rates, and Google Form authorization restrictions cannot invent a closure.',
+  'reason':'Officially sourced craft-fair registration and fee details automatically checked.'}
++format(pdf_options['co_op_tent'],',.2f')+' per tent.'
+ if pdf_options:
+  cost+=' Confirm whether the published 2025 fee schedule additional-space terms apply to this craft fair.'
  cost+=' Application registration ends November 28, 2026, or sooner if full; no cutoff time was published.'
  if form_access=='http_auth_blocked':cost+=' Automated Google Form access is blocked; confirm other terms with the organizer.'
  candidate={
