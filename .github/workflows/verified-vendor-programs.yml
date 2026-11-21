@@ -38,6 +38,26 @@ jobs:
           now=datetime.now(timezone.utc)
           fetcher=Fetcher(limit=28)
           results,notes=discover_programs(fetcher,now)
+          # Log bounded validation flags for supported public municipal forms,
+          # never vendor answers or form content, when a provider is inconclusive.
+          if any(note.get('program')=='durham-2026-holiday-food' for note in notes):
+              try:
+                  import re
+                  from official_vendor_programs import DPR_FORM
+                  from category_rules import visible_text
+                  raw,_=fetcher.get(DPR_FORM)
+                  content=visible_text(raw.root)
+                  flags={
+                      'organizer':bool(re.search(r'Durham Parks (?:and|&) Recreation',content,re.I)),
+                      'event':bool(re.search(r'Durham Holiday Parade',content,re.I)),
+                      'date':bool(re.search(r'December\\s+12,?\\s+2026',content,re.I)),
+                      'form_name':bool(re.search(r'Food Vendor Application',content,re.I)),
+                      'action':bool(re.search(r'\\b(?:Continue|Submit)\\b',content,re.I)),
+                      'body_chars':len(content),
+                  }
+                  print('DURHAM_PUBLIC_FORM_EVIDENCE '+json.dumps(flags))
+              except Exception:
+                  print('DURHAM_PUBLIC_FORM_EVIDENCE unavailable')
           db=Database()
           published=0
           problems=[]
