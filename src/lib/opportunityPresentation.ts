@@ -82,7 +82,9 @@ export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes
   if (item.booth_fee === null && /(?:no event-specific booth (?:fee|price) was verified|event-specific.{0,80}booth (?:fee|price).{0,40}not (?:verified|confirmed)|amount charged for a booth at this specific.{0,80}remains unverified)/i.test(item.fee_notes)) {
     return {label:"Craft-fair booth fee",value:"Check official form",note:"Exact amount could not be independently verified."};
   }
-  const label = item.schedule_type === "rolling_market" && /(?:per[- ]event|each market|per market date)/i.test(item.fee_notes)
+  const label = item.booth_fee !== null && /craft[- ]fair booth.{0,95}10.{0,18}10.{0,60}per event/i.test(item.fee_notes)
+    ? "10 × 10 booth · per event"
+    : item.schedule_type === "rolling_market" && /(?:per[- ]event|each market|per market date)/i.test(item.fee_notes)
     ? "Booth fee per event"
     : /event-specific booth fee/i.test(item.fee_notes) ? "Event booth fee" : "Standard booth / table";
   return {label,value:item.booth_fee === null ? "Not published" : money(Number(item.booth_fee)),note:""};
