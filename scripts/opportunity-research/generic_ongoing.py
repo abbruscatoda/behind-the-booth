@@ -118,9 +118,9 @@ def verify_generic_market(market,fetcher,now=None):
    fees=extract_labeled_fees(form_text)
    verified_fees=[]
    if fees['application_fee'] is not None:
-    verified_fees.append(f"The linked official application lists a \${fees['application_fee']:,.2f} application fee.")
+    verified_fees.append(f"The linked official application lists a ${fees['application_fee']:,.2f} application fee.")
    if fees['booth_fee'] is not None:
-    verified_fees.append(f"The linked official application lists a \${fees['booth_fee']:,.2f} booth fee per event.")
+    verified_fees.append(f"The linked official application lists a ${fees['booth_fee']:,.2f} booth fee per event.")
    # Never guess a missing fee or vendor category.
    candidate={
     "title":name+" — Rolling Vendor Applications",
