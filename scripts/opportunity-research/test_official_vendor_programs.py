@@ -55,6 +55,11 @@ class OfficialProgramsTests(unittest.TestCase):
     self.assertEqual(result['candidate']['application_fee'],30)
     self.assertIn('$30 per stall per summer',result['candidate']['fee_notes'])
     self.assertEqual(result['rules_hash'],'b'*64)
+   elif result['program']=='south-durham-winter-craft':
+    self.assertIsNone(result['candidate']['booth_fee'])
+    self.assertEqual(result['candidate']['application_fee'],0)
+    self.assertEqual(result['fee_proof'],'official-form-visual-2026-11-21')
+    self.assertIn('70-mile radius',result['candidate']['eligibility'])
    else:
     self.assertIsNone(result['candidate']['booth_fee'])
     self.assertIsNone(result['candidate']['application_fee'])
@@ -104,17 +109,37 @@ class OfficialProgramsTests(unittest.TestCase):
     verify_program('south-durham-guest-vendors',Fetch(),NOW)
  def test_winter_craft_does_not_inherit_guest_stall_prices(self):
   r=verify_program('south-durham-winter-craft',Fetch(),NOW)
-  self.assertIsNone(r['candidate']['application_fee'])
+  self.assertEqual(r['candidate']['application_fee'],0.0)
   self.assertIsNone(r['candidate']['booth_fee'])
 
  def test_unreadable_google_form_is_not_assumed_to_have_no_published_fees(self):
   r=verify_program('south-durham-winter-craft',Fetch(),NOW)
   self.assertIn('access_restricted',r['candidate']['research_notes'])
-  self.assertIn('does not establish',r['candidate']['fee_notes'])
+  self.assertIn('no application fee',r['candidate']['fee_notes'])
+  self.assertEqual(r['candidate']['application_fee'],0)
  def test_form_reporting_closed_prevents_advertising_an_open_application(self):
   f=Fetch()
   form=PROGRAMS['south-durham-winter-craft']['application']
   f.docs[form]='<h1>South Durham Craft Vendor Application</h1><p>This form is no longer accepting responses</p>'
+  with self.assertRaises(Uncertain):
+   verify_program('south-durham-winter-craft',f,NOW)
+
+ def test_readable_craft_form_confirms_zero_directly(self):
+  f=Fetch()
+  form=PROGRAMS['south-durham-winter-craft']['application']
+  f.docs[form]=('<h1>2026 Holiday/Craft Vendor Application</h1>'
+    '<p>Join the South Durham Farmers Market. There’s no application fee; '
+    'just fill out the form below. Vendor must be within a 70-mile radius '
+    'of the South Durham Farmers Market.</p>')
+  r=verify_program('south-durham-winter-craft',f,NOW)
+  self.assertEqual(r['form_state'],'public_questions_visible')
+  self.assertEqual(r['candidate']['application_fee'],0)
+ def test_contradictory_craft_form_cannot_override_verified_fee(self):
+  f=Fetch()
+  form=PROGRAMS['south-durham-winter-craft']['application']
+  f.docs[form]=('<h1>2026 Holiday/Craft Vendor Application</h1>'
+    '<p>There is no application fee. Application fee: $30. '
+    'Local craft vendor applications are now open for this season.</p>')
   with self.assertRaises(Uncertain):
    verify_program('south-durham-winter-craft',f,NOW)
 
