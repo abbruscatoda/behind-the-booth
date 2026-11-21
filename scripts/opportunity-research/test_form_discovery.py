@@ -58,6 +58,49 @@ class AutoPublicFormTests(unittest.TestCase):
   self.assertEqual(summary['discovery_verified_public_forms'],1)
   self.assertEqual(len(leads),1)
 
+ def test_exact_event_official_pdf_fills_missing_standard_fee(self):
+  form_no_price=form().replace('<p>Booth fee: $75</p>','')
+  document={
+   'url':'https://www.trianglepopup.com/s/2026-holiday-vendor-fee-schedule.pdf',
+   'hash':'b'*64,
+   'text':'Raleigh Holiday Artisan Market December 13, 2026. Standard booth fee: $95.',
+   'optional_fees':{},
+  }
+  receipts={'documents':[document],'linked_count':1,'readable_count':1,'blocked_count':0,'complete':True}
+  with patch('form_discovery.inspect_official_fee_documents',return_value=receipts):
+   result=verify_public_form({'source_url':SOURCE,'target_url':APP},Fetch(app=form_no_price),NOW)
+  self.assertIsNotNone(result)
+  self.assertEqual(result['candidate']['booth_fee'],95)
+  self.assertEqual(result['fee_document_coverage']['readable'],1)
+  self.assertEqual(result['fee_document_receipts'][0]['sha256'],'b'*64)
+
+ def test_generic_fee_pdf_not_assumed_to_apply_to_specific_event(self):
+  form_no_price=form().replace('<p>Booth fee: $75</p>','')
+  document={
+   'url':'https://www.trianglepopup.com/s/regular-market-fee-schedule.pdf',
+   'hash':'b'*64,
+   'text':'Regular vendor daily rate $25. Standard booth fee: $50. '
+          'Different market and season.',
+   'optional_fees':{},
+  }
+  with patch('form_discovery.inspect_official_fee_documents',return_value={
+       'documents':[document],'linked_count':1,'readable_count':1,'blocked_count':0,'complete':True}):
+   result=verify_public_form({'source_url':SOURCE,'target_url':APP},Fetch(app=form_no_price),NOW)
+  self.assertIsNotNone(result)
+  self.assertIsNone(result['candidate']['booth_fee'])
+
+ def test_pdf_conflict_with_form_price_does_not_autopublish(self):
+  document={
+   'url':'https://www.trianglepopup.com/s/2026-holiday-vendor-fee-schedule.pdf',
+   'hash':'b'*64,
+   'text':'Raleigh Holiday Artisan Market December 13, 2026. Booth fee: $120.',
+   'optional_fees':{},
+  }
+  with patch('form_discovery.inspect_official_fee_documents',return_value={
+       'documents':[document],'linked_count':1,'readable_count':1,'blocked_count':0,'complete':True}):
+   result=verify_public_form({'source_url':SOURCE,'target_url':APP},Fetch(),NOW)
+  self.assertIsNone(result)
+
  def test_wrong_form_date_rejected(self):
   self.assertIsNone(verify_public_form({'source_url':SOURCE,'target_url':APP},Fetch(app=form(date='December 14, 2026')),NOW))
 
