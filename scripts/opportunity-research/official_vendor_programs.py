@@ -40,14 +40,14 @@ PROGRAMS={
   'eligibility':'Food vendors for 2027 PRCR events. Wake County MFU or TFE permit, background screening, and general/automobile liability insurance of at least $1 million are required. Local vendors and quiet generators receive priority; selection is not guaranteed.',
   'fees':'The town says a vendor fee typically applies to individual events, but does not publish one universal booth or application fee. Online applications are advertised November 9–27, 2026; no cutoff time is published.',
  },
- 'durham-2026-holiday-food':{
-  'source':DPR_SOURCE,'application':DPR_FORM,'market_slug':'durham-holiday-parade',
-  'market_name':'Durham Holiday Parade','organizer':'Durham Parks & Recreation',
-  'city':'Durham','title':'Durham Holiday Parade — Food Vendor Applications',
-  'venue':'Durham, NC (event-specific vending site assigned by organizer)','starts':'2026-12-12','ends':'2026-12-12',
-  'schedule':'dated_event','until':'2026-12-11','price':None,
-  'eligibility':'Only mobile food units and push-cart peddlers with current Durham County food-service permits are considered. The form requests business, menu, tax IDs, unit dimensions, and permits. The organizer selects vendors; applying does not guarantee space.',
-  'fees':'A food-vendor participation charge may apply; the organizer provides payment instructions after selection. No universal fee for this December 12 event is independently published.',
+ 'durham-food-vendor-program':{
+  'source':DPR_SOURCE,'application':DPR_FORM,'market_slug':'durham-prcr-special-events',
+  'market_name':'Durham Parks & Recreation Special Events','organizer':'Durham Parks & Recreation',
+  'city':'Durham','title':'Durham Parks & Recreation — Food Vendor Applications',
+  'venue':'Durham, NC (locations assigned for each event)','starts':'2026-01-01','ends':'2027-12-31',
+  'schedule':'rolling_market','until':None,'price':None,
+  'eligibility':'Food vendors can submit an application for eligible current DPR special events. Mobile Food Units and Push Cart Peddlers must hold current Durham County food-service permits. DPR staff select vendors and may place applicants on a waitlist; an application is not a guaranteed event or selling space.',
+  'fees':'Food-vendor participation fees are provided by DPR to selected applicants, with payment due within two business days. No single published booth rate is verified for the series. Choose current event options in the official form; do not assume any individual event remains selectable.',
  },
  'state-raleigh-new-vendors':{
   'source':STATE_SOURCE,'application':STATE_FORM,'market_slug':'state-farmers-market',
@@ -103,16 +103,20 @@ def verify_program(program,fetcher,now=None):
              and re.search(r'Nov[.]?\s*27',text,re.I)
              and re.search('food vendors?',text,re.I)):
             raise Uncertain('Town page no longer confirms 2027 food-vendor dates and application period.')
-    elif program=='durham-2026-holiday-food':
-        if not re.search(r'Food Vendors?',text,re.I) or not re.search(r'current food vendor opportunities',text,re.I):
-            raise Uncertain('Durham official food-vendor intake no longer confirmed.')
+    elif program=='durham-food-vendor-program':
+        # The official municipal page explicitly advertises current food
+        # vendor opportunities across DPR events. Its CivicPlus form
+        # dynamically renders the event selector, which may be absent from
+        # a read-only static fetch. Do NOT claim one exact event date.
+        if not (re.search(r'Food Vendors?',text,re.I)
+                and re.search(r'current food vendor opportunities',text,re.I)
+                and re.search(r'mobile food units or pushcart peddlers',text,re.I)):
+            raise Uncertain('Durham official current event food-vendor intake no longer confirmed.')
         app,app_hash=fetcher.get(cfg['application'])
         app_text=visible_text(app.root)
         if not (re.search('Durham Parks and Recreation',app_text,re.I)
-                and re.search(r'Durham Holiday Parade\s*[-–]\s*December\s+12,?\s*2026',app_text,re.I)
-                and re.search('Food Vendor Application',app_text,re.I)
-                and re.search(r'\b(?:Continue|Submit)\b',app_text,re.I)):
-            raise Uncertain('The Durham food-vendor form no longer offers this dated event.')
+                and re.search('Food Vendor Application',app_text,re.I)):
+            raise Uncertain('The official CivicPlus vendor form identity no longer matches DPR.')
     elif program=='state-raleigh-new-vendors':
         if not re.search('State Farmers Market',text,re.I) or not re.search('New Vendor Application',text,re.I):
             raise Uncertain('The state no longer links a new-vendor market application.')
