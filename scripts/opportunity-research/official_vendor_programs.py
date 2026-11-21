@@ -188,7 +188,7 @@ def verify_program(program,fetcher,now=None):
     if program=='south-durham-winter-craft' and form_state=='public_questions_visible':
         form_doc,_=fetcher.get(cfg['application'])
         form_text=visible_text(form_doc.root)
-        if not (re.search(r'2026\\s+Holiday/Craft Vendor Application',form_text,re.I)
+        if not (re.search(r'2026\s+Holiday/Craft Vendor Application',form_text,re.I)
                 and explicitly_free_application(form_text)
                 and extract_labeled_fees(form_text)['application_fee']==0.0):
             # A newly readable form that differs from the approved visual
