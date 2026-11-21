@@ -16,9 +16,12 @@ on:
         type: boolean
 permissions:
   contents: read
+# Run only the latest worker code when overlapping pushes occur. Every
+# database publishing RPC is atomic and checks source identity/holds, so
+# a stopped older run cannot leave a partially written publication.
 concurrency:
   group: vendor-opportunity-research
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-latest
