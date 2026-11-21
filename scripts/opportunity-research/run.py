@@ -222,7 +222,7 @@ def run(dry_run=False):
     response=db.rpc('btb_research_publish_official_program',{'p_result':result})
    elif result.get('policy')=='western-wake-craft-official-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_western_craft',{'p_result':result})
-   if result.get('policy')=='explore-rolling-official-v1' and result.get('decision')=='publish':
+   elif result.get('policy')=='explore-rolling-official-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_verified_rolling',{'p_result':result})
    elif result.get('policy')=='raleigh-rolling-official-v1' and result.get('decision')=='publish':
     response=db.rpc('btb_research_publish_ongoing',{'p_result':result})
