@@ -18,8 +18,8 @@ export function opportunityDeadline(item: DeadlineDetails) {
     note: 'This is an ongoing market, not a confirmed individual date or guaranteed booth. Confirm placement with the organizer.',sortAt: Infinity,
   };
   if (item.schedule_type === 'seasonal_application' && item.deadline === null) return {
-    label: 'Application deadline', value: 'No deadline published',
-    note: 'The organizer confirms seasonal applications are currently accepted. A specific submission cutoff has not been published; availability can change.',sortAt: Infinity,
+    label: 'Application deadline', value: 'Deadline not verified',
+    note: 'The organizer lists an active seasonal application, but the cutoff has not been independently verified from all application materials. Check the official form.',sortAt: Infinity,
   };
   // An organizer may publish a day-only deadline without a clock time.
   // Show that confirmed date, but never fabricate a midnight/11:59 PM cutoff
@@ -71,6 +71,14 @@ export function publicOpportunityCopy(value: string): string {
 // The worker publishes both option prices together. Only show a range when its
 // minimum agrees with the saved fee; manual edits cannot leave a stale range.
 export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes: string; schedule_type?: string}) {
+  // A documented seasonal price must never appear as one universal year-round fee.
+  if (item.booth_fee !== null && /displayed (?:booth price|\\$[\\d.]+) is the winter rate/i.test(item.fee_notes)) {
+    const summer = /\\$([\\d,]+(?:\\.\\d{1,2})?) per (?:stall|market day).*?summer market day/i.exec(item.fee_notes)
+      ?? /\\$([\\d,]+(?:\\.\\d{1,2})?) per market day in summer/i.exec(item.fee_notes);
+    const money = (v: number) => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(v);
+    return {label:"Winter booth / day",value:money(Number(item.booth_fee)),
+      note: summer ? "Summer booth / day: "+money(Number(summer[1].replaceAll(",",""))) : "Seasonal rates vary; see full details."};
+  }
   const options = /Table options: half table \$([\d,]+(?:\.\d{1,2})?); full table \$([\d,]+(?:\.\d{1,2})?)\./i.exec(item.fee_notes);
   const money = (value: number) => new Intl.NumberFormat("en-US", {style:"currency", currency:"USD"}).format(value);
   if (options) {
