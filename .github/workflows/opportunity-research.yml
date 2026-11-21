@@ -31,10 +31,8 @@ jobs:
         run: python3 -m unittest discover -s scripts/opportunity-research -p 'test_*.py'
       - name: Install read-only Chromium fallback
         run: |
-          python3 -m pip install --disable-pip-version-check 'playwright>=1.56,<2'
+          python3 -m pip install --disable-pip-version-check 'playwright>=1.56,<2' 'pypdf==5.9.0'
           python3 -m playwright install --with-deps chromium
-      - name: Inspect current linked Western Wake public craft form (read only)
-        run: python3 scripts/opportunity-research/probe_winter_form.py
       - name: Verify official sources
         env:
           BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
