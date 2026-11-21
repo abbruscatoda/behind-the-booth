@@ -54,7 +54,7 @@ def read_public_form(doc):
  issues=[]
  for block in blocks:
   if '$' in block or re.search(r'\b(?:fees?|deposits?|refunds?|commission|electricity)\b',block,re.I):fee_blocks.append(block)
-  if re.search(r'\b(?:must|required|requirement|shall|prohibited|not (?:allowed|permitted)|no refunds|nonrefundable|insurance|permit|weights|setup|set-up|load-in|cleanliness|photo|selection|approval)\b',block,re.I):requirements.append(block)
+  if re.search(r'\b(?:must|required|requirement|shall|prohibited|not (?:allowed|permitted)|no refunds|nonrefundable|insurance|permit|license|sales tax|weights|setup|set-up|load-in|cleanliness|photo|selection|approval|vendor category|electricity|power)\b',block,re.I):requirements.append(block)
   for key,label in labels.items():
    # Only exact, unconditional labels. Conditional tiers stay in fee notes.
    match=re.fullmatch(label+r'\s*[:–-]\s*'+MONEY+r'\s*\.?',block,re.I)
