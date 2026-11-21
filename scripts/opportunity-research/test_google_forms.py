@@ -23,6 +23,25 @@ class GoogleTests(unittest.TestCase):
  def test_exact_unconditional_prices_and_free_are_not_unknown(self):
   f=read_public_form(form('<p>Booth fee: $125.00</p><p>Application fee: $0.00</p><p>Refundable deposit: $40</p>'))
   self.assertEqual((f['booth_fee'],f['application_fee'],f['deposit']),(125,0,40));self.assertTrue(f['complete'])
+ def test_craft_form_first_page_exposes_prices_even_with_next(self):
+  public=Document(
+   '<h1>WWFM Craft Fair Vendor Registration</h1>'
+   '<p>Currently accepting craft vendors for the 2026-27 season.</p>'
+   '<h3>CRAFT FAIR FEES:</h3>'
+   "<p>$10 nonrefundable application fee, payable when application is "
+   "submitted (waived for current vendors).</p>"
+   "<p>$30 per event: 10'x10' booth fee, payable upon acceptance.</p>"
+   '<p>See Table of Fees for a second tent space or co-op vending.</p>'
+   '<p>Winter Wonderland Craft Fair: applications due by November 28.</p>'
+   '<div role="button">Next</div>')
+  f=read_public_form(public)
+  self.assertEqual(f['application_fee'],10)
+  self.assertEqual(f['booth_fee'],30)
+  self.assertTrue(f['fee_conditions']['application_fee_waived_for_current_vendors'])
+  self.assertTrue(f['fee_conditions']['booth_fee_due_on_acceptance'])
+  self.assertFalse(f['complete'])
+  self.assertFalse(f['closed'])
+
  def test_tiered_prices_stay_in_notes_not_universal_amount(self):
   f=read_public_form(form('<p>Food vendor booth fee: $650. Novelty vendor booth fee: $300.</p><p>$200 food / $50 novelty refundable deposit.</p>'))
   self.assertIsNone(f['booth_fee']);self.assertIsNone(f['deposit']);self.assertIn('$650',f['fee_notes']);self.assertIn('$50',f['fee_notes'])
