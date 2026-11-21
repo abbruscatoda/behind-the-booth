@@ -9,6 +9,7 @@ from decimal import Decimal
 from category_rules import visible_text,nodes_with_parents
 from verifier import Uncertain,clean
 from form_fees import extract_amount_first_fees, extract_fee_conditions
+from published_form_metadata import public_form_sections
 
 MONEY=r'\$\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)'
 BLOCK=r'must sign in|sign in to continue|allow google forms access|can.t access this content|request access|you need permission'
@@ -31,6 +32,12 @@ def read_public_form(doc):
  if re.search(r'no longer accepting responses|form .{0,40}closed|applications? (?:are )?closed',text,re.I):
   return {'closed':True,'complete':False,'blocks':published_blocks(doc),'fee_notes':'','eligibility':'','booth_fee':None,'application_fee':None,'deposit':None}
  blocks=published_blocks(doc)
+ # Public HTML may carry the form author's entire section/question metadata,
+ # including later pages not yet visible in the first-page DOM. This is only
+ # supplementary evidence; it never proves that a form can be submitted.
+ schema_sections=public_form_sections(doc)
+ for section in schema_sections:
+  if section not in blocks:blocks.append(section)
  if not blocks:raise Uncertain('Google Form has no readable organizer descriptions or questions.')
  active=[]
  for n,parents in nodes_with_parents(doc.root):
@@ -56,11 +63,14 @@ def read_public_form(doc):
  # label, with extra conditions (e.g. "$30 per event: 10x10 booth fee").
  # Capture only unambiguous prices in the first public page. A form whose
  # navigation says "Next" is still *incomplete*, even with readable fees.
- labeled=extract_amount_first_fees(text)
- for key in ('booth_fee','application_fee'):
-  match=labeled.get(key)
-  if match is not None:
-   prices[key].add(str(Decimal(str(match))))
+ # Keep separate authored sections isolated. Joining them could mistakenly
+ # attach a price from the *next* question to the previous fee label.
+ for phrase in [text,*schema_sections]:
+  labeled=extract_amount_first_fees(phrase)
+  for key in ('booth_fee','application_fee'):
+   match=labeled.get(key)
+   if match is not None:
+    prices[key].add(str(Decimal(str(match))))
  for key,values in prices.items():
   if len(values)>1:issues.append('Conflicting '+key.replace('_',' ')+' values require review.')
  def bounded(values,limit):
@@ -69,5 +79,6 @@ def read_public_form(doc):
   return text
  return {'closed':False,'complete':complete,'blocks':blocks,'fee_notes':bounded(fee_blocks,2000),
   'eligibility':bounded(requirements,2000),'issues':issues,
-  'fee_conditions':extract_fee_conditions(text),
+  'fee_conditions':extract_fee_conditions(text+' '+ ' '.join(schema_sections[:12])),
+  'published_schema_fee_sections':len(schema_sections),
   **{k:float(next(iter(v))) if len(v)==1 else None for k,v in prices.items()}}
