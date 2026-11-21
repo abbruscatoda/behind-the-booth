@@ -1,4 +1,4 @@
-"""Fast authenticated deployment check for the reviewed source registry."""
+"""Synchronize reviewed sources, market identities and verified vendor intake."""
 from run import Database,register_discovery_sources
 
 def main():
