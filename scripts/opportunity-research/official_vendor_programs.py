@@ -19,6 +19,7 @@ import re
 from verifier import Uncertain, valid_url
 from category_rules import visible_text
 from official_documents import fetch_public_google_document
+from form_fees import explicitly_free_application, extract_labeled_fees
 
 POLICY='official-vendor-program-v1'
 DPR_SOURCE='https://www.dprplaymore.org/331/Vendor-Performer-Information'
@@ -32,6 +33,11 @@ SOUTH_CRAFT_FORM='https://docs.google.com/forms/d/e/1FAIpQLSeXV0kAKDUDK3e44KLfoV
 SOUTH_GUEST_FORM='https://docs.google.com/forms/d/e/1FAIpQLSc4n-7Ht3GntUJpGP0HaGPmUvYA3XMbnnqxy8VePtlAm2Uv-g/viewform'
 SOUTH_RULES_PAGE='https://southdurhamfarmersmarket.com/market-rules-%2B-bylaws'
 SOUTH_RULES_DOC='https://docs.google.com/document/d/1QVgqQan9naZBfJSjxcRQg51B8gXJ9NzNVOYIBveCdRk/edit?usp=sharing'
+# Direct organizer-form evidence supplied 2026-11-21: "There's no application
+# fee", local handmade crafts, 70-mile radius. Scoped ONLY to this 2026
+# Google Form and its seasonal intake, NOT guest-vendor applications. This
+# approved observation remains distinct from a live machine-readable check.
+SOUTH_CRAFT_FEE_PROOF='official-form-visual-2026-11-21'
 
 PROGRAMS={
  'wake-forest-2027-food':{
@@ -67,8 +73,8 @@ PROGRAMS={
   'city':'Durham','title':'South Durham Farmers Market — Winter Craft Applications',
   'venue':'HUB RTP, 500 Park Offices Drive, Durham, NC','starts':'2026-11-01','ends':'2026-12-31',
   'schedule':'seasonal_application','until':'2026-12-31','price':None,
-  'eligibility':'The organizer currently invites craft vendors for one or two holiday market dates from November through December 2026. Vendors must produce their work locally and meet market eligibility requirements. Exact dates and space are subject to organizer confirmation.',
-  'fees':'The organizer links a dedicated winter craft Google Form. Its questions, fees, and deadline were not independently readable to unauthenticated checks; this does not establish that the organizer published no prices or cutoff. The official guest-vendor fee schedule is a different intake and must not be copied to this application. Check the linked form for exact craft fees and dates.',
+  'eligibility':'The official 2026 Holiday/Craft form invites vendors with locally handmade goods for one or two holiday markets in November–December 2026. Applicants must be located within a 70-mile radius of South Durham Farmers Market. Dates and space are subject to organizer confirmation.',
+  'fees':'The 2026 Holiday/Craft Vendor Application explicitly says there is no application fee ($0). This program is separate from regular guest vending, which charges $30 to apply. No craft-specific daily booth cost or submission cutoff is confirmed from the supplied form screenshot. Check the official application for further details.',
  },
  'south-durham-guest-vendors':{
   'source':SOUTH_SOURCE,'application':SOUTH_GUEST_FORM,'market_slug':'south-durham-farmers-market',
@@ -179,6 +185,15 @@ def verify_program(program,fetcher,now=None):
         else ('not_applicable',None))
     if form_state=='submissions_closed':
         raise Uncertain('The official Google Form says submissions are closed; do not advertise an open application.')
+    if program=='south-durham-winter-craft' and form_state=='public_questions_visible':
+        form_doc,_=fetcher.get(cfg['application'])
+        form_text=visible_text(form_doc.root)
+        if not (re.search(r'2026\\s+Holiday/Craft Vendor Application',form_text,re.I)
+                and explicitly_free_application(form_text)
+                and extract_labeled_fees(form_text)['application_fee']==0.0):
+            # A newly readable form that differs from the approved visual
+            # evidence is NOT silently forced to the historical $0 price.
+            raise Uncertain('2026 Holiday/Craft form no longer confirms the approved no-fee statement.')
     rates=(verified_guest_rates(fetcher) if program=='south-durham-guest-vendors' else None)
 
     # Don't reuse stale pre-2027 periods indefinitely. Only real event/program
@@ -206,6 +221,12 @@ def verify_program(program,fetcher,now=None):
       candidate['research_notes']+=(' Read-only public Google Form check: '+form_state+
           '. An access barrier does not establish that the organizer omitted fee, '
           'deadline, or event-selection details. No application was submitted.')
+    if program=='south-durham-winter-craft':
+      candidate['application_fee']=0.0
+      candidate['research_notes']+=(' The application-specific $0 fee, local handmade craft category, '
+          'and 70-mile eligibility are supported by the 2026 Holiday/Craft form screenshot '
+          'provided 2026-11-21. Machine-readable form status: '+form_state+
+          '. This documented observation must be rechecked when the same official form becomes readable.')
     if rates:
       candidate['application_fee']=rates['application']
       # Database/website must label this as a WINTER rate, not the annual rate.
@@ -224,6 +245,7 @@ def verify_program(program,fetcher,now=None):
     return {'decision':'publish','policy':POLICY,'program':program,'candidate':candidate,
             'form_state':form_state, 'form_hash':form_hash,
             'rules_hash':rates['hash'] if rates else None,
+            'fee_proof':SOUTH_CRAFT_FEE_PROOF if program=='south-durham-winter-craft' else None,
             'source_hash':digest,'checked_at':now.isoformat(),
             'evidence':('The currently linked official organizer vendor page independently identifies '
                         'the named market or municipal program, applicant category, and the publicly '
