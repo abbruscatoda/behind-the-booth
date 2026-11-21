@@ -15,7 +15,7 @@ class Fetch:
    if key=='wake-forest-2027-food':
     body='Town of Wake Forest PRCR will accept food vendors for 2027 PRCR events from Nov. 9 through Nov. 27, 2026.'
    elif key=='durham-food-vendor-program':
-    body='Durham Parks and Recreation Food Vendors: for current food vendor opportunities apply online.'
+    body='Durham Parks and Recreation Food Vendors: for current food vendor opportunities apply online. Only mobile food units or pushcart peddlers with valid permits qualify.'
     self.docs[cfg['application']]=(
      '<h1>Durham Parks and Recreation - Food Vendor Application</h1>'
      '<div>Durham Holiday Parade - December 12, 2026</div><button>Continue</button>')
