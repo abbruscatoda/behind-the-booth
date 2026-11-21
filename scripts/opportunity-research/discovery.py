@@ -107,6 +107,19 @@ def is_application_hint(url,label):
               r'faq|faqs|rules|policies|resources?|directories|members|our vendors|meet our vendors|'
               r'payment|payments|closed|fundrais(?:er|ing)|community booth|nonprofit|sponsor|'              r'survey|teaching artists?|workshops?|programs?\s*&\s*registration)\b',combined):
   return False
+ # Do not present municipal planning, culture-program and general event links
+ # as vendor-application leads. Events remain useful *research sources*;
+ # dedicated dated-event discovery checks their real vendor forms.
+ nonvendor = re.search(
+  r'\b(?:planning|development|advisory board|public art proposal|'
+  r'public spaces artwork|art transit bus shelters|parade participant|'
+  r'registration instructions|online application portal|board vacancy|'
+  r'performer registration|performer database)\b',combined,re.I)
+ if nonvendor and not re.search(r'\b(?:vendor|vending|booth|stall|food truck)\b',combined):
+  return False
+ if re.search(r'/(?:upcoming-event|events)/',p.path,re.I) and not re.search(
+     r'\b(?:apply|application|vendor registration|vendor form)\b',title):
+  return False
  if p.hostname in {'godaddy.com','www.godaddy.com'}:return False
  if canonical_application(url):return True
  if p.hostname in {'docs.google.com','forms.gle','form.jotform.com','pci.jotform.com'}:
