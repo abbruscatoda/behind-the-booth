@@ -11,6 +11,8 @@ import re
 
 from verifier import CITIES, norm, clean, valid_url
 from google_forms import read_public_form
+from official_fee_documents import inspect_official_fee_documents
+from form_fees import extract_labeled_fees
 from category_rules import visible_text
 from research_quality import build_quality
 
@@ -154,6 +156,99 @@ def verify_public_form(lead,fetcher,now=None):
   deadline=datetime.fromisoformat(next(iter(cutoffs)))
   if deadline<=now or deadline.date()>starts.date():return None
   if dates-{deadline.date()}!={starts.date()}:return None
+
+  # Audit event-specific fee PDFs on the verified organizer/form pages BEFORE
+  # publishing a card with unknown prices. A generic organizer schedule may
+  # describe different markets or tiers and must never become this event's
+  # standard booth price without an exact matching name and event date.
+  linked_fees=inspect_official_fee_documents([(source,source_url),(form,app_url)],source_url)
+  additional_notes=[]
+  verified_pdf_fees={}
+  for pdf in linked_fees['documents']:
+   schedule=clean(pdf['text'])
+   if norm(name) in norm(schedule) and formatted.lower() in schedule.lower():
+    prices=extract_labeled_fees(schedule)
+    for key in ('booth_fee','application_fee'):
+     value=prices.get(key)
+     if value is not None:
+      verified_pdf_fees.setdefault(key,set()).add(value)
+   options=pdf['optional_fees']
+   parts=[]
+   if options.get('second_space') is not None:
+    parts.append('second space 'title':name,'market_slug':None,'organizer':organizer_name,
+   'city':city,'state':'NC','venue':venue,
+   'starts_on':starts.date().isoformat(),'ends_on':ends.date().isoformat(),
+   'deadline':deadline.isoformat(),'application_url':app_url,'source_url':source_url,
+   'availability':'open','booth_fee':facts.get('booth_fee'),
+   'application_fee':facts.get('application_fee'),'deposit':facts.get('deposit'),
+   'categories':[],'fee_notes':facts.get('fee_notes') or '',
+   'eligibility':facts.get('eligibility') or ''}
+  receipt={'application_url':app_url,'checked_at':now.isoformat(),'categories':{}}
+  result={'policy':CALENDAR_POLICY if calendar_url else POLICY,
+   'decision':'publish','form_complete':True,'form_readable':True,
+   'reason':'Official dated organizer page and public vendor form independently match; enabled submission and exact future deadline verified.',
+   'checked_at':now.isoformat(),'source_hash':source_hash,
+   'application_hash':app_hash,
+   'fee_document_receipts':[{'url':p['url'],'sha256':p['hash']} for p in linked_fees['documents']],
+   'fee_document_coverage':{'linked':linked_fees['linked_count'],'readable':linked_fees['readable_count'],'blocked':linked_fees['blocked_count']},
+   'evidence':'Official dated event page links the exact public form. Event, organizer, application date, and live submission controls agree.',
+   'candidate':candidate,'category_evidence':receipt}
+  if calendar_url:
+   result['organizer_root']=organizer_root
+   result['calendar_url']=calendar_url
+   if lead.get('grouped_research'):
+    result['grouped_research']=True
+    result['event_index_url']=lead.get('event_index_url')
+    result['application_index_url']=lead.get('application_index_url')
+  result['research_quality']=build_quality(result,form,candidate['eligibility'])
+  return result
+ except (ValueError,KeyError,TypeError,AttributeError):
+  # Insufficient or contradictory public evidence is not authority to publish.
+  return None
++format(options['second_space'],'.2f'))
+   if options.get('co_op_tent') is not None:
+    parts.append('co-op vending 'title':name,'market_slug':None,'organizer':organizer_name,
+   'city':city,'state':'NC','venue':venue,
+   'starts_on':starts.date().isoformat(),'ends_on':ends.date().isoformat(),
+   'deadline':deadline.isoformat(),'application_url':app_url,'source_url':source_url,
+   'availability':'open','booth_fee':facts.get('booth_fee'),
+   'application_fee':facts.get('application_fee'),'deposit':facts.get('deposit'),
+   'categories':[],'fee_notes':facts.get('fee_notes') or '',
+   'eligibility':facts.get('eligibility') or ''}
+  receipt={'application_url':app_url,'checked_at':now.isoformat(),'categories':{}}
+  result={'policy':CALENDAR_POLICY if calendar_url else POLICY,
+   'decision':'publish','form_complete':True,'form_readable':True,
+   'reason':'Official dated organizer page and public vendor form independently match; enabled submission and exact future deadline verified.',
+   'checked_at':now.isoformat(),'source_hash':source_hash,
+   'application_hash':app_hash,
+   'evidence':'Official dated event page links the exact public form. Event, organizer, application date, and live submission controls agree.',
+   'candidate':candidate,'category_evidence':receipt}
+  if calendar_url:
+   result['organizer_root']=organizer_root
+   result['calendar_url']=calendar_url
+   if lead.get('grouped_research'):
+    result['grouped_research']=True
+    result['event_index_url']=lead.get('event_index_url')
+    result['application_index_url']=lead.get('application_index_url')
+  result['research_quality']=build_quality(result,form,candidate['eligibility'])
+  return result
+ except (ValueError,KeyError,TypeError,AttributeError):
+  # Insufficient or contradictory public evidence is not authority to publish.
+  return None
++format(options['co_op_tent'],'.2f')+' per tent')
+   if parts:
+    additional_notes.append('Organizer fee PDF mentions '+', '.join(parts)+'; check whether these optional costs apply to this event.')
+  if not linked_fees['complete']:
+   additional_notes.append('One or more organizer-linked fee PDFs were not readable at this check.')
+  for key,prices in verified_pdf_fees.items():
+   if facts.get(key) is None and len(prices)==1:
+    facts[key]=next(iter(prices))
+    additional_notes.append('Exact-event organizer fee PDF independently confirms '+key.replace('_',' ')+'.')
+   elif facts.get(key) is not None and any(price!=facts[key] for price in prices):
+    # Conflicting PDF and form prices should not auto-publish as verified.
+    return None
+  if additional_notes:
+   facts['fee_notes']=((facts.get('fee_notes') or '')+' '+' '.join(additional_notes)).strip()[:2000]
 
   venue=clean(', '.join(x for x in (loc.get('name',''),addr.get('streetAddress','')) if x))
   if len(venue)>300:return None
