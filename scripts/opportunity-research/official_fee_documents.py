@@ -70,7 +70,7 @@ def fee_document_links(document, page_url, organizer_url):
         href = urljoin(page_url, node.attrs['href'])
         if FEE_LABEL.search(label) and _safe_pdf(href, organizer_url) and href not in links:
             links.append(href)
-        elif (re.search(r'\\b(?:market|vendor|application)\\s+(?:rules|fees|pricing)\\b',label,re.I)
+        elif (re.search(r'\b(?:market|vendor|application)\s+(?:rules|fees|pricing)\b',label,re.I)
               or FEE_LABEL.search(label)) and _safe_public_doc(href) and href not in links:
             # Only an explicitly labeled *public* Doc, directly linked by
             # a verified organizer/form page, may supply additional fee evidence.
