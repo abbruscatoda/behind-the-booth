@@ -217,7 +217,7 @@ def _official_year_round_embedded(provider,root,root_hash,vendor,vendor_hash,fet
  official_identity=bool(re.search(re.escape(name),market+' '+text,re.I))
  # Official market pages split their year-round schedule across the landing
  # page and vendor application page. Both are independently organizer-hosted.
- if not re.search(r'(?:Saturdays?.{0,50}year.round|year.round.{0,50}Saturdays?|market vendors?.{0,55}year.round)',market+' '+text,re.I):
+ if not re.search(r'(?:Saturdays?.{0,50}year.round|year.round.{0,50}Saturdays?|(?:regular\s+)?market vendors?.{0,120}year.round)',market+' '+text,re.I):
   raise Uncertain('A year-round Saturday schedule is not explicitly confirmed.')
  if not re.search(r'(?:market vendors?|regular market vendors?)',text,re.I):
   raise Uncertain('The application page does not identify regular market vendors.')
