@@ -16,6 +16,53 @@ class FormFeeTests(unittest.TestCase):
         self.assertEqual(extract_labeled_fees(page),
                          {"application_fee": 28.0, "booth_fee": 35.0})
 
+    def test_real_western_wake_craft_fair_first_page(self):
+        from form_fees import extract_fee_conditions
+        first_page=(
+            "WWFM Craft Fair Vendor Registration. "
+            "CRAFT FAIR FEES: "
+            "$10 nonrefundable application fee, payable when application is "
+            "submitted (waived for current vendors). "
+            "$30 per event: 10'x10' booth fee, payable upon acceptance. "
+            "See Table of Fees for options such as a second tent space or "
+            "cooperative vending arrangement."
+        )
+        self.assertEqual(extract_labeled_fees(first_page),
+                         {"application_fee": 10.0, "booth_fee": 30.0})
+        self.assertEqual(extract_fee_conditions(first_page),{
+            "application_fee_waived_for_current_vendors": True,
+            "application_fee_nonrefundable": True,
+            "booth_fee_due_on_acceptance": True,
+            "booth_size_10x10": True,
+        })
+
+    def test_linked_pdf_addons_do_not_become_standard_booth_fee(self):
+        from form_fees import extract_linked_fee_options
+        official_pdf=(
+            "Booth Fees Vendor Tier Attendance Daily Rate "
+            "Regular Vendor $20 Seasonal or Part-Time Vendor $25 "
+            "Guest Vendor $30 Additional Fees "
+            "Second Space Fee Available if space permits $20 "
+            "Co-op Vending Arrangement Fee Assessed per tent; "
+            "see Rules for details. $10"
+        )
+        self.assertEqual(extract_linked_fee_options(official_pdf),{
+            "second_space":20.0,"co_op_tent":10.0
+        })
+        self.assertIsNone(extract_labeled_fees(official_pdf)["booth_fee"])
+
+    def test_a_fee_for_tickets_or_a_different_tier_is_not_event_booth_fee(self):
+        text=("Admission tickets $30 per event. $10 craft application fee. "
+              "Additional large 20x20 booth pricing requires contacting us.")
+        self.assertEqual(extract_labeled_fees(text),{
+            "application_fee":10.0,"booth_fee":None
+        })
+
+    def test_conflicting_per_event_booth_prices_are_not_guessed(self):
+        self.assertIsNone(extract_labeled_fees(
+           "$30 per event: 10x10 booth fee. $55 per event: 20x20 booth fee."
+        )["booth_fee"])
+
     def test_label_first_prices(self):
         self.assertEqual(extract_labeled_fees(
             "Application fee: $15.00; standard booth fee: $50 per event."),
