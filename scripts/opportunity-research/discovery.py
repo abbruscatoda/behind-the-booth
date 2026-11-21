@@ -21,6 +21,12 @@ from verifier import (Uncertain, canonical_event, canonical_application,
 # These are *discovery hints*, not a license to auto-publish their listings.
 # All addresses must also be covered by verifier.HOSTS.
 SOURCES = (
+ ('NC Vintage Market','Knightdale','https://www.eventbrite.com/o/nc-vintage-market-121068658483'),
+ ('Haven Farm','Knightdale','https://www.havenofknightdale.com/work-with-haven'),
+ ('NC Vintage Bazaar','Raleigh','https://ncvintagebazaar.com/vendor-booths/'),
+ ('The Patchwork Market','Durham','https://thepatchworkmarket.com/applytobeavendor/'),
+ ('Rebus Works','Raleigh','https://www.rebusworks.us/sundayfundaymarket'),
+ ('Raleigh Retro Gamers','Raleigh','https://raleighretrogamers.com/vendors/'),
  ('The MAKRS Society','Raleigh','https://makrs.com/market-applications'),
  ('Durham Parks & Recreation','Durham','https://www.dprplaymore.org/331/Vendor-Performer-Information'),
  ('Durham Central Park','Durham','https://durhamcentralpark.org/events/'),

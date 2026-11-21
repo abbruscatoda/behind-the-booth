@@ -28,3 +28,13 @@ No crawler can guarantee every Triangle opportunity: private social posts, new o
 ## Validation
 
 Run `python3 -m unittest discover -s scripts/opportunity-research -p 'test_*.py'` and `npm run build`. Regression tests cover regional scope, query rotation, feed errors, unapproved hosts, live official-link provenance, calendar fairness, municipal links, and waiting-list discovery. Production workflow runs these tests before touching opportunity records.
+
+## Vintage, retro and independent market coverage
+
+`market_catalog.py` checks five explicitly reviewed identities on every worker run: NC Vintage Market at Haven Farm, NC Vintage Bazaar, The Patchwork Market, Rebus Sunday Funday Market, and Raleigh Retro Gamers Markets. Source identity/location evidence is refreshed before any new profile is created. Directory publication is independent of open vendor applications; closed intake does not erase a legitimate market or its reviews. The database uses a fixed reviewed identity map, refuses hidden/sample/conflicting profiles, preserves existing edits, and records source receipts privately.
+
+The discovery registry also includes the Haven Farm venue calendar, official NC Vintage Market organizer page, and the Bazaar, Patchwork, Rebus and Raleigh Retro vendor sources. Vintage/thrift/flea/collectible intent is included in rotating regional searches. Eventbrite organizer fetches are scoped to the reviewed NC Vintage Market organizer; attendee tickets are not vendor applications.
+
+Raleigh Retro Gamers currently embeds its vendor application on `/vendors/` (the old application URL redirects there). Its adapter checks the actual vendor form, enabled submission control, current intake statement and explicit free-application wording. It publishes general rolling intake, not a guaranteed event or booth. Booth fees stay unknown, the $0 is application-only, and the internal calendar-year verification horizon renews each year without fabricating event dates or a submission deadline. Closed-form evidence takes precedence over an old call for vendors. Workshop/retail-only forms, expired deadlines and social-media-only signups are not treated as confirmed open event applications.
+
+The source-sync deployment job also verifies and publishes the reviewed catalog and supported Retro intake, so these data additions do not require a frontend/Vercel build. The companion catalog and intake SQL scripts are applied to the connected production database; all publishers retain the worker-secret authorization.

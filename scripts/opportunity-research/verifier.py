@@ -25,7 +25,9 @@ SERIES = {
  'raleightwilightmarket':('raleigh-twilight-market','Raleigh Twilight Market'),
 }
 CITIES={'raleigh','durham','cary','apex','wendell','rolesville','wake forest','chapel hill','carrboro','holly springs','fuquay-varina','morrisville','garner','clayton','pittsboro','hillsborough','knightdale','zebulon','youngsville','creedmoor','angier','siler city','mebane','franklinton'}
-HOSTS={'www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com','pci.jotform.com',
+HOSTS={'www.eventbrite.com','www.havenofknightdale.com','havenofknightdale.com',
+ 'ncvintagebazaar.com','www.ncvintagebazaar.com','thepatchworkmarket.com','www.thepatchworkmarket.com',
+ 'www.rebusworks.us','rebusworks.us','raleighretrogamers.com','www.raleighretrogamers.com','www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com','pci.jotform.com',
  'www.trianglepopup.com','trianglepopup.com','thenightmarketcompany.com','www.thenightmarketcompany.com',
  'shoplocalraleigh.org','www.shoplocalraleigh.org','www.geekandgrubmarket.com','geekandgrubmarket.com',
  'hummingbirdmarketnc.com','www.hummingbirdmarketnc.com','www.caryfarmersmarket.com','caryfarmersmarket.com',
@@ -55,6 +57,7 @@ def norm(value):return re.sub(r'[^a-z0-9]','',value.lower())
 def clean(value):return ' '.join(unescape(value).split())
 def valid_url(url):
  p=urlparse(url)
+ if p.hostname=='www.eventbrite.com' and (p.query or not (p.path.rstrip('/')=='/o/nc-vintage-market-121068658483' or re.fullmatch(r'/e/[A-Za-z0-9-]+-[0-9]+/?',p.path))):return False
  if p.hostname=='www.artsplosure.org' and (p.path.rstrip('/')!='/first-night-raleigh' or p.query):return False
  # Form IDs may vary, but the path stays scoped to a real hosted application.
  # Google Docs/Forms must not be used to fetch documents, sign-in, prefill,

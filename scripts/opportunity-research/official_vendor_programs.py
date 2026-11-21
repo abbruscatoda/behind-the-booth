@@ -40,6 +40,15 @@ SOUTH_RULES_DOC='https://docs.google.com/document/d/1QVgqQan9naZBfJSjxcRQg51B8gX
 SOUTH_CRAFT_FEE_PROOF='official-form-visual-2026-11-21'
 
 PROGRAMS={
+ 'raleigh-retro-vendor-intake':{
+  'source':'https://raleighretrogamers.com/vendors/','application':'https://raleighretrogamers.com/vendors/',
+  'market_slug':'raleigh-retro-gamers-markets','market_name':'Raleigh Retro Gamers Markets',
+  'organizer':'Raleigh Retro Gamers','city':'Raleigh','title':'Raleigh Retro Gamers — Vendor Applications',
+  'venue':'Raleigh and Triangle event venues; select an available event in the application',
+  'starts':'2026-01-01','ends':'2027-12-31','schedule':'rolling_market','until':None,'price':None,
+  'eligibility':'Vendors must fit gaming, retro, vintage, collectibles, or related geek/pop-culture events. A full application, examples of merchandise, and the required NC tax ID are requested. Individual events, space, and acceptance are subject to organizer selection; this intake is not a guaranteed booth or event date.',
+  'fees':'The official vendor application explicitly says there is no cost associated with the application ($0 application fee). Booth costs vary by event, venue, and space; no universal booth price or deposit is assumed. Select a current event and confirm its fee and availability with the organizer.',
+ },
  'wake-forest-2027-food':{
   'source':WAKE_SOURCE,'application':WAKE_FORM,'market_slug':'wake-forest-prcr-special-events',
   'market_name':'Wake Forest PRCR Special Events','organizer':'Town of Wake Forest Parks, Recreation & Cultural Resources',
@@ -137,18 +146,36 @@ def inspect_public_application(fetcher,url):
 def verify_program(program,fetcher,now=None):
     if program not in PROGRAMS:
         raise Uncertain('Unrecognized vendor program.')
-    cfg=PROGRAMS[program]
+    cfg=dict(PROGRAMS[program])
     now=now or datetime.now(timezone.utc)
     today=now.astimezone(ZoneInfo('America/New_York')).date()
+    if program=='raleigh-retro-vendor-intake':
+        cfg['starts']=f'{today.year}-01-01';cfg['ends']=f'{today.year}-12-31'
     until=date.fromisoformat(cfg['until']) if cfg['until'] else None
     closed=bool(until and today>until)
     # An objectively elapsed advertised application window closes without
     # relying on a possible later organizer outage.
     doc,digest=fetcher.get(cfg['source'])
     text=visible_text(doc.root)
-    if not _linked(doc,cfg['source'],cfg['application']):
+    if program!='raleigh-retro-vendor-intake' and not _linked(doc,cfg['source'],cfg['application']):
         raise Uncertain('The official organizer no longer links the approved vendor application.')
-    if program=='wake-forest-2027-food':
+    if program=='raleigh-retro-vendor-intake':
+        from category_rules import nodes_with_parents
+        if not (re.search(r'Raleigh Retro Gamers',text,re.I) and re.search(r'(?:always looking for new vendors|rest are open applications)',text,re.I) and re.search(r'(?:Triangle|North Carolina)',text,re.I)):
+            raise Uncertain('The organizer no longer confirms its current Triangle vendor intake.')
+        app,app_hash=fetcher.get(cfg['application'])
+        app_text=visible_text(app.root)
+        if not (re.search(r'Raleigh Retro Gamers',app_text,re.I)
+                and re.search(r'(?:Vendor Application|Become a Vendor|Ready to Apply)',app_text,re.I)
+                and re.search(r'(?:no cost associated with your application|applications? are free|applying costs nothing)',app_text,re.I)):
+            raise Uncertain('Current application identity or its explicit no-cost application statement is not confirmed.')
+        closed=bool(re.search(r'(?:applications? (?:are |is |have )?closed|no longer accepting (?:vendor )?applications?)',app_text,re.I))
+        vendor_forms=[node for node,_ in nodes_with_parents(app.root) if node.tag=='form'
+            and re.search(r'\bindividual\b',visible_text(node),re.I)
+            and re.search(r'\bbusiness\b',visible_text(node),re.I)]
+        if not closed and not any(n.tag in ('button','input') and (n.attrs.get('type','').lower()=='submit' or visible_text(n).strip().lower()=='submit') for form in vendor_forms for n,_ in nodes_with_parents(form)):
+            raise Uncertain('A usable public vendor application submission control was not found.')
+    elif program=='wake-forest-2027-food':
         if not (re.search(r'2027\s+PRCR\s+events?',text,re.I)
              and re.search(r'Nov[.]?\s*27',text,re.I)
              and re.search('food vendors?',text,re.I)):
@@ -183,7 +210,8 @@ def verify_program(program,fetcher,now=None):
     form_state,form_hash=(inspect_public_application(fetcher,cfg['application'])
         if program in ('south-durham-winter-craft','south-durham-guest-vendors')
         else ('not_applicable',None))
-    if form_state=='submissions_closed':
+    if program=='raleigh-retro-vendor-intake':form_state,form_hash=('submissions_closed' if closed else 'public_questions_visible'),app_hash
+    if form_state=='submissions_closed' and program!='raleigh-retro-vendor-intake':
         raise Uncertain('The official Google Form says submissions are closed; do not advertise an open application.')
     if program=='south-durham-winter-craft' and form_state=='public_questions_visible':
         form_doc,_=fetcher.get(cfg['application'])
@@ -217,6 +245,9 @@ def verify_program(program,fetcher,now=None):
         'are not guaranteed. Application window checked '+now.date().isoformat()+
         '. External forms were not submitted or filled.'),
     }
+    if program=='raleigh-retro-vendor-intake':
+      candidate['application_fee']=0.0
+      candidate['research_notes']+=' Current public application identity, explicit $0 application fee, and submission control were checked; individual event choices are not assumed open.'
     if program in ('south-durham-winter-craft','south-durham-guest-vendors'):
       candidate['research_notes']+=(' Read-only public Google Form check: '+form_state+
           '. An access barrier does not establish that the organizer omitted fee, '

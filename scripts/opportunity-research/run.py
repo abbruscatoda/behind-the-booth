@@ -23,7 +23,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads','btb_research_publish_ongoing','btb_research_market_gaps','btb_research_publish_verified_rolling','btb_research_publish_western_craft','btb_research_publish_official_program'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads','btb_research_publish_ongoing','btb_research_market_gaps','btb_research_publish_verified_rolling','btb_research_publish_western_craft','btb_research_publish_official_program','btb_research_publish_market_catalog'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -203,6 +203,13 @@ def run(dry_run=False):
    form_probe=probe_public_form(fetcher)
   # Verify vetted organizer programs BEFORE broad discovery consumes the
   # bounded Playwright fallback budget; source identity remains enforced.
+  from market_catalog import discover_catalog
+  catalog_results,catalog_notes=discover_catalog(fetcher,now)
+  for receipt in catalog_results:
+   if dry_run:counts['proposed_market_profiles']+=1
+   else:
+    response=db.rpc('btb_research_publish_market_catalog',{'p_result':receipt})
+    counts['market_profiles_'+response.get('action','unknown')]+=1
   from official_vendor_programs import discover_programs
   official_programs,program_notes=discover_programs(fetcher,now)
   results,problems=discover(fetcher,now)
@@ -320,6 +327,7 @@ def run(dry_run=False):
   # use a non-Eventeny application (municipal pages, state PDFs, guest forms).
   # Each program is independently source-bound and published through the
   # evidence-gated backend; unverified pages do not become new leads.
+  discovery_stats['market_catalog_unconfirmed']=catalog_notes
   discovery_stats['official_programs_checked']=len(official_programs)
   discovery_stats['official_program_form_access']={r['program']:r.get('form_state')
     for r in official_programs if r.get('form_state')!='not_applicable'}

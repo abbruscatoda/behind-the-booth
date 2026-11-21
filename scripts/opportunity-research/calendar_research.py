@@ -12,6 +12,12 @@ from form_discovery import supported_form
 
 # Each calendar belongs to an existing, explicitly curated organizer source.
 CALENDARS=(
+ ('NC Vintage Market','https://www.eventbrite.com/o/nc-vintage-market-121068658483','https://www.eventbrite.com/o/nc-vintage-market-121068658483'),
+ ('Haven Farm','https://www.havenofknightdale.com/work-with-haven','https://www.havenofknightdale.com/community-events'),
+ ('NC Vintage Bazaar','https://ncvintagebazaar.com/vendor-booths/','https://ncvintagebazaar.com/'),
+ ('The Patchwork Market','https://thepatchworkmarket.com/applytobeavendor/','https://thepatchworkmarket.com/'),
+ ('Rebus Works','https://www.rebusworks.us/sundayfundaymarket','https://www.rebusworks.us/calendar'),
+ ('Raleigh Retro Gamers','https://raleighretrogamers.com/vendors/','https://raleighretrogamers.com/events/'),
  ('Durham Parks & Recreation','https://www.dprplaymore.org/331/Vendor-Performer-Information','https://www.dprplaymore.org/274/Special-Events'),
  ('Durham Central Park','https://durhamcentralpark.org/events/','https://durhamcentralpark.org/events/'),
  ('Triangle Pop-Up','https://www.trianglepopup.com/applications','https://www.trianglepopup.com/events'),
@@ -51,6 +57,8 @@ def calendar_event_pages(doc,base):
    continue
   p=urlparse(url)
   label=node.text().lower()
+  if p.hostname=='www.eventbrite.com' and same_organizer_host(url,base) and p.path.startswith('/e/'):
+   result.add(url);continue
   if same_organizer_host(url,base) and any(tag in p.path.lower() for tag in
       ('/events/','/event-details/','/calendar/','/markets/','/market/','/event/','/upcoming/','/news/')) or (same_organizer_host(url,base) and any(tag in label for tag in ('market','festival','craft fair','vendor'))):
    result.add(url)

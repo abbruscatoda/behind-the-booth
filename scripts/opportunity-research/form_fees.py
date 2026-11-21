@@ -16,7 +16,7 @@ BOOTH = r"(?<!Second )(?<!Additional )(?:(?:event|per[- ]event|standard|daily|si
 FREE_APPLICATION = re.compile(
     r"\b(?:there\s*(?:is|['’]s)\s+|(?:we\s+)?charge\s+)?no\s+(?:(?:vendor|craft|registration)\s+)?application\s+fee\b"
     r"|\bapplication\s+fee\s*[:=]\s*\$\s*0(?:\.00)?\b"
-    r"|\b\$\s*0(?:\.00)?\s+application\s+fee\b", re.I,
+    r"|(?<![\w$])\$\s*0(?:\.00)?\s+application\s+fee\b", re.I,
 )
 
 def explicitly_free_application(text):

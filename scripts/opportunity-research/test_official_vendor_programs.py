@@ -16,7 +16,10 @@ class Fetch:
   self.limit=100
   for key,cfg in PROGRAMS.items():
    link='<a href="'+cfg['application']+'">Official Vendor Application</a>'
-   if key=='wake-forest-2027-food':
+   if key=='raleigh-retro-vendor-intake':
+    body='Raleigh Retro Gamers hosts pop-up markets across the Triangle. We are always looking for new vendors, including vintage sellers.'
+    self.docs[cfg['application']]='<h1>Raleigh Retro Gamers Vendor Application</h1><p>There is NO COST associated with your application. NC Tax Id. Briefly tell us what you sell.</p><form><p>Are you an Individual or a Business?</p><button type="submit">Submit</button></form>'
+   elif key=='wake-forest-2027-food':
     body='Town of Wake Forest PRCR will accept food vendors for 2027 PRCR events from Nov. 9 through Nov. 27, 2026.'
    elif key=='durham-food-vendor-program':
     body='Durham Parks and Recreation Food Vendors: for current food vendor opportunities apply online. Only mobile food units or pushcart peddlers with valid permits qualify.'
@@ -29,7 +32,9 @@ class Fetch:
     body='South Durham Craft Vendor Applications are Open for Winter! Accepting craft vendors from November to December.'
    else:
     body='South Durham Guest Vendor Application. Guest vendor applications are reviewed around the 15th each month.'
-   if cfg['source'] in self.docs:
+   if key=='raleigh-retro-vendor-intake':
+    self.docs[cfg['source']]+=body+' '+link
+   elif cfg['source'] in self.docs:
     self.docs[cfg['source']]+=body+' '+link
    else:
     self.docs[cfg['source']]='<h1>'+body+'</h1>'+link
@@ -55,11 +60,12 @@ class OfficialProgramsTests(unittest.TestCase):
     self.assertEqual(result['candidate']['application_fee'],30)
     self.assertIn('$30 per stall per summer',result['candidate']['fee_notes'])
     self.assertEqual(result['rules_hash'],'b'*64)
-   elif result['program']=='south-durham-winter-craft':
+   elif result['program'] in ('south-durham-winter-craft','raleigh-retro-vendor-intake'):
     self.assertIsNone(result['candidate']['booth_fee'])
     self.assertEqual(result['candidate']['application_fee'],0)
-    self.assertEqual(result['fee_proof'],'official-form-visual-2026-11-21')
-    self.assertIn('70-mile radius',result['candidate']['eligibility'])
+    if result['program']=='south-durham-winter-craft':
+     self.assertEqual(result['fee_proof'],'official-form-visual-2026-11-21')
+     self.assertIn('70-mile radius',result['candidate']['eligibility'])
    else:
     self.assertIsNone(result['candidate']['booth_fee'])
     self.assertIsNone(result['candidate']['application_fee'])
