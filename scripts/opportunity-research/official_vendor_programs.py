@@ -18,6 +18,7 @@ import re
 
 from verifier import Uncertain, valid_url
 from category_rules import visible_text
+from official_documents import fetch_public_google_document
 
 POLICY='official-vendor-program-v1'
 DPR_SOURCE='https://www.dprplaymore.org/331/Vendor-Performer-Information'
@@ -29,6 +30,8 @@ STATE_FORM='https://www.ncagr.gov/media/5343/download?attachment='
 SOUTH_SOURCE='https://southdurhamfarmersmarket.com/become-a-vendor'
 SOUTH_CRAFT_FORM='https://docs.google.com/forms/d/e/1FAIpQLSeXV0kAKDUDK3e44KLfoV9pXMd94CjlS1Up5y2TkwUOQ1D__g/viewform'
 SOUTH_GUEST_FORM='https://docs.google.com/forms/d/e/1FAIpQLSc4n-7Ht3GntUJpGP0HaGPmUvYA3XMbnnqxy8VePtlAm2Uv-g/viewform'
+SOUTH_RULES_PAGE='https://southdurhamfarmersmarket.com/market-rules-%2B-bylaws'
+SOUTH_RULES_DOC='https://docs.google.com/document/d/1QVgqQan9naZBfJSjxcRQg51B8gXJ9NzNVOYIBveCdRk/edit?usp=sharing'
 
 PROGRAMS={
  'wake-forest-2027-food':{
@@ -84,6 +87,28 @@ def _linked(doc,source,target):
             and urlparse(link).path==path.path
             for link in doc.root.links(source))
 
+def verified_guest_rates(fetcher):
+    """Read the *official linked rules*, not an unrelated Durham market fee schedule."""
+    page,_=fetcher.get(SOUTH_RULES_PAGE)
+    if not _linked(page,SOUTH_RULES_PAGE,SOUTH_RULES_DOC):
+        raise Uncertain('The organizer no longer links the approved South Durham Market Rules.')
+    try:
+        rules,digest=fetch_public_google_document(SOUTH_RULES_DOC)
+    except (OSError,ValueError) as exc:
+        raise Uncertain('South Durham public Market Rules text unavailable for fee verification.') from exc
+    normalized=' '.join(rules.split())
+    if not (re.search('Market Rules',normalized,re.I)
+            and re.search('Guest Vendor Applications',normalized,re.I)):
+        raise Uncertain('The linked document does not confirm South Durham guest vendor rules.')
+    application=re.search(r'market manager will invoice the applicant a\s*\$([0-9]+(?:\.[0-9]{1,2})?)\s*fee upon receipt of the application',normalized,re.I)
+    daily=re.search(r'Guest Vendor shall pay a daily space fee of\s*\$([0-9]+(?:\.[0-9]{1,2})?).{0,35}?for summer season and\s*\$([0-9]+(?:\.[0-9]{1,2})?).{0,35}?for winter season',normalized,re.I)
+    if not application or not daily:
+        raise Uncertain('Current guest fees could not be unambiguously extracted from official rules.')
+    app,summer,winter=(float(application.group(1)),float(daily.group(1)),float(daily.group(2)))
+    if min(app,summer,winter)<0 or max(app,summer,winter)>500:
+        raise Uncertain('Out-of-range fee in official guest-vendor rules.')
+    return {'application':app,'summer':summer,'winter':winter,'hash':digest}
+
 def verify_program(program,fetcher,now=None):
     if program not in PROGRAMS:
         raise Uncertain('Unrecognized vendor program.')
@@ -130,6 +155,8 @@ def verify_program(program,fetcher,now=None):
                 and re.search(r'guest vendor applications are reviewed',text,re.I)):
             raise Uncertain('South Durham guest vendor application intake not confirmed.')
 
+    rates=(verified_guest_rates(fetcher) if program=='south-durham-guest-vendors' else None)
+
     # Don't reuse stale pre-2027 periods indefinitely. Only real event/program
     # dates established by the organizer are represented.
     status=('closed' if closed else
@@ -151,7 +178,23 @@ def verify_program(program,fetcher,now=None):
         'are not guaranteed. Application window checked '+now.date().isoformat()+
         '. External forms were not submitted or filled.'),
     }
+    if rates:
+      candidate['application_fee']=rates['application']
+      # Database/website must label this as a WINTER rate, not the annual rate.
+      candidate['booth_fee']=rates['winter']
+      candidate['fee_notes']=(f"Official February 2026 South Durham Market Rules, Guest Vendor Applications: "
+          f"${rates['application']:g} application fee invoiced on receipt; "
+          f"${rates['winter']:g} per 10 x 10 ft stall per winter market day; "
+          f"${rates['summer']:g} per stall per summer market day. "
+          "The displayed booth price is the WINTER rate, not a year-round price. "
+          "Guest vendors pay no annual membership fee. Rules: "+SOUTH_RULES_DOC)
+      candidate['eligibility']+=(' The official guest-vendor rules allow eight market days, '
+          'with the option to apply for eight more.')
+      candidate['research_notes']+=(' Verified the numeric guest application and seasonal daily booth fees '
+          'against the official organizer-linked Market Rules, SHA-256 '+rates['hash']+
+          '. These guest fees do not automatically apply to the separate Winter Craft application.')
     return {'decision':'publish','policy':POLICY,'program':program,'candidate':candidate,
+            'rules_hash':rates['hash'] if rates else None,
             'source_hash':digest,'checked_at':now.isoformat(),
             'evidence':('The currently linked official organizer vendor page independently identifies '
                         'the named market or municipal program, applicant category, and the publicly '
