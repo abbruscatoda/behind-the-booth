@@ -87,7 +87,7 @@ export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes
     : item.schedule_type === "rolling_market" && /(?:per[- ]event|each market|per market date)/i.test(item.fee_notes)
     ? "Booth fee per event"
     : /event-specific booth fee/i.test(item.fee_notes) ? "Event booth fee" : "Standard booth / table";
-  return {label,value:item.booth_fee === null ? "Not published" : money(Number(item.booth_fee)),note:""};
+  return {label,value:item.booth_fee === null ? "Not verified" : money(Number(item.booth_fee)),note:""};
 }
 
 // Turn prose into readable bullets without guessing, truncating, or splitting
