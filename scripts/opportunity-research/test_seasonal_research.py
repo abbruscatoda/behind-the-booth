@@ -117,6 +117,9 @@ class SeasonalTests(unittest.TestCase):
   self.assertFalse(result['form_complete'])
   self.assertTrue(result['form_readable'])
   self.assertIn('$28',result['candidate']['fee_notes'])
+  self.assertEqual(result['candidate']['application_fee'],28.0)
+  self.assertEqual(result['candidate']['booth_fee'],35.0)
+  self.assertEqual(result['form_fee_evidence'],{'application_fee':28.0,'booth_fee':35.0})
 
  def test_embedded_market_generic_landing_title_can_use_verified_form_identity(self):
   fetch=Fetch()
@@ -153,6 +156,9 @@ class SeasonalTests(unittest.TestCase):
   self.assertEqual(result['application_access'],'http_auth_blocked')
   self.assertIsNone(result['application_hash'])
   self.assertFalse(result['form_readable'])
+  self.assertIsNone(result['candidate']['booth_fee'])
+  self.assertIsNone(result['candidate']['application_fee'])
+  self.assertEqual(result['form_fee_evidence'],{})
 
  def test_embedded_market_must_still_link_exact_vendor_page(self):
   fetch=Fetch()
