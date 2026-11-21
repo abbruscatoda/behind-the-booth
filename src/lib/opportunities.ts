@@ -11,7 +11,7 @@ export type Opportunity = {
  research_coverage?: ResearchCoverage;
  category_evidence?: Record<string, CategoryEvidence>;
  categories: string[]; booth_fee: number | null; application_fee: number | null; deposit: number | null;
- fee_notes: string; eligibility: string; verified_at: string | null; published_at: string | null; effective_status: string;
+ fee_notes: string; eligibility: string; verified_at: string | null; published_at?: string | null; effective_status: string;
  occurrence_id: string; market_id: string; market_slug: string;
  history: { review_count: number; reviewer_count: number; overall: number | null };
 };
