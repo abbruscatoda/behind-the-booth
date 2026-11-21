@@ -12,10 +12,10 @@ URL='https://docs.google.com/forms/d/e/1FAIpQLSf-4catG9HnDm1XodMjUij_nel5Fvf4jzi
 def inspect(label,text):
  text=' '.join(text.split())
  windows=[]
- for match in re.finditer(r'\\$\\s*[0-9][0-9,.]*|(?:application|booth|craft|tent|stall|table|registration|space)[ -]?(?:fees?|cost|price|sizes?)',text,re.I):
+ for match in re.finditer(r'\$\s*[0-9][0-9,.]*|(?:application|booth|craft|tent|stall|table|registration|space)[ -]?(?:fees?|cost|price|sizes?)',text,re.I):
   span=text[max(0,match.start()-70):min(len(text),match.end()+100)]
   if span not in windows and len(windows)<35: windows.append(span)
- return {'method':label,'text_length':len(text),'money_and_fee_context':windows,'has_submit':bool(re.search(r'\\bSubmit\\b',text,re.I)),'has_next':bool(re.search(r'\\bNext\\b',text,re.I)),'closed':bool(re.search('no longer accepting responses|form is closed',text,re.I))}
+ return {'method':label,'text_length':len(text),'money_and_fee_context':windows,'has_submit':bool(re.search(r'\bSubmit\b',text,re.I)),'has_next':bool(re.search(r'\bNext\b',text,re.I)),'closed':bool(re.search('no longer accepting responses|form is closed',text,re.I))}
 try:
  fetcher=Fetcher(limit=8)
  fetcher.browser_enabled=True
