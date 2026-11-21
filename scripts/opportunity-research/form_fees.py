@@ -8,8 +8,8 @@ from __future__ import annotations
 import re
 
 DOLLARS = r"\$\s*([0-9]{1,5}(?:\.[0-9]{1,2})?)"
-APPLICATION = r"(?:non[- ]?refundable\s+)?(?:vendor\s+)?application\s+fee"
-BOOTH = r"(?:(?:event|per[- ]event|standard|daily|single[- ]day)\s+)?(?:booth|stall|table|space)\s+fee"
+APPLICATION = r"(?:non[- ]?refundable\s+)?(?:(?:vendor|craft)\s+)?application\s+fee"
+BOOTH = r"(?<!Second )(?<!Additional )(?:(?:event|per[- ]event|standard|daily|single[- ]day)\s+)?(?:booth|stall|table|space)\s+fee"
 
 def _patterns(label):
     # Amount before label, e.g. "$28 NON-REFUNDABLE Application Fee"
@@ -17,7 +17,7 @@ def _patterns(label):
     first = re.compile(DOLLARS + r"\s*" + label + r"\b", re.I)
     # Label before amount, e.g. "Application fee: $28". Do not traverse
     # another fee label before picking up an unrelated dollar value.
-    second = re.compile(label + r"\b(?:(?!\b(?:fee|deposit|booth|stall|table)\b)[^$]){0,45}" + DOLLARS, re.I)
+    second = re.compile(label + r"\b(?:(?!\b(?:fee|deposit|booth|stall|table)\b)[^.$]){0,45}" + DOLLARS, re.I)
     return first, second
 
 def _amount(text, label):
@@ -69,8 +69,12 @@ def extract_labeled_fees(text):
     """
     normalized = " ".join((text or "").split())
     standard = _amount(normalized, BOOTH)
+    event_options = list(EVENT_BOOTH.finditer(normalized))
+    # Multiple priced event booth sizes are separate tiers, not one universal standard.
     per_event = _event_booth_amount(normalized)
-    booth = standard if per_event is None else per_event if standard is None or standard == per_event else None
+    booth = (None if len({m.group(1) for m in event_options}) > 1
+             else standard if per_event is None
+             else per_event if standard is None or standard == per_event else None)
     return {
         "application_fee": _amount(normalized, APPLICATION),
         "booth_fee": booth,
