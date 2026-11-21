@@ -130,6 +130,6 @@ def discover_regional(fetcher,now,sources,root_docs,opener=None):
    es,_,_=extract_links(doc,url);events.update(es)
   except Exception:continue
  stats.update({'official_pages_inspected':inspected,'official_linked_leads':len(leads),
-               'unapproved_source_count':len(unapproved),'unapproved_sources':unapproved[:30],
-               'unlinked_official_results':unlinked[:20]})
+               'unapproved_source_count':len(unapproved),'unapproved_sources':rotate(unapproved,now,12),
+               'unlinked_official_results':rotate(unlinked,now,8)})
  return list(leads.values()),events,stats

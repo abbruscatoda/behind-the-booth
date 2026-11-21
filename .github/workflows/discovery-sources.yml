@@ -1,0 +1,31 @@
+name: Sync reviewed discovery sources
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/opportunity-research/discovery.py'
+      - 'scripts/opportunity-research/run.py'
+      - 'scripts/opportunity-research/sync_sources.py'
+      - '.github/workflows/discovery-sources.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: reviewed-discovery-source-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check verifier rules
+        run: python3 -m unittest discover -s scripts/opportunity-research -p 'test_*.py'
+      - name: Synchronize reviewed sources
+        env:
+          BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
+          BTB_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.BTB_SUPABASE_PUBLISHABLE_KEY }}
+          BTB_RESEARCH_SECRET: ${{ secrets.BTB_RESEARCH_SECRET }}
+        run: python3 scripts/opportunity-research/sync_sources.py

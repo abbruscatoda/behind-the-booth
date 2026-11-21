@@ -23,6 +23,16 @@ class SourceRegistryTests(unittest.TestCase):
     self.assertGreaterEqual(len(organizer),2)
     self.assertGreaterEqual(len(city),3)
 
+ def test_handled_sql_failure_is_not_reported_as_success(self):
+  class DB:
+   def rpc(self,*args):return {'failed':True,'sqlstate':'21000','stage':'source_upsert','saved':0}
+  with self.assertRaisesRegex(RuntimeError,'source_upsert, code 21000'):
+   worker.register_discovery_sources(DB(),[])
+ def test_missing_registry_confirmation_is_an_error(self):
+  class DB:
+   def rpc(self,*args):return {'saved':0,'skipped':0}
+  with self.assertRaisesRegex(RuntimeError,'did not confirm'):
+   worker.register_discovery_sources(DB(),[])
  def test_worker_saves_leads_with_exact_current_source_list(self):
   calls=[]
   class FakeDB:

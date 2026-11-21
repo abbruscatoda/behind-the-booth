@@ -70,6 +70,16 @@ class RegionalTests(unittest.TestCase):
    leads,events,stats=regional.discover_regional(pages,NOW,discovery.SOURCES,{})
   self.assertFalse(leads);self.assertFalse(events);self.assertFalse(pages.calls)
   self.assertEqual(stats['unapproved_source_count'],1)
+ def test_new_source_report_is_bounded_rotates_and_keeps_total(self):
+  import json
+  hits={'https://organizer'+str(i)+'.example/'+('a'*1000):'New market' for i in range(30)}
+  with patch.object(regional,'search_results',side_effect=[(hits,{}),(hits,{})]):
+   _,_,stats=regional.discover_regional(Pages({}),NOW,discovery.SOURCES,{})
+   _,_,later=regional.discover_regional(Pages({}),NOW.replace(hour=13),discovery.SOURCES,{})
+  self.assertEqual(stats['unapproved_source_count'],30)
+  self.assertEqual(len(stats['unapproved_sources']),12)
+  self.assertLess(len(json.dumps(stats).encode()),20000)
+  self.assertNotEqual([x['url'] for x in stats['unapproved_sources']],[x['url'] for x in later['unapproved_sources']])
  def test_search_requires_live_official_link_then_retains_event_lead(self):
   doc=Document('<a href="'+EVENT+'">Holiday market</a>')
   pages=Pages({EVENT:'<h1>Holiday Market</h1><a href="'+FORM+'">Waiting list</a>'})

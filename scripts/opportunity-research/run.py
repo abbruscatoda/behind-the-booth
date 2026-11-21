@@ -43,6 +43,20 @@ class Database:
   except Exception:
    raise RuntimeError(f'{name} failed (network or response error); inspect database diagnostics.') from None
 
+def register_discovery_sources(db,leads):
+ """Do not mistake a SQL function's handled failure for successful ingestion."""
+ from discovery import SOURCES
+ approved=[{'organizer':name,'city':city,'source_url':url} for name,city,url in SOURCES]
+ result=db.rpc('btb_research_record_discovery_leads_v2',{'p_leads':leads,'p_sources':approved})
+ if isinstance(result,dict) and result.get('paused'):return result
+ if not isinstance(result,dict) or result.get('failed') or result.get('approved_sources')!=len(approved):
+  stage=result.get('stage','unknown') if isinstance(result,dict) else 'unknown'
+  code=result.get('sqlstate','unknown') if isinstance(result,dict) else 'unknown'
+  stage=stage if isinstance(stage,str) and re.fullmatch(r'[a-z_]{1,40}',stage) else 'unknown'
+  code=code if isinstance(code,str) and re.fullmatch(r'[A-Z0-9]{5}',code) else 'unknown'
+  raise RuntimeError(f'Discovery ingestion did not confirm the reviewed source registry (stage {stage}, code {code}).')
+ return result
+
 def existing_result(item,found,fetcher,now):
  if item.get('verification_policy')=='explore-rolling-official-v1':
   from generic_ongoing import verify_generic_market
@@ -230,12 +244,8 @@ def run(dry_run=False):
   elif leads or any(c.get('policy') in ('triangle-form-auto-v1','triangle-form-calendar-v2') for c in incoming):
    # Registry and lead batches are now synchronized atomically: the SQL
    # publisher can recognize newly curated Triangle sources immediately.
-   from discovery import SOURCES
-   approved=[{'organizer':name,'city':city,'source_url':url}
-     for name,city,url in SOURCES]
    try:
-    saved=db.rpc('btb_research_record_discovery_leads_v2',
-                 {'p_leads':leads,'p_sources':approved})
+    saved=register_discovery_sources(db,leads)
    except RuntimeError as error:
     # Ingestion errors are visible and fail the run, but unrelated
     # already-published lead reconciliation can still proceed.
