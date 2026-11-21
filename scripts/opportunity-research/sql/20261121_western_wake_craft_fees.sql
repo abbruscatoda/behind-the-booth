@@ -1,7 +1,7 @@
--- Evidence-gated Winter Wonderland Craft Fair price and availability publisher.
--- The organizer's currently linked PDF can establish the *craft application* fee;
--- an event-specific booth fee requires a readable organizer-linked Google Form.
--- Applied to live Supabase before the worker policy is enabled.
+-- Evidence-gated Western Wake craft opportunity publisher.
+-- Maintains last independently verified screenshot-backed fees when Google
+-- returns HTTP 401. Only organizer form receipts can create new booth fees.
+-- This is the current deployed definition, exported after the preservation fix.
 CREATE OR REPLACE FUNCTION public.btb_research_publish_western_craft(p_result jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -106,8 +106,13 @@ begin
    review_reason='',
    booth_fee=coalesce(v_booth,v_item.booth_fee),
    application_fee=coalesce(v_fee,v_item.application_fee),
-   fee_notes=case when v_fee is null and v_item.application_fee is not null
-         then v_item.fee_notes else c->>'fee_notes' end,
+   fee_notes=case
+     when p_result->>'application_access'='http_auth_blocked'
+       and (v_item.booth_fee is not null or v_item.application_fee is not null)
+       then v_item.fee_notes
+     when v_booth is null and v_item.booth_fee is not null then v_item.fee_notes
+     when v_fee is null and v_item.application_fee is not null then v_item.fee_notes
+     else c->>'fee_notes' end,
    eligibility=c->>'eligibility',
    research_notes=c->>'research_notes',
    verified_at=v_checked,last_checked_at=now(),updated_at=now()
