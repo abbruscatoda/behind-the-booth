@@ -21,7 +21,22 @@ from verifier import (Uncertain, canonical_event, canonical_application,
 # These are *discovery hints*, not a license to auto-publish their listings.
 # All addresses must also be covered by verifier.HOSTS.
 SOURCES = (
+ ('The MAKRS Society','Raleigh','https://makrs.com/market-applications'),
+ ('Durham Parks & Recreation','Durham','https://www.dprplaymore.org/331/Vendor-Performer-Information'),
+ ('Durham Central Park','Durham','https://durhamcentralpark.org/events/'),
  ('Triangle Pop-Up', 'Raleigh', 'https://www.trianglepopup.com/applications'),
+ ('Pop-Up Raleigh','Raleigh','https://popupraleigh.com/9-2/'),
+ ('City of Raleigh Museum','Raleigh','https://raleighnc.gov/parks-and-recreation/news/apply-be-holiday-sip-n-shop-vendor'),
+ ('City of Raleigh','Raleigh','https://raleighnc.gov/events'),
+ ('Town of Cary','Cary','https://www.carync.gov/recreation-enjoyment/events'),
+ ('Town of Apex','Apex','https://www.apexnc.org/428/Special-Events-Festivals'),
+ ('Chapel Hill Community Arts & Culture','Chapel Hill','https://www.chapelhillarts.org/applications/'),
+ ('Town of Wake Forest food vendors','Wake Forest','https://www.wakeforestnc.gov/downtown-development/food-vendors'),
+ ('Town of Wake Forest PRCR','Wake Forest','https://www.wakeforestnc.gov/parks-recreation-cultural-resources/prcr-food-vendors'),
+ ('Town of Rolesville','Rolesville','https://www.rolesvillenc.gov/parks-recreation/special-events/fall-funfest'),
+ ('Wendell Chamber','Wendell','https://www.wendellchamber.com/food-vendor/'),
+ ('Sweetwater Town Center','Apex','https://sweetwaterapex.com/vendor-and-sponsorship/'),
+ ('Triangle Art Works','Raleigh','https://www.triangleartworks.org/arts-and-craft-markets'),
  ('Night Market Company', 'Cary', 'https://thenightmarketcompany.com/'),
  ('Shop Local Raleigh', 'Raleigh', 'https://shoplocalraleigh.org/vendor-information/'),
  ('Geek and Grub', 'Raleigh', 'https://www.geekandgrubmarket.com/vendorapplication'),
@@ -231,7 +246,7 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
    root_docs[root]=doc
    es,aa,links=extract_links(doc,root)
    events.update(es);apps.update(aa)
-   for url,label in links:
+   for url,label in sorted(links,key=lambda pair:(-len(pair[1]),pair[0])):
     if url not in raw_leads:
      raw_leads[url]={'target_url':url,'source_url':root,
        'title':(label or 'Vendor application')[:160],
@@ -239,20 +254,29 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
        'notes':'Found on a curated organizer page. Exact event date and application status have not been verified.'}
   except Exception as error:
    failures.append(f'{organizer}: {source_error(error)}')
+ search_stats={}
  if include_search:
   events.update(search_urls(now))
+  from regional_search import discover_regional
+  search_leads,search_events,search_stats=discover_regional(fetcher,now,SOURCES,root_docs)
+  events.update(search_events)
+  for lead in search_leads:raw_leads.setdefault(lead['target_url'],lead)
  # Join dated official event calendars to specific organizer applications.
  # This is an evidence-gathering layer, NOT permission to publish. Existing
  # Eventeny and public-form source validators still make the decision.
  from calendar_research import discover_calendars
  if include_calendars:
-  cal_events,calendar_pairs,calendar_stats=discover_calendars(fetcher)
+  cal_events,calendar_pairs,calendar_stats=discover_calendars(fetcher,now=now)
   events.update(cal_events)
  else:
   calendar_pairs=[]
   calendar_stats={'calendar_sources':0,'calendar_event_pages_inspected':0,
                   'calendar_eventeny_urls':0,'calendar_form_pairs':0,
                   'calendar_source_failures':[]}
+ # Keep dated official event hints even when no public application can yet
+ # be verified. Calendar evidence never declares a vendor opening.
+ for hint in calendar_stats.pop('_event_leads',[]):
+  raw_leads.setdefault(hint['target_url'],hint)
  # Follow only one same-host application page from each curated organizer.
  # An organizer's front page often links to a separate, current application
  # index; that index can in turn link to a dated Eventeny event. Never crawl
@@ -286,7 +310,8 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
   except Exception:
    continue
  staged={}
- for event in sorted(events)[:MAX_EVENTS]:
+ from regional_search import rotate
+ for event in rotate(sorted(events),now,MAX_EVENTS):
   if len(staged)>=MAX_NEW_DRAFTS:break
   try:
    doc,_=fetcher.get(event)
@@ -325,7 +350,7 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
  # source path before permitting publication.
  from market_research import investigate_groups,MAX_PAIRS
  from calendar_research import MAX_CALENDAR_FORMS
- grouped_pairs,grouped_stats=investigate_groups(saved_hints+list(raw_leads.values()),fetcher)
+ grouped_pairs,grouped_stats=investigate_groups(saved_hints+list(raw_leads.values()),fetcher,now=now)
  verified_forms=0
  considered_forms=0
  seen_forms=set()
@@ -345,7 +370,7 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
  # Never put already-published applications back into the action queue,
  # regardless of whether their source uses Eventeny or a public form.
  known_apps={url for url,_ in known if url}
- leads=[lead for lead in raw_leads.values() if lead['target_url'] not in known_apps][:MAX_LEADS]
+ leads=rotate([lead for lead in raw_leads.values() if lead['target_url'] not in known_apps],now,MAX_LEADS)
  stats={'discovery_sources':len(SOURCES),'optional_source_failures':failures[:10],
         'discovery_event_urls':len(events),'discovery_vendor_application_urls':len(apps),
         'discovery_followed_organizer_pages':len(followed),
@@ -353,6 +378,6 @@ def discover_triangle(fetcher,now=None,include_search=True,known=None,include_ca
         'discovery_verified_public_forms':verified_forms,'discovery_unconfirmed_leads':len(leads),
         'previous_leads_rechecked':len(saved_hints),
         'form_leads_considered':considered_forms,
-        'calendar':calendar_stats,
+        'calendar':calendar_stats,'regional_search':search_stats,
         'grouped_research':grouped_stats}
  return list(staged.values()),leads,stats

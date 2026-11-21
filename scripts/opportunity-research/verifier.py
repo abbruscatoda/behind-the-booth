@@ -43,7 +43,11 @@ HOSTS={'www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makr
  'www.northdurhamfarmersmarket.com','northdurhamfarmersmarket.com','southdurhamfarmersmarket.com','www.southdurhamfarmersmarket.com',
  'midtownfarmers.com','www.midtownfarmers.com','www.dgfleamarket.com','dgfleamarket.com',
  'popupraleigh.com','www.popupraleigh.com','www.artpostnc.com','artpostnc.com','www.cecysgallery.com','cecysgallery.com',
- 'raleighnc.gov','www.raleighnc.gov',
+ 'raleighnc.gov','www.raleighnc.gov','dprplaymore.org','www.dprplaymore.org','durhamcentralpark.org','www.durhamcentralpark.org',
+ 'carync.gov','www.carync.gov','apexnc.org','www.apexnc.org',
+ 'chapelhillarts.org','www.chapelhillarts.org','wakeforestnc.gov','www.wakeforestnc.gov',
+ 'rolesvillenc.gov','www.rolesvillenc.gov','wendellchamber.com','www.wendellchamber.com',
+ 'sweetwaterapex.com','www.sweetwaterapex.com','triangleartworks.org','www.triangleartworks.org',
  'garnernc.gov','www.garnernc.gov','knightdalenc.gov','www.knightdalenc.gov','ncagr.gov','www.ncagr.gov'}
 MAX_SOURCE_BYTES=4_000_000
 VOID={'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}

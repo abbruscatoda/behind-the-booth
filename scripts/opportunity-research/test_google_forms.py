@@ -81,7 +81,7 @@ class WorkerRunTests(unittest.TestCase):
    def __init__(self,**kwargs):pass
   result={'decision':'review','reason':'Sign-in-only application.','research_suggestions':{'source_url':SOURCE,'fields':{'fee_notes':'Category-specific deposits found.'}}}
   capture=io.StringIO()
-  with patch.object(run,'Database',DB),patch.object(run,'Fetcher',Read),patch.object(run,'discover',return_value=([],[])),patch.object(run,'existing_result',return_value=result),redirect_stdout(capture):run.run(True)
+  with patch.object(run,'Database',DB),patch.object(run,'Fetcher',Read),patch.object(run,'discover',return_value=([],[])),patch.object(run,'existing_result',return_value=result),patch('regional_search.search_results',return_value=({},{})),patch('discovery.search_urls',return_value=set()),redirect_stdout(capture):run.run(True)
   self.assertEqual(calls,['btb_research_context']);self.assertIn('research_suggestions',capture.getvalue());self.assertIn('proposed_review',capture.getvalue())
 
 if __name__=='__main__':unittest.main()

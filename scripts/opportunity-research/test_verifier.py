@@ -84,7 +84,10 @@ class VerificationTests(unittest.TestCase):
     calls.append(name)
     if name!='btb_research_context':raise AssertionError('Dry run attempted a database write')
     return {'enabled':True,'items':[item]}
-  with patch.object(worker,'Database',FakeDB),patch.object(worker,'discover',return_value=([result],[])),patch.object(worker,'discover_triangle',return_value=([],[],{})),contextlib.redirect_stdout(io.StringIO()):worker.run(True)
+  class OfflineFetcher:
+   def __init__(self,limit):self.limit=limit;self.requests=0
+   def get(self,url):raise verifier.Uncertain('Offline unit-test source')
+  with patch.object(worker,'Fetcher',OfflineFetcher),patch.object(worker,'Database',FakeDB),patch.object(worker,'discover',return_value=([result],[])),patch.object(worker,'discover_triangle',return_value=([],[],{})),contextlib.redirect_stdout(io.StringIO()):worker.run(True)
   self.assertEqual(calls,['btb_research_context'])
  def test_paused_worker_does_no_research(self):
   class FakeDB:

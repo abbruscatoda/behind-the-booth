@@ -100,6 +100,8 @@ class AutoPublicFormTests(unittest.TestCase):
     if name=='btb_research_discovery_backlog':return []
     if name=='btb_research_market_gaps':return {'markets':[],'count':0}
     if name=='btb_research_run':return 'run'
+    if name=='btb_research_record_discovery_leads_v2':return {'saved':0,'approved_sources':40}
+    if name=='btb_research_finalize_discovery_leads':return {'resolved':0}
     if name=='btb_research_publish_form':
      assert body['p_result']['policy']=='triangle-form-auto-v1'
      return {'action':'publish','reason':'Verified form published.'}
@@ -109,6 +111,7 @@ class AutoPublicFormTests(unittest.TestCase):
   with patch.object(worker,'Database',FakeDB),patch.object(worker,'Fetcher',FakeFetcher),patch.object(worker,'discover',return_value=([],[])),patch.object(worker,'discover_triangle',return_value=([result],[],{})),contextlib.redirect_stdout(io.StringIO()):
    worker.run(False)
   self.assertIn('btb_research_publish_form',calls)
+  self.assertLess(calls.index('btb_research_record_discovery_leads_v2'),calls.index('btb_research_publish_form'))
   self.assertNotIn('btb_research_apply',calls)
 
 if __name__=='__main__':unittest.main()

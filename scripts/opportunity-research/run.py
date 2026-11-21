@@ -155,7 +155,7 @@ def run(dry_run=False):
  db=Database();context=db.rpc('btb_research_context')
  if not context['enabled']:
   print('Automatic updates are paused in admin. No writes or source requests made.');return
- now=datetime.now(timezone.utc);fetcher=Fetcher(limit=360);run_id=None;counts=Counter();problems=[]
+ now=datetime.now(timezone.utc);fetcher=Fetcher(limit=480);run_id=None;counts=Counter();problems=[]
  if not dry_run:run_id=db.rpc('btb_research_run')
  try:
   # Read-only Brewgaloo public-form check; never changes listed fees.
@@ -220,6 +220,41 @@ def run(dry_run=False):
   # limited to the existing context call for compatibility with strict tests.
   backlog=[] if dry_run else db.rpc('btb_research_discovery_backlog')
   incoming,leads,discovery_stats=discover_triangle(fetcher,now,known=known|set(found),backlog=backlog)
+  # Register newly curated sources and save their leads before publication
+  # or diagnosis. The database still independently verifies every candidate.
+  if dry_run:
+   counts['proposed_discovery_leads']=len(leads)
+   for lead in leads[:10]:
+    print(json.dumps({'action':'proposed_discovery_lead','title':lead['title'],
+      'source':lead['source_url'],'target':lead['target_url']}))
+  elif leads or any(c.get('policy') in ('triangle-form-auto-v1','triangle-form-calendar-v2') for c in incoming):
+   # Registry and lead batches are now synchronized atomically: the SQL
+   # publisher can recognize newly curated Triangle sources immediately.
+   from discovery import SOURCES
+   approved=[{'organizer':name,'city':city,'source_url':url}
+     for name,city,url in SOURCES]
+   try:
+    saved=db.rpc('btb_research_record_discovery_leads_v2',
+                 {'p_leads':leads,'p_sources':approved})
+   except RuntimeError as error:
+    # Ingestion errors are visible and fail the run, but unrelated
+    # already-published lead reconciliation can still proceed.
+    problems.append(str(error)[:200])
+    counts['discovery_lead_ingestion_failed']=1
+   else:
+    discovery_stats['source_registry_count']=saved.get('approved_sources')
+    counts['discovery_leads_seen']=saved.get('saved',0)
+    counts['discovery_leads_skipped']=saved.get('skipped',0)
+    counts['lead_cardinality_conflicts']=saved.get('cardinality_conflicts',0)
+    # Separate HTTP RPC = separate committed transaction. Never reconcile
+    # freshly inserted lead rows within the same bulk upsert command.
+    try:
+     finalized=db.rpc('btb_research_finalize_discovery_leads')
+    except RuntimeError as error:
+     problems.append(str(error)[:200])
+     counts['post_ingest_reconciliation_failed']=1
+    else:
+     counts['post_ingest_leads_resolved']=finalized.get('resolved',0)
   for candidate in incoming:
    data=candidate['candidate']
    key=(canonical_application(data['application_url']) or data['application_url'],data['starts_on'])
@@ -305,39 +340,12 @@ def run(dry_run=False):
   elif research_rows:
    diagnostic_result=db.rpc('btb_research_diagnose_leads',{'p_diagnostics':research_rows})
    counts['leads_diagnosed']=diagnostic_result.get('updated',0)
-  if dry_run:
-   counts['proposed_discovery_leads']=len(leads)
-   for lead in leads[:10]:
-    print(json.dumps({'action':'proposed_discovery_lead','title':lead['title'],
-      'source':lead['source_url'],'target':lead['target_url']}))
-  elif leads:
-   # Registry and lead batches are now synchronized atomically: the SQL
-   # worker cannot silently reject the five newest curated Triangle sources.
-   from discovery import SOURCES
-   approved=[{'organizer':name,'city':city,'source_url':url}
-     for name,city,url in SOURCES]
-   try:
-    saved=db.rpc('btb_research_record_discovery_leads_v2',
-                 {'p_leads':leads,'p_sources':approved})
-   except RuntimeError as error:
-    # Ingestion errors are visible and fail the run, but unrelated
-    # already-published lead reconciliation can still proceed.
-    problems.append(str(error)[:200])
-    counts['discovery_lead_ingestion_failed']=1
-   else:
-    discovery_stats['source_registry_count']=saved.get('approved_sources')
-    counts['discovery_leads_seen']=saved.get('saved',0)
-    counts['discovery_leads_skipped']=saved.get('skipped',0)
-    counts['lead_cardinality_conflicts']=saved.get('cardinality_conflicts',0)
-    # Separate HTTP RPC = separate committed transaction. Never reconcile
-    # freshly inserted lead rows within the same bulk upsert command.
-    try:
-     finalized=db.rpc('btb_research_finalize_discovery_leads')
-    except RuntimeError as error:
-     problems.append(str(error)[:200])
-     counts['post_ingest_reconciliation_failed']=1
-    else:
-     counts['post_ingest_leads_resolved']=finalized.get('resolved',0)
+  regional=discovery_stats.get('regional_search',{})
+  if regional.get('queries_attempted') and not regional.get('queries_succeeded'):
+   regional['warning']='Regional web search was unavailable. Official-source checks continued; discovery coverage is incomplete.'
+  if regional.get('unapproved_source_count'):
+   counts['new_source_hints']=regional['unapproved_source_count']
+   print(json.dumps({'action':'new_sources_need_review','sources':regional.get('unapproved_sources',[])}))
   # Verify current official-page relationships before retiring saved or new
   # leads. Published listings on manual edit hold are still valid evidence.
   if backlog or leads:

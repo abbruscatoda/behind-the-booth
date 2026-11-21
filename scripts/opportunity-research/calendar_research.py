@@ -4,20 +4,32 @@ Calendars identify dated event pages, never prove that vendors can apply.
 Candidate applications go through the existing event/form verification gates.
 Only curated organizer hosts and configured calendar paths are fetched.
 """
+from datetime import datetime,timezone
+import re
 from urllib.parse import urljoin,urlparse,urlunparse,parse_qsl
 from verifier import valid_url,canonical_event,canonical_application
 from form_discovery import supported_form
 
 # Each calendar belongs to an existing, explicitly curated organizer source.
 CALENDARS=(
+ ('Durham Parks & Recreation','https://www.dprplaymore.org/331/Vendor-Performer-Information','https://www.dprplaymore.org/274/Special-Events'),
+ ('Durham Central Park','https://durhamcentralpark.org/events/','https://durhamcentralpark.org/events/'),
  ('Triangle Pop-Up','https://www.trianglepopup.com/applications','https://www.trianglepopup.com/events'),
+ ('Pop-Up Raleigh','https://popupraleigh.com/9-2/','https://popupraleigh.com/home/'),
+ ('City of Raleigh','https://raleighnc.gov/events','https://raleighnc.gov/events'),
+ ('Town of Cary','https://www.carync.gov/recreation-enjoyment/events','https://www.carync.gov/recreation-enjoyment/events'),
+ ('Town of Apex','https://www.apexnc.org/428/Special-Events-Festivals','https://www.apexnc.org/428/Special-Events-Festivals'),
+ ('Chapel Hill Community Arts & Culture','https://www.chapelhillarts.org/applications/','https://www.chapelhillarts.org/calendar/'),
  ('The Night Market Company','https://thenightmarketcompany.com/','https://thenightmarketcompany.com/'),
  ('Geek and Grub','https://www.geekandgrubmarket.com/vendorapplication','https://www.geekandgrubmarket.com/upcoming-events'),
  ('Western Wake Farmers Market','https://westernwakefarmersmarket.org/','https://westernwakefarmersmarket.org/events'),
  ('Shop Local Raleigh','https://shoplocalraleigh.org/vendor-information/','https://shoplocalraleigh.org/events/'),
  ('Chapel Hill Farmers Market','https://www.thechapelhillfarmersmarket.com/','https://www.thechapelhillfarmersmarket.com/events.html'),
 )
-MAX_CALENDAR_EVENT_PAGES=56
+MAX_CALENDAR_EVENT_PAGES=8*len(CALENDARS)
+MAX_EVENTS_PER_CALENDAR=8
+MAX_FORMS_PER_CALENDAR=6
+MAX_INDEXES_PER_CALENDAR=3
 MAX_CALENDAR_FORMS=80
 MAX_CALENDAR_INDEX_PAGES=18
 
@@ -38,8 +50,9 @@ def calendar_event_pages(doc,base):
    result.add(event)
    continue
   p=urlparse(url)
+  label=node.text().lower()
   if same_organizer_host(url,base) and any(tag in p.path.lower() for tag in
-      ('/events/','/event-details/','/calendar/','/markets/','/market/','/event/','/upcoming/')):
+      ('/events/','/event-details/','/calendar/','/markets/','/market/','/event/','/upcoming/','/news/')) or (same_organizer_host(url,base) and any(tag in label for tag in ('market','festival','craft fair','vendor'))):
    result.add(url)
  return result
 
@@ -92,20 +105,26 @@ def calendar_form_links(doc,base):
   if form:links.add(form)
  return links
 
-def discover_calendars(fetcher):
+def discover_calendars(fetcher,now=None):
  """Return (Eventeny URLs, form event-source leads, diagnostics).
 
  Each form lead carries a verified provenance path:
  organizer_root -> curated calendar -> dated event page -> exact form.
  No event or form is considered open here.
  """
+ from regional_search import rotate
+ from discovery import SOURCES
+ trusted={url:(name,city) for name,city,url in SOURCES}
+ now=now or datetime.now(timezone.utc)
+ event_hints={}
+ deferred=0
  eventeny=set()
  form_leads={}
  failures=[]
  visited=set()
  inspected=0
  indexes_inspected=0
- for organizer,root,calendar in CALENDARS:
+ for organizer,root,calendar in rotate(CALENDARS,now,len(CALENDARS)):
   if not valid_url(calendar) or not valid_url(root):
    failures.append(organizer+': untrusted source configuration')
    continue
@@ -117,15 +136,20 @@ def discover_calendars(fetcher):
    organizer_forms=calendar_form_links(root_doc,root)
    event_urls=set(calendar_event_pages(cal,calendar))
    # A current organizer index may lead to individual dated market pages.
-   for index_url in sorted(calendar_index_pages(cal,calendar))[:MAX_CALENDAR_INDEX_PAGES]:
+   for index_url in rotate(sorted(calendar_index_pages(cal,calendar)),now,MAX_INDEXES_PER_CALENDAR):
     try:
      index_doc,_=fetcher.get(index_url)
      indexes_inspected+=1
      event_urls.update(calendar_event_pages(index_doc,index_url))
     except Exception:continue
-   for event_url in sorted(event_urls):
+   selected=rotate(sorted(event_urls),now,MAX_EVENTS_PER_CALENDAR)
+   deferred+=max(0,len(event_urls)-len(selected))
+   local_forms=0
+   for event_url in selected:
     if len(visited)>=MAX_CALENDAR_EVENT_PAGES:break
     if event_url in visited:continue
+    if getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',100000)-100:
+     deferred+=1;continue
     visited.add(event_url)
     if canonical_event(event_url):
      eventeny.add(canonical_event(event_url))
@@ -134,15 +158,22 @@ def discover_calendars(fetcher):
     try:
      event_page,_=fetcher.get(event_url)
      inspected+=1
+     title=next((n.text().strip()[:160] for n in event_page.root.walk() if n.tag=='h1'), '')
+     if root in trusted and re.search(r'\b(?:market|vendors?|festival|craft fair)\b',title,re.I):
+      owner,city=trusted[root]
+      event_hints[event_url]={'target_url':event_url,'source_url':root,
+       'title':title or 'Official market/event lead','organizer':owner,'city':city,
+       'notes':'Found on the official event calendar. This event is not a confirmed open vendor application.'}
      for deep in calendar_event_pages(event_page,event_url):
       if canonical_event(deep):eventeny.add(canonical_event(deep))
      # Form URL may be linked either on the event page or organizer's
      # official application page, but organizer identity and date must be
      # independently confirmed by the later public-form verifier.
      for app in calendar_form_links(event_page,event_url)|organizer_forms:
-      if len(form_leads)>=MAX_CALENDAR_FORMS:break
+      if len(form_leads)>=MAX_CALENDAR_FORMS or local_forms>=MAX_FORMS_PER_CALENDAR:break
       if supported_form(app):
        key=(event_url,app)
+       if key not in form_leads:local_forms+=1
        form_leads[key]={
         'source_url':event_url,'target_url':app,
         'organizer_root':root,'calendar_url':calendar,
@@ -152,7 +183,7 @@ def discover_calendars(fetcher):
   except Exception:
    failures.append(organizer+': calendar temporarily unavailable')
  return eventeny,list(form_leads.values()),{
-  'calendar_sources':len(CALENDARS),
+  'calendar_sources':len(CALENDARS),'calendar_events_deferred':deferred,'_event_leads':list(event_hints.values()),
   'calendar_event_pages_inspected':inspected,
   'calendar_indexes_inspected':indexes_inspected,
   'calendar_eventeny_urls':len(eventeny),

@@ -6,6 +6,7 @@ organizer with independently dated event pages; the existing public-form
 verifier still decides whether an opportunity can be published.
 """
 from collections import defaultdict
+from datetime import datetime,timezone
 from urllib.parse import urlparse
 from verifier import valid_url
 from calendar_research import (calendar_event_pages,calendar_index_pages,
@@ -15,10 +16,12 @@ MAX_GROUPS=30
 MAX_HUBS_PER_GROUP=8
 MAX_EVENTS_PER_GROUP=12
 MAX_PAIRS=240
-MAX_PAIRS_PER_GROUP=16
+MAX_PAIRS_PER_GROUP=8
 RESERVE_REQUESTS=28
 
-def investigate_groups(leads,fetcher):
+def investigate_groups(leads,fetcher,now=None):
+ from regional_search import rotate
+ now=now or datetime.now(timezone.utc)
  from discovery import SOURCES
  trusted={root:(name,city) for name,city,root in SOURCES}
  groups=defaultdict(list)
@@ -39,7 +42,7 @@ def investigate_groups(leads,fetcher):
  skipped=[]
  # Backlog arrival order is least-recently-researched first, preventing
  # older organizers from being starved by alphabetical source ordering.
- for root in list(groups)[:MAX_GROUPS]:
+ for root in rotate(list(groups),now,MAX_GROUPS):
   if getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',100000)-RESERVE_REQUESTS:break
   organizer,city=trusted[root]
   investigated+=1
@@ -60,7 +63,7 @@ def investigate_groups(leads,fetcher):
    if same_organizer_host(target,root):hubs.add(target)
    elif target in calendar_form_links_from_url(target):form_routes[target]=root
   hubs.update(calendar_index_pages(root_doc,root))
-  for hub in sorted(hubs)[:MAX_HUBS_PER_GROUP]:
+  for hub in rotate(sorted(hubs),now,MAX_HUBS_PER_GROUP):
    if getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',100000)-RESERVE_REQUESTS:break
    try:
     doc,_=fetcher.get(hub)
@@ -76,7 +79,7 @@ def investigate_groups(leads,fetcher):
   # directly linked from each event. Generic organizer-wide forms are used
   # only as a fallback and still must match the event in the verifier.
   event_docs=[]
-  for event in sorted(event_routes)[:MAX_EVENTS_PER_GROUP]:
+  for event in rotate(sorted(event_routes),now,MAX_EVENTS_PER_GROUP):
    if getattr(fetcher,'requests',0)>=getattr(fetcher,'limit',100000)-RESERVE_REQUESTS:break
    if not same_organizer_host(event,root):continue
    try:doc,_=fetcher.get(event)
