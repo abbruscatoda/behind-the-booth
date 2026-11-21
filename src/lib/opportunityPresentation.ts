@@ -21,6 +21,21 @@ export function opportunityDeadline(item: DeadlineDetails) {
     label: 'Application deadline', value: 'No deadline published',
     note: 'The organizer confirms seasonal applications are currently accepted. A specific submission cutoff has not been published; availability can change.',sortAt: Infinity,
   };
+  // An organizer may publish a day-only deadline without a clock time.
+  // Show that confirmed date, but never fabricate a midnight/11:59 PM cutoff
+  // or use it as an exact timestamp for deadline sorting/filtering.
+  if (item.deadline === null && item.schedule_type === "dated_event") {
+    const match = /\b(?:registration|applications?)\s+(?:closes|ends)\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(20\d{2})\b/i.exec(item.fee_notes ?? "");
+    if (match) {
+      const date = new Date(`${match[1]} ${match[2]}, ${match[3]}`);
+      if (!Number.isNaN(date.valueOf()) && date.getUTCFullYear() === Number(match[3])) return {
+        label: "Registration deadline",
+        value: `${date.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"})} · time not published`,
+        note: /(?:sooner|earlier).{0,20}(?:spots? fill|full)/i.test(item.fee_notes ?? "") ? "Registration may close earlier if spots fill." : "An exact submission time was not published.",
+        sortAt: Infinity,
+      };
+    }
+  }
   const timestamp = item.deadline ? Date.parse(item.deadline) : NaN;
   if (!Number.isFinite(timestamp)) return {
     label: "Application deadline", value: "Confirm with organizer", note: "Confirm the cutoff for this date with the organizer.", sortAt: Infinity,
@@ -63,8 +78,12 @@ export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes
       return {label:"Table options",value:half === full ? money(half) : `${money(half)}–${money(full)}`,note:`Half table ${money(half)} · Full table ${money(full)}`};
     }
   }
+  if (item.booth_fee === null && /(?:event-specific.{0,80}booth (?:fee|price).{0,40}not (?:verified|confirmed)|amount charged for a booth at this specific.{0,80}remains unverified)/i.test(item.fee_notes)) {
+    return {label:"Craft-fair booth fee",value:"Check official form",note:"Exact amount could not be independently verified."};
+  }
   const label = item.schedule_type === "rolling_market" && /(?:per[- ]event|each market|per market date)/i.test(item.fee_notes)
-    ? "Booth fee per event" : "Standard booth / table";
+    ? "Booth fee per event"
+    : /event-specific booth fee/i.test(item.fee_notes) ? "Event booth fee" : "Standard booth / table";
   return {label,value:item.booth_fee === null ? "Not published" : money(Number(item.booth_fee)),note:""};
 }
 
