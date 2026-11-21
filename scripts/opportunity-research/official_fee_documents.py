@@ -20,6 +20,8 @@ MAX_PAGES = 12
 MAX_LINKS = 3
 MAX_TEXT = 24_000
 
+PUBLIC_PDF_URL = re.compile(r"https://[^\s\"'<>\\]{8,1550}?\.pdf", re.I)
+
 FEE_LABEL = re.compile(
     r"\b(?:table of fees|vendor fee schedule|fee schedule|vendor fees|"
     r"booth fees|booth prices|pricing|fee details|space rates|"
@@ -59,6 +61,26 @@ def fee_document_links(document, page_url, organizer_url):
         href = urljoin(page_url, node.attrs['href'])
         if FEE_LABEL.search(label) and _safe_pdf(href, organizer_url) and href not in links:
             links.append(href)
+        if len(links) >= MAX_LINKS:
+            break
+    # The form's published, authored metadata may contain a Table of Fees
+    # hyperlink on a later page, even when the first-page DOM does not.
+    # Only accept the explicitly named public PDF and approved organizer/CDN
+    # host. Never follow random URLs embedded in other script data.
+    try:
+        from published_form_metadata import public_form_sections
+        authored = public_form_sections(document)
+    except (ValueError, TypeError):
+        authored = []
+    for section in authored:
+        if not FEE_LABEL.search(section):
+            continue
+        for candidate in PUBLIC_PDF_URL.findall(section):
+            url = candidate.rstrip('.,;)')
+            if _safe_pdf(url, organizer_url) and url not in links:
+                links.append(url)
+                if len(links) >= MAX_LINKS:
+                    break
         if len(links) >= MAX_LINKS:
             break
     return links
@@ -124,7 +146,9 @@ def inspect_official_fee_documents(pages, organizer_url, reader=read_official_pd
                 'text': content[:MAX_TEXT],
                 'source': 'organizer_linked_pdf',
             })
-        except (OSError, ValueError, RuntimeError, HTTPError, URLError):
+        except Exception:
+            # Unexpected PDF encoding/formatting is inconclusive evidence,
+            # not a reason to fail an unrelated source verification run.
             blocked += 1
     return {
         'documents': evidence,
