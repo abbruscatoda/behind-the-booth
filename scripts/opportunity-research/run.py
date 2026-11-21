@@ -201,6 +201,10 @@ def run(dry_run=False):
   if getattr(fetcher,'browser_enabled',False):
    from form_probe import probe_public_form
    form_probe=probe_public_form(fetcher)
+  # Verify vetted organizer programs BEFORE broad discovery consumes the
+  # bounded Playwright fallback budget; source identity remains enforced.
+  from official_vendor_programs import discover_programs
+  official_programs,program_notes=discover_programs(fetcher,now)
   results,problems=discover(fetcher,now)
   found={(r['candidate']['application_url'],r['candidate']['starts_on']):r for r in results}
   known={(canonical_application(i['application_url']) or i['application_url'],i['starts_on']) for i in context['items']}
@@ -316,9 +320,9 @@ def run(dry_run=False):
   # use a non-Eventeny application (municipal pages, state PDFs, guest forms).
   # Each program is independently source-bound and published through the
   # evidence-gated backend; unverified pages do not become new leads.
-  from official_vendor_programs import discover_programs
-  official_programs,program_notes=discover_programs(fetcher,now)
   discovery_stats['official_programs_checked']=len(official_programs)
+  discovery_stats['official_program_form_access']={r['program']:r.get('form_state')
+    for r in official_programs if r.get('form_state')!='not_applicable'}
   discovery_stats['official_programs_unconfirmed']=program_notes
   for candidate in official_programs:
    data=candidate['candidate']
