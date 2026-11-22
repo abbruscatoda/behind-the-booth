@@ -14,8 +14,10 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
  const dialogRef=useRef<HTMLDialogElement>(null);
  useEffect(()=>{
   const dialog=dialogRef.current;
+  const previousOverflow=document.body.style.overflow;
+  document.body.style.overflow="hidden";
   if(dialog && !dialog.open)dialog.showModal();
-  return ()=>{if(dialog?.open)dialog.close();};
+  return ()=>{if(dialog?.open)dialog.close();document.body.style.overflow=previousOverflow;};
  },[]);
  const deadline=opportunityDeadline(item);
  const booth=opportunityBoothPrice(item);
@@ -34,17 +36,15 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
   aria-labelledby={`opportunity-dialog-title-${item.id}`}
   onClose={onClose}
   onClick={event=>{if(event.target===event.currentTarget)dialogRef.current?.close();}}
-  className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto rounded-sm border border-[#252521]/30 bg-[#FFFCF6] p-0 text-[#252521] shadow-2xl backdrop:bg-[#252521]/60"
+  className="m-auto h-[90dvh] max-h-[90dvh] w-[calc(100%-2rem)] max-w-3xl overflow-hidden rounded-sm border border-[#252521]/30 bg-[#FFFCF6] p-0 text-[#252521] shadow-2xl backdrop:bg-[#252521]/60 open:flex open:flex-col"
  >
-  <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[#252521]/20 bg-[#FFFCF6] px-5 py-4 sm:px-7">
-   <div className="min-w-0">
-    <p className="heritage-label">Opportunity details</p>
-    <h2 id={`opportunity-dialog-title-${item.id}`} className="mt-2 font-serif text-2xl font-bold leading-tight sm:text-3xl">{item.title}</h2>
-    <p className="mt-1 text-sm text-[#626C57]">{item.city}, {item.state} · {statusLabel(item.effective_status)}</p>
-   </div>
-   <button type="button" onClick={()=>dialogRef.current?.close()} className="shrink-0 rounded-sm border border-[#252521]/25 px-3 py-2 text-sm font-semibold text-[#07472B] hover:bg-[#E9E7DA] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]" aria-label="Close opportunity details">Close <span aria-hidden="true">×</span></button>
+  <div className="opportunity-dialog-header grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-[#252521]/20 bg-[#FFFCF6] px-4 py-3 sm:px-7 sm:py-4">
+   <p className="heritage-label">Opportunity details</p>
+   <button type="button" onClick={()=>dialogRef.current?.close()} className="min-h-11 rounded-sm border border-[#252521]/25 px-3 py-2 text-sm font-semibold text-[#07472B] hover:bg-[#E9E7DA] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]" aria-label="Close opportunity details">Close <span aria-hidden="true">×</span></button>
+   <h2 id={`opportunity-dialog-title-${item.id}`} className="opportunity-dialog-title col-span-2 min-w-0 font-serif text-xl font-bold leading-tight sm:text-3xl">{item.title}</h2>
+   <p className="col-span-2 text-sm text-[#626C57]">{item.city}, {item.state} · {statusLabel(item.effective_status)}</p>
   </div>
-  <div className="space-y-5 px-5 py-6 sm:px-7">
+  <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7 sm:py-6">
    <div className="grid gap-4 border-b border-[#252521]/15 pb-5 text-sm sm:grid-cols-2">
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">Organizer</p><p className="mt-1 font-semibold">{item.organizer}</p><p className="mt-1 text-[#55554E]">{item.venue} · {item.city}, {item.state}</p></div>
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">{item.schedule_type==="rolling_market"?"Application window":item.schedule_type==="seasonal_application"||item.schedule_type==="recurring_season"?"Application / program season":"Market dates"}</p>
@@ -113,10 +113,10 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
          {safeExternalUrl(item.source_url)&&<a href={safeExternalUrl(item.source_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">Official source <ExternalLinkIcon /></a>}
        </div>
   </div>
-  <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[#252521]/20 bg-[#FFFCF6] px-5 py-4 sm:px-7">
-   {available&&actionUrl?<a href={actionUrl} target="_blank" rel="noopener noreferrer" className="heritage-button min-h-11">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} <ExternalLinkIcon /></a>:<p className="text-sm font-semibold text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Application availability not verified"}</p>}
-   <Link href={`/markets/${item.market_slug}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-[#07472B] underline underline-offset-4">View market profile</Link>
-   {sourceUrl&&<a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-sm font-semibold text-[#07472B] underline">Official source <ExternalLinkIcon /></a>}
+  <div className="opportunity-dialog-footer grid shrink-0 grid-cols-2 items-center gap-x-3 gap-y-2 border-t border-[#252521]/20 bg-[#FFFCF6] px-4 py-3 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-3 sm:px-7 sm:py-4">
+   {available&&actionUrl?<a href={actionUrl} target="_blank" rel="noopener noreferrer" className="heritage-button col-span-2 min-h-11 sm:w-auto">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} <ExternalLinkIcon /></a>:<p className="col-span-2 text-sm font-semibold text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Application availability not verified"}</p>}
+   <Link href={`/markets/${item.market_slug}`} className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline underline-offset-4 sm:text-sm">View market profile</Link>
+   {sourceUrl&&<a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline sm:text-sm">Official source <ExternalLinkIcon /></a>}
   </div>
  </dialog>;
 }

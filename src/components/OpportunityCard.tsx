@@ -10,9 +10,10 @@ import { fee, safeExternalUrl, statusLabel, type Opportunity } from "../lib/oppo
 
 /** Quick comparison card: verified facts first; detailed evidence lives in a modal. */
 export default function OpportunityCard({
- item, categoryFilter, saved, saving, onSave, onViewDetails,
+ item, categoryFilter, saved, saving, saveMessage, onSave, onViewDetails,
 }:{
  item:Opportunity; categoryFilter:string; saved:boolean; saving:boolean;
+ saveMessage?:string;
  onSave:()=>void; onViewDetails:()=>void;
 }) {
  const deadline=opportunityDeadline(item);
@@ -74,6 +75,7 @@ export default function OpportunityCard({
        <button type="button" onClick={onViewDetails} aria-haspopup="dialog" className="min-h-11 text-left text-sm font-semibold text-[#07472B] underline underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">View full details</button>
        <button type="button" disabled={saving} onClick={onSave} aria-label={saved?`Remove ${item.title} from saved opportunities`:`Save ${item.title}`} className="min-h-11 shrink-0 text-right text-xs font-semibold text-[#07472B] underline underline-offset-4 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">{saved?"Saved ✓":"Save"}</button>
      </div>
+     {saveMessage&&<p id={`opportunity-save-message-${item.id}`} role="status" className="mt-2 border-l-2 border-[#07472B] bg-[#E9E7DA] px-3 pt-3 text-sm leading-relaxed">{saveMessage} <Link href="/login" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">My Account →</Link></p>}
    </div>
  </article>;
 }

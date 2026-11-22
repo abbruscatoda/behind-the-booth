@@ -1,15 +1,34 @@
+"use client";
+
 import Link from "next/link";
+import { useRef, useState } from "react";
 import BrandLogo from "./BrandLogo";
 import AdminHeaderLink from "./AdminHeaderLink";
 
 export default function SiteHeader() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+
   return (
     <>
       <div className="brand-announcement">Independent insight. Better markets.</div>
       <header className="brand-header">
-        <nav aria-label="Main navigation" className="brand-navigation">
+        <nav aria-label="Main navigation" className="brand-navigation" onClick={event => {
+          if ((event.target as HTMLElement).closest("a")) setMenuOpen(false);
+        }} onKeyDown={event => {
+          if (event.key === "Escape" && menuOpen) {
+            setMenuOpen(false);
+            menuButton.current?.focus();
+          }
+        }}>
           <BrandLogo />
-          <div className="brand-nav-links">
+          <button ref={menuButton} type="button" className="brand-menu-toggle"
+            aria-expanded={menuOpen} aria-controls="site-navigation-links"
+            onClick={() => setMenuOpen(open => !open)}>
+            {menuOpen ? "Close" : "Menu"}
+            <span aria-hidden="true">{menuOpen ? "×" : "☰"}</span>
+          </button>
+          <div id="site-navigation-links" className={`brand-nav-links${menuOpen ? " is-open" : ""}`}>
             <Link href="/markets" className="brand-nav-link">Explore Markets</Link>
             <Link href="/opportunities" className="brand-nav-link">Find Vendor Opportunities</Link>
             <Link href="/suggest-market" className="brand-nav-link">Suggest a Market</Link>

@@ -23,10 +23,14 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  const [urlReady,setUrlReady]=useState(false),[shareMessage,setShareMessage]=useState("");
  const [sort,setSort]=useState<OpportunitySort>(defaultOpportunitySort),[refresh,setRefresh]=useState(0),[saved,setSaved]=useState<string[]>([]),[saving,setSaving]=useState<string|null>(null),[message,setMessage]=useState("");
  const [selectedOpportunity,setSelectedOpportunity]=useState<Opportunity|null>(null);
+ const [messageOpportunityId,setMessageOpportunityId]=useState<string|null>(null);
  const [moreFiltersOpen,setMoreFiltersOpen]=useState(false);
  const [lastVisit,setLastVisit]=useState<string|null>(null);
  const [reviewedAt,setReviewedAt]=useState(0);
  const moreFiltersId=useId();
+ useEffect(()=>{
+  if(message&&messageOpportunityId)document.getElementById(`opportunity-save-message-${messageOpportunityId}`)?.scrollIntoView({block:"nearest"});
+ },[message,messageOpportunityId]);
 
  // The baseline is browser-local and kept stable throughout this tab's session.
  // Do not call a list "viewed": visiting the page isn't proof of reading every card.
@@ -74,7 +78,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  }catch{if(active)setError("We couldn't load application opportunities. Please refresh to try again.");}finally{if(active)setLoading(false);}}
  void load();const timer=setInterval(()=>{if(document.visibilityState==="visible")setRefresh(value=>value+1);},300000);
  return()=>{active=false;clearInterval(timer);subscription.data.subscription.unsubscribe();};},[marketId,refresh]);
- async function toggle(id:string){if(saving)return;setSaving(id);setMessage("");try{const client=createClient();const {data}=await client.auth.getUser();if(!data.user){setMessage("Sign in to save opportunities, then return here. Browsing and application links are free to use.");return;}const add=!saved.includes(id);const {error}=await client.rpc("btb_save_opportunity",{p_id:id,p_saved:add});if(error)throw error;setSaved(previous=>add?[...previous,id]:previous.filter(value=>value!==id));setMessage(add?"Saved to My Account.":"Removed from saved opportunities.");}catch{setMessage("Unable to update your saved opportunities. Please try again.");}finally{setSaving(null);}}
+ async function toggle(id:string){if(saving)return;setSaving(id);setMessage("");setMessageOpportunityId(id);try{const client=createClient();const {data}=await client.auth.getUser();if(!data.user){setMessage("Sign in to save opportunities, then return here. Browsing and application links are free to use.");return;}const add=!saved.includes(id);const {error}=await client.rpc("btb_save_opportunity",{p_id:id,p_saved:add});if(error)throw error;setSaved(previous=>add?[...previous,id]:previous.filter(value=>value!==id));setMessage(add?"Saved to My Account.":"Removed from saved opportunities.");}catch{setMessage("Unable to update your saved opportunities. Please try again.");}finally{setSaving(null);}}
  const followedHash=useRef<string|null>(null);
  useEffect(()=>{
   if(loading||error)return;
@@ -85,6 +89,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
   if(target){target.scrollIntoView({block:"start"});followedHash.current=id;}
  },[loading,error,items]);
  const visible=sortOpportunities(filterOpportunities(items,filters,lastVisit,reviewedAt),sort);
+ const cards=compact?visible.slice(0,3):visible;
  const activeItems=items.filter(item=>["open","limited","waitlist"].includes(item.effective_status));
  const recentCount=activeItems.filter(item=>isNewlyPosted(item,reviewedAt)).length;
  const sinceCount=lastVisit?activeItems.filter(item=>isPostedSince(item,lastVisit,reviewedAt)).length:0;
@@ -236,14 +241,15 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  </section>}
  {!compact&&sort==="deadline"&&<p className="mt-3 text-xs leading-relaxed text-[#626C57]">Event-specific deadlines appear first. Series deadlines and unconfirmed cutoffs appear afterward, ordered by event date.</p>}
  {!compact&&filters.posted==="since"&&lastVisit&&<p className="mt-3 text-xs text-[#626C57]">Showing opportunities first published since your previous visit to this page on this browser.</p>}
- {message&&<p role="status" className="my-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{message} <Link href="/login" className="font-semibold underline">My Account →</Link></p>}
+ {message&&!cards.some(item=>item.id===messageOpportunityId)&&<p role="status" className="my-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{message} <Link href="/login" className="font-semibold underline">My Account →</Link></p>}
  {error?<div role="alert" className="mt-6"><p>{error}</p><button onClick={()=>setRefresh(value=>value+1)} className="mt-3 font-semibold underline">Refresh opportunities</button></div>:loading?<p role="status" className="mt-6">Loading opportunities…</p>:visible.length===0?<p className="mt-6 text-[#55554E]">{compact?"No recently verified vendor applications or waitlists are listed for this market right now.":"No opportunities match these filters. Try another location or month, include unconfirmed categories, or show all statuses."}</p>:<div className={`mt-5 grid items-stretch gap-5 ${compact?"":"md:grid-cols-2 lg:grid-cols-3"}`}>
- {(compact?visible.slice(0,3):visible).map(item=><OpportunityCard
+ {cards.map(item=><OpportunityCard
    key={item.id}
    item={item}
    categoryFilter={filters.category}
    saved={saved.includes(item.id)}
    saving={saving!==null}
+   saveMessage={messageOpportunityId===item.id?message:""}
    onSave={()=>void toggle(item.id)}
    onViewDetails={()=>setSelectedOpportunity(item)}
  />)}

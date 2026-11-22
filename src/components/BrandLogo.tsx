@@ -12,7 +12,7 @@ export default function BrandLogo({ inverse = false }: { inverse?: boolean }) {
           <span className="brand-footer-name">Behind<br />the Booth<span className="brand-footer-dot">.</span></span>
         </>
       ) : (
-        <Image src={wordmark} alt="Behind the Booth" priority sizes="(max-width: 640px) 218px, 270px" className="brand-wordmark" />
+        <Image src={wordmark} alt="Behind the Booth" priority sizes="(max-width: 1023px) 218px, 270px" className="brand-wordmark" />
       )}
     </Link>
   );
