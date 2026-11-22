@@ -37,6 +37,10 @@ button:not(:disabled) { cursor: pointer; }
 .heritage-button:disabled { cursor: wait; opacity: .55; }
 .heritage-card { background: var(--color-paper); border: 1px solid rgba(37,37,33,.18); padding: 1.5rem; transition: border-color .2s ease; }
 .heritage-card:hover { border-color: #07472B; }
+
+/* Dense comparison cards retain the same content and full-size tap targets. */
+.heritage-card.opportunity-card { padding: 1.125rem; }
+.opportunity-card .opportunity-application { padding: .625rem .875rem; min-height: 2.75rem; }
 .brand-announcement { padding: .65rem 1rem; background: #07472B; color: #F4F0E6; text-align: center; font-size: .625rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; }
 .brand-header { background: #F4F0E6; border-bottom: 1px solid #25252126; }
 .brand-navigation { max-width: 72rem; margin: auto; padding: .7rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem 2rem; }
