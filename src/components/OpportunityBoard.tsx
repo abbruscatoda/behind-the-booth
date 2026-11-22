@@ -25,6 +25,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  const [selectedOpportunity,setSelectedOpportunity]=useState<Opportunity|null>(null);
  const [moreFiltersOpen,setMoreFiltersOpen]=useState(false);
  const [lastVisit,setLastVisit]=useState<string|null>(null);
+ const [reviewedAt,setReviewedAt]=useState(0);
  const moreFiltersId=useId();
 
  // The baseline is browser-local and kept stable throughout this tab's session.
@@ -68,7 +69,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
   catch{setShareMessage("Unable to copy automatically. Copy the address from your browser.");}
  }
  useEffect(()=>{let active=true;const client=createClient();const subscription=client.auth.onAuthStateChange(()=>{if(active)setSaved([]);});
- async function load(){setLoading(true);setError("");try{let all:Opportunity[]=[];let offset=0;while(true){const {data,error}=await client.rpc("btb_public_opportunities",{p_market_id:marketId??null,p_offset:offset});if(error)throw error;all=all.concat(data.items);offset+=100;if(offset>=data.total||data.items.length===0)break;}if(active)setItems(all);
+ async function load(){setLoading(true);setError("");try{let all:Opportunity[]=[];let offset=0;while(true){const {data,error}=await client.rpc("btb_public_opportunities",{p_market_id:marketId??null,p_offset:offset});if(error)throw error;all=all.concat(data.items);offset+=100;if(offset>=data.total||data.items.length===0)break;}if(active){setReviewedAt(Date.now());setItems(all);}
  const {data:auth}=await client.auth.getUser();if(auth.user){const {data,error}=await client.rpc("btb_my_saved_opportunities");if(!error&&active)setSaved((data as {id:string}[]).map(row=>row.id));}
  }catch{if(active)setError("We couldn't load application opportunities. Please refresh to try again.");}finally{if(active)setLoading(false);}}
  void load();const timer=setInterval(()=>{if(document.visibilityState==="visible")setRefresh(value=>value+1);},300000);
@@ -83,10 +84,10 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
   const target=document.getElementById(id);
   if(target){target.scrollIntoView({block:"start"});followedHash.current=id;}
  },[loading,error,items]);
- const visible=sortOpportunities(filterOpportunities(items,filters,lastVisit),sort);
+ const visible=sortOpportunities(filterOpportunities(items,filters,lastVisit,reviewedAt),sort);
  const activeItems=items.filter(item=>["open","limited","waitlist"].includes(item.effective_status));
- const recentCount=activeItems.filter(item=>isNewlyPosted(item)).length;
- const sinceCount=lastVisit?activeItems.filter(item=>isPostedSince(item,lastVisit)).length:0;
+ const recentCount=activeItems.filter(item=>isNewlyPosted(item,reviewedAt)).length;
+ const sinceCount=lastVisit?activeItems.filter(item=>isPostedSince(item,lastVisit,reviewedAt)).length:0;
  const selectPosted=(mode:"week"|"since")=>{
   setFilters(previous=>({...previous,posted:previous.posted===mode?"all":mode}));
   setSort("posted_desc");

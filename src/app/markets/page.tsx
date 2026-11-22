@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { organizerHref, organizerKey, organizerOptions } from "../../lib/marketOrganizers";
 import { getRatingColor } from "../../lib/ratingColors";
 import { createClient } from "../../lib/supabase/client";
+import { hasNewReviews, latestReviewTime, type ReviewActivity, type ReviewWindow } from "../../lib/marketReviewRecency";
 
 type Market = {
   id: string;
@@ -28,7 +29,11 @@ function MarketDirectory() {
     router.replace(`/markets${next.size ? `?${next.toString()}` : ""}`, { scroll: false });
   }
   const [hasReviewsOnly, setHasReviewsOnly] = useState(false);
-  const [activity, setActivity] = useState<Record<string, { count: number; overall: number | null }> | null>(null);
+  const [activity, setActivity] = useState<Record<string, ReviewActivity> | null>(null);
+  const [reviewWindow, setReviewWindow] = useState<ReviewWindow>("all");
+  const [sort, setSort] = useState("name");
+  const [lastVisit, setLastVisit] = useState<string | null>(null);
+  const [checkedAt, setCheckedAt] = useState(0);
   const [search, setSearch] = useState("");
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,19 +46,39 @@ function MarketDirectory() {
       try {
         const supabase = createClient();
 
+        const requestStartedAt = Date.now();
         const [marketResponse, activityResponse] = await Promise.all([
           supabase.from("markets")
             .select("id, slug, name, city, state, description, is_sample, organizer")
             .eq("is_hidden", false).order("name"),
-          Promise.resolve(supabase.rpc("btb_public_market_review_activity"))
+          Promise.resolve(supabase.rpc("btb_public_market_review_activity_v2"))
             .catch(() => ({ data: null, error: { message: "Review activity unavailable" } })),
         ]);
         const { data, error } = marketResponse;
         if (active && !activityResponse.error && Array.isArray(activityResponse.data)) {
-          const rows = activityResponse.data as {market_id: string; review_count: number; overall_rating: number | null}[];
+          const rows = activityResponse.data as {market_id: string; review_count: number; overall_rating: number | null; latest_review_at: string | null}[];
           setActivity(Object.fromEntries(rows.map(row => [row.market_id, {
             count: Number(row.review_count), overall: row.overall_rating === null ? null : Number(row.overall_rating),
+            latest: row.latest_review_at,
           }])));
+          const now = Date.now();
+          setCheckedAt(now);
+          // Advance only after successful directory and activity loading. Keep
+          // this tab's baseline stable across navigation and React remounts.
+          if (!marketResponse.error) {
+            try {
+              const key = "btb_market_reviews_last_opened_v1";
+              const sessionKey = "btb_market_reviews_session_baseline_v1";
+              let previous = window.sessionStorage.getItem(sessionKey);
+              if (previous === null) {
+                previous = window.localStorage.getItem(key) ?? "";
+                window.sessionStorage.setItem(sessionKey, previous);
+              }
+              const time = Date.parse(previous);
+              setLastVisit(Number.isFinite(time) && time <= now ? previous : null);
+              window.localStorage.setItem(key, new Date(requestStartedAt).toISOString());
+            } catch { /* Directory browsing also works with storage disabled. */ }
+          }
         }
 
         if (error) throw error;
@@ -87,10 +112,21 @@ function MarketDirectory() {
   const selectedOrganizer = organizers.find(name => organizerKey(name) === organizerKey(organizer)) ?? organizer;
   const filteredMarkets = markets.filter(market =>
     (!hasReviewsOnly || (activity?.[market.id]?.count ?? 0) > 0) &&
+    (reviewWindow === "all" || hasNewReviews(activity?.[market.id], reviewWindow, lastVisit, checkedAt)) &&
     (!organizer || organizerKey(market.organizer) === organizerKey(organizer)) &&
     `${market.name} ${market.city} ${market.state} ${market.description} ${market.organizer ?? ""}`
       .toLowerCase().includes(search.trim().toLowerCase())
-  );
+  ).sort((a, b) => sort === "reviews"
+    ? (latestReviewTime(activity?.[b.id]) ?? 0) - (latestReviewTime(activity?.[a.id]) ?? 0) || a.name.localeCompare(b.name)
+    : a.name.localeCompare(b.name));
+  const weekCount = markets.filter(market => hasNewReviews(activity?.[market.id], "week", lastVisit, checkedAt)).length;
+  const sinceCount = markets.filter(market => hasNewReviews(activity?.[market.id], "since", lastVisit, checkedAt)).length;
+  const reviewOptions: {value: ReviewWindow; label: string}[] = [
+    {value: "all", label: "All markets"},
+    {value: "week", label: `New reviews this week (${weekCount})`},
+    ...(lastVisit ? [{value: "since" as const, label: `New reviews since last visit (${sinceCount})`}] : []),
+  ];
+  function clearFilters() { setSearch(""); selectOrganizer(""); setHasReviewsOnly(false); setReviewWindow("all"); setSort("name"); }
 
   return (
     <main className="flex-1 bg-[#F4F0E6] text-[#252521]">
@@ -136,7 +172,7 @@ function MarketDirectory() {
             className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-4 py-3 text-[#252521] outline-none transition placeholder:text-[#626C57] focus:border-[#07472B]"
           />
 
-          <div className="mt-5 grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <div className="mt-5 grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
             <div><label htmlFor="organizer-filter" className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-[#626C57]">Filter by organizer</label>
               <select id="organizer-filter" value={selectedOrganizer} disabled={loading || Boolean(error)} onChange={event => selectOrganizer(event.target.value)} className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]">
                 <option value="">All organizers</option>
@@ -144,9 +180,20 @@ function MarketDirectory() {
                 {organizers.map(name => <option key={organizerKey(name)} value={name}>{name}</option>)}
               </select>
             </div>
+            <div><label htmlFor="market-sort" className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-[#626C57]">Sort markets</label>
+              <select id="market-sort" value={sort} disabled={loading} onChange={event => setSort(event.target.value)} className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]">
+                <option value="name">Market name</option><option value="reviews" disabled={activity === null}>Latest reviews</option>
+              </select>
+            </div>
             <label className="flex min-h-11 items-center gap-3 text-sm font-semibold text-[#07472B]"><input type="checkbox" checked={hasReviewsOnly} disabled={loading || activity === null} onChange={event => setHasReviewsOnly(event.target.checked)} />Has reviews</label>
-            {(search || organizer || hasReviewsOnly) && <button type="button" onClick={() => { setSearch(""); selectOrganizer(""); setHasReviewsOnly(false); }} className="px-3 py-3 text-sm font-semibold text-[#07472B] underline underline-offset-4">Clear filters</button>}
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Filter by new review activity">
+            {reviewOptions.map(option =>
+              <button key={option.value} type="button" aria-pressed={reviewWindow === option.value} disabled={loading || activity === null} onClick={() => setReviewWindow(option.value)} className={`min-h-11 border px-3 py-2 text-sm font-semibold disabled:opacity-50 ${reviewWindow === option.value ? "border-[#07472B] bg-[#07472B] text-[#F4F0E6]" : "border-[#07472B]/30 text-[#07472B] hover:bg-[#E9E7DA]"}`}>{option.label}</button>
+            )}
+            {(search || organizer || hasReviewsOnly || reviewWindow !== "all" || sort !== "name") && <button type="button" onClick={clearFilters} className="min-h-11 px-3 py-2 text-sm font-semibold text-[#07472B] underline underline-offset-4">Clear filters</button>}
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-[#626C57]">New reviews are approved vendor feedback added in the last 7 days. Since last visit is specific to this browser.</p>
           <p
             className="mt-4 text-sm text-[#55554E]"
             role="status"
@@ -202,6 +249,9 @@ function MarketDirectory() {
 
               <div className="my-4 h-px bg-[#252521]/20" />
 
+              {(hasNewReviews(activity?.[market.id], "week", lastVisit, checkedAt) || hasNewReviews(activity?.[market.id], "since", lastVisit, checkedAt)) &&
+                <span className="mb-3 self-start border border-[#07472B]/25 bg-[#E9E7DA] px-2 py-1 text-xs font-bold text-[#07472B]">{hasNewReviews(activity?.[market.id], "since", lastVisit, checkedAt) ? "New reviews since last visit" : "New reviews"}</span>}
+
               <h2 className="font-serif text-3xl font-bold leading-tight">
                 <Link href={`/markets/${market.slug}`} className="text-inherit hover:text-[#07472B] hover:underline underline-offset-4">{market.name}</Link>
               </h2>
@@ -243,7 +293,7 @@ function MarketDirectory() {
             <p className="mt-3 text-[#55554E]">
               {markets.length === 0
                 ? "There are no market listings yet. Check back soon."
-                : "Try a different search or clear your filters, including Has reviews."}
+                : reviewWindow !== "all" ? "No markets match this review window and your other filters. Try All markets or clear your filters." : "Try a different search or clear your filters, including Has reviews."}
             </p>
           </div>
         )}
