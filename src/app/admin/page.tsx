@@ -3,6 +3,7 @@
 import ExternalLinkIcon from "../../components/ExternalLinkIcon";
 import Link from "next/link";
 import OrganizerField from "../../components/OrganizerField";
+import ConfirmationDialog from "../../components/ConfirmationDialog";
 import { cleanOrganizer } from "../../lib/marketOrganizers";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createClient } from "../../lib/supabase/client";
@@ -144,7 +145,15 @@ export default function AdminPage() {
   const [action, setAction] = useState<Action | null>(null);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
+  const successNotice = useRef<HTMLDivElement>(null);
   const allowed = Boolean(userId && userId === allowedOwner);
+
+  useEffect(() => {
+    if (success) {
+      successNotice.current?.focus({ preventScroll: true });
+      successNotice.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [success]);
 
   useEffect(() => {
     let active = true;
@@ -253,13 +262,20 @@ export default function AdminPage() {
         <label className="text-sm font-semibold">Show status<select className={inputClass} value={status} disabled={busy || Boolean(action)} onChange={e => { resetView(); setStatus(e.target.value as Status); }}><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option>{kind === "suggestions" && <option value="duplicate">Duplicate</option>}</select></label>
         <button type="button" className={secondaryClass} disabled={busy || loading || Boolean(action)} onClick={() => { setEditor(null); setRefresh(n => n + 1); }}>Refresh queues</button>
       </div>
-      {success && <div role="status" className="mb-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{success}</div>}
-      {error && <div role="alert" className="mb-5 break-words border-l-2 border-[#9B3E35] bg-[#F0E3DA] p-4 text-sm text-[#9B3E35]">{error} {success ? "The decision was saved, but the queue could not refresh." : "Refresh the queue before retrying if the connection was interrupted."}</div>}
-      {action && <section aria-label="Confirm moderation decision" className="mb-6 border-2 border-[#07472B] bg-[#E9E7DA] p-5 md:p-6">
-        <h2 className="font-serif text-2xl font-bold">{action.type === "publish" ? "Publish this market?" : `Change status to ${action.status}?`}</h2>
-        {action.type === "publish" ? <div className="mt-3 space-y-2 text-sm"><p className="font-semibold">{action.listing.name} — {action.listing.city}, {action.listing.state}</p><p className="break-all">/markets/{action.listing.slug}</p><p className="whitespace-pre-wrap">{action.listing.description}</p><p className="break-all">{action.listing.website}</p><p>Organizer: {action.listing.organizer || "Not assigned"}</p><p>The listing will become public and its suggestion will be approved.</p></div> : <p className="mt-3 text-sm">{"business_name" in action.row ? action.row.business_name : "name" in action.row ? action.row.name : `Review of ${action.row.market_name}`} — {action.row.status} → {action.status}. {action.kind === "reviews" ? "Only approved reviews appear in member reports and rating averages." : action.kind === "vendors" ? "Approved vendors can submit reviews. Existing review statuses are managed separately." : action.status === "duplicate" ? "This suggestion will link to the market you selected." : "This suggestion will not create a public listing."}</p>}
-        <div className="mt-5 flex flex-wrap gap-3"><button type="button" className="heritage-button disabled:opacity-50" disabled={busy} onClick={() => void confirm()}>{busy ? "Saving…" : action.type === "publish" ? "Confirm publication" : "Confirm decision"}</button><button type="button" className={secondaryClass} disabled={busy} onClick={() => setAction(null)}>Cancel</button></div>
-      </section>}
+      {success && <div ref={successNotice} tabIndex={-1} role="status" className="mb-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{success}</div>}
+      {error && !action && <div role="alert" className="mb-5 break-words border-l-2 border-[#9B3E35] bg-[#F0E3DA] p-4 text-sm text-[#9B3E35]">{error} {success ? "The decision was saved, but the queue could not refresh." : "Refresh the queue before retrying if the connection was interrupted."}</div>}
+      {action && <ConfirmationDialog
+        title={action.type === "publish" ? "Publish this market?" : `Change status to ${action.status}?`}
+        description={action.type === "publish" ? "The listing will become public and its suggestion will be approved." : action.kind === "reviews" ? "Only approved reviews appear in member reports and rating averages." : action.kind === "vendors" ? "Approved vendors can submit reviews. Existing review statuses are managed separately." : action.status === "duplicate" ? "This suggestion will link to the market you selected." : "This suggestion will not create a public listing."}
+        confirmLabel={action.type === "publish" ? "Confirm publication" : "Confirm decision"}
+        busy={busy} error={error ? `${error} If the connection was interrupted, cancel and refresh the queue before retrying.` : ""}
+        onConfirm={() => void confirm()} onCancel={() => setAction(null)}>
+        {action.type === "publish" ? <div className="space-y-2 text-sm"><p className="font-semibold">{action.listing.name} — {action.listing.city}, {action.listing.state}</p><p className="break-all">/markets/{action.listing.slug}</p><p className="whitespace-pre-wrap">{action.listing.description}</p><p className="break-all">{action.listing.website}</p><p>Organizer: {action.listing.organizer || "Not assigned"}</p></div> : <div className="space-y-3 text-sm">
+          <p className="font-semibold">{"business_name" in action.row ? action.row.business_name : "name" in action.row ? action.row.name : `Review of ${action.row.market_name}`}</p>
+          <p>Status: <strong>{action.row.status} → {action.status}</strong></p>
+          {"market_name" in action.row && <><p>{action.row.attended_on ? `Attended: ${formatAttendanceDate(action.row.attended_on)}` : "Attendance date not provided"}</p><blockquote className="whitespace-pre-wrap border-l-2 border-[#07472B]/30 pl-3 leading-relaxed">{action.row.experience}</blockquote></>}
+        </div>}
+      </ConfirmationDialog>}
       {loading ? <p role="status" className="py-8">Loading {labels[kind].toLowerCase()}…</p> : queue && !queue.items.length ? <div className="heritage-card py-10 text-center"><h2 className="font-serif text-2xl font-bold">No {status} {labels[kind].toLowerCase()}.</h2><p className="mt-3 text-sm text-[#626C57]">You&apos;re up to date for this queue.</p></div> : <div className="space-y-5">{queue?.items.map(row => <article key={row.id} className="rounded-sm border border-[#252521]/20 bg-[#FFFCF6] p-5 md:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3"><p className="heritage-label">{row.status}</p><p className="text-xs text-[#626C57]">Submitted {new Date(row.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })}</p></div>
         {"name" in row ? <>

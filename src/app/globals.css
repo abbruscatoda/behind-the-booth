@@ -100,8 +100,8 @@ button:not(:disabled) { cursor: pointer; }
   .heritage-card { padding: 1.25rem; }
 }
 @media (max-height: 500px) {
-  .opportunity-dialog-header, .opportunity-dialog-footer, .review-preview-dialog-header, .review-preview-dialog-footer { padding-block: .5rem; }
-  .opportunity-dialog-title, .review-preview-dialog-title { font-size: 1.125rem; }
+  .opportunity-dialog-header, .opportunity-dialog-footer, .review-preview-dialog-header, .review-preview-dialog-footer, .confirmation-dialog-header, .confirmation-dialog-footer { padding-block: .5rem; }
+  .opportunity-dialog-title, .review-preview-dialog-title, .confirmation-dialog-title { font-size: 1.125rem; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 

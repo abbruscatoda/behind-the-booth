@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/components/ReviewForm.tsx'
       - 'src/components/ReviewPreviewDialog.tsx'
+      - 'src/components/ConfirmationDialog.tsx'
+      - 'src/app/admin/page.tsx'
       - 'src/app/globals.css'
       - 'src/lib/reviewCategories.ts'
       - 'src/app/markets/**/MarketProfileClient.tsx'
@@ -15,6 +17,8 @@ on:
     paths:
       - 'src/components/ReviewForm.tsx'
       - 'src/components/ReviewPreviewDialog.tsx'
+      - 'src/components/ConfirmationDialog.tsx'
+      - 'src/app/admin/page.tsx'
       - 'src/app/globals.css'
       - 'src/lib/reviewCategories.ts'
       - 'src/app/markets/**/MarketProfileClient.tsx'
