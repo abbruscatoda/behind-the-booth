@@ -17,16 +17,17 @@ import re
 from official_documents import export_url as public_doc_export_url, fetch_public_google_document
 
 MAX_PDF_BYTES = 2_500_000
-MAX_PAGES = 12
+MAX_PAGES = 16
 MAX_LINKS = 3
-MAX_TEXT = 24_000
+MAX_TEXT = 48_000
 
 PUBLIC_PDF_URL = re.compile(r"https://[^\s\"'<>\\]{8,1550}?\.pdf", re.I)
 
 FEE_LABEL = re.compile(
     r"\b(?:table of fees|vendor fee schedule|fee schedule|vendor fees|"
     r"booth fees|booth prices|pricing|fee details|space rates|"
-    r"vendor rates|craft fair fees|registration fees)\b", re.I
+    r"vendor rates|craft fair fees|registration fees|vendor guidelines|"
+    r"market rules|sample memo of understanding|download fees(?: pdf)?|fees)\b", re.I
 )
 
 
@@ -40,10 +41,22 @@ def _hosts(organizer_url):
 
 def _safe_pdf(url, organizer_url):
     p = urlparse(url)
+    # NC Agriculture serves its official fee PDFs through download endpoints.
+    # Accept only its two reviewed fee schedules, with the site's empty
+    # attachment flag; other queries and arbitrary download paths stay denied.
+    state_download = (p.hostname == 'www.ncagr.gov'
+        and urlparse(organizer_url).hostname == 'www.ncagr.gov'
+        and p.path in {'/marketing/sfm-fee-schedule/download',
+                       '/marketing/state-farmers-market-fees/download'}
+        and p.query in {'', 'attachment=', 'attachment'})
+    town_download = (p.hostname == 'www.hollyspringsnc.gov'
+        and urlparse(organizer_url).hostname == 'www.hollyspringsnc.gov'
+        and re.fullmatch(r'/DocumentCenter/View/[0-9]+/Season-[0-9]+-Fees-and-Schedule',p.path)
+        and not p.query)
     if (p.scheme != 'https' or p.hostname not in _hosts(organizer_url)
         or p.username or p.password or p.port not in (None, 443)
-        or p.query or p.fragment or len(url) > 1600
-        or not p.path.lower().endswith('.pdf')):
+        or (p.query and not state_download) or p.fragment or len(url) > 1600
+        or not (p.path.lower().endswith('.pdf') or state_download or town_download)):
         return False
     if p.hostname == 'static1.squarespace.com':
         return p.path.startswith('/static/')

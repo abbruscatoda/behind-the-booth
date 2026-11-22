@@ -1,4 +1,5 @@
 import { deadlineForInput } from "./opportunityDeadline";
+import { publishedPriceOptions, moneyAmount, type OpportunityFieldFacts } from "./opportunityFacts";
 
 type DeadlineDetails = {
  starts_on: string;
@@ -6,9 +7,19 @@ type DeadlineDetails = {
  deadline: string | null;
  fee_notes?: string;
  research_coverage?: {deadline?: {status?: string}};
+ field_facts?: OpportunityFieldFacts;
 };
 
 export function opportunityDeadline(item: DeadlineDetails) {
+  const field = item.field_facts?.deadline;
+  if (item.deadline === null && field?.status === "date_only" && field.date && /^20\d{2}-\d{2}-\d{2}$/.test(field.date)) {
+    const date = new Date(`${field.date}T00:00:00Z`);
+    if (Number.isFinite(date.getTime()) && date.toISOString().slice(0,10) === field.date) return {
+      label:"Application deadline",value:`${date.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"})} · time not specified`,
+      note:field.summary+(field.early_close ? " May close earlier if full." : ""),
+      calendarDate:field.date,sortAt:date.getTime(),
+    };
+  }
   if (item.schedule_type === 'recurring_season' && item.deadline === null) return {
     label: 'Application deadline', value: 'Applications accepted year-round',
     note: 'Applications currently lead to the organizer’s waiting list, not a guaranteed booth. No application deadline is listed.',sortAt: Infinity,
@@ -18,8 +29,8 @@ export function opportunityDeadline(item: DeadlineDetails) {
     note: 'This is an ongoing market, not a confirmed individual date or guaranteed booth. Confirm placement with the organizer.',sortAt: Infinity,
   };
   if (item.schedule_type === 'seasonal_application' && item.deadline === null) return {
-    label: 'Application deadline', value: 'Deadline not verified',
-    note: 'The organizer lists an active seasonal application, but the cutoff has not been independently verified from all application materials. Check the official form.',sortAt: Infinity,
+    label: 'Application deadline', value: item.field_facts?.deadline?.status === "not_listed" ? 'Not listed in checked materials' : 'Confirm with organizer',
+    note: item.field_facts?.deadline?.summary ?? 'The organizer lists an active seasonal application, but the cutoff could not be confirmed from all application materials. Check the official form.',sortAt: Infinity,
   };
   // An organizer may publish a day-only deadline without a clock time.
   // Show that confirmed date, but never fabricate a midnight/11:59 PM cutoff
@@ -70,7 +81,17 @@ export function publicOpportunityCopy(value: string): string {
 
 // The worker publishes both option prices together. Only show a range when its
 // minimum agrees with the saved fee; manual edits cannot leave a stale range.
-export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes: string; schedule_type?: string}) {
+export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes: string; schedule_type?: string; field_facts?: OpportunityFieldFacts}) {
+  const plans=publishedPriceOptions(item,"booth");
+  if (plans.length) {
+    const daily=plans.filter(plan=>plan.unit === "day"),season=plans.filter(plan=>plan.unit === "season");
+    const comparable=daily.length ? daily : plans;
+    const values=comparable.map(plan=>plan.amount),min=Math.min(...values),max=Math.max(...values);
+    const unit=comparable.every(plan=>plan.unit === "day") ? " / day" : comparable.every(plan=>plan.unit === "event") ? " / event" : "";
+    return {label:season.length && daily.length ? `${daily.every(plan=>/guest/i.test(plan.label)) ? "Guest-day" : "Daily"} / season options` : "Published booth options",value:`${min === max ? moneyAmount(min) : `${moneyAmount(min)}–${moneyAmount(max)}`}${unit}`,
+      note:season.length>2 ? "Season plans also available. See full details." : season.length ? season.map(plan=>`${plan.label}: ${moneyAmount(plan.amount)} (${plan.conditions})`).join(" · ") : plans.length>1 ? "Prices depend on the option and eligibility. See full details." : comparable[0].conditions};
+  }
+  if (item.booth_fee === null && item.field_facts?.pricing?.status === "varies_by_event") return {label:"Participation pricing",value:"Varies by event",note:item.field_facts.pricing.summary};
   // A documented seasonal price must never appear as one universal year-round fee.
   if (item.booth_fee !== null && /displayed (?:booth price|\$[\d.]+) is the winter rate/i.test(item.fee_notes)) {
     const summer = /\$([\d,]+(?:\.\d{1,2})?) per (?:stall|market day).*?summer market day/i.exec(item.fee_notes)
@@ -95,7 +116,7 @@ export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes
     : item.schedule_type === "rolling_market" && /(?:per[- ]event|each market|per market date)/i.test(item.fee_notes)
     ? "Booth fee per event"
     : /event-specific booth fee/i.test(item.fee_notes) ? "Event booth fee" : "Standard booth / table";
-  return {label,value:item.booth_fee === null ? "Not verified" : money(Number(item.booth_fee)),note:""};
+  return {label,value:item.booth_fee === null ? "Confirm with organizer" : money(Number(item.booth_fee)),note:""};
 }
 
 // Turn prose into readable bullets without guessing, truncating, or splitting
@@ -118,7 +139,7 @@ export function opportunityDetailBullets(value: string): string[] {
   return [...new Set(parts.map(part => part.replace(/^\s*[•]\s*/, "").trim()).filter(Boolean))];
 }
 
-export function opportunityDetailSections(item: {fee_notes: string; eligibility: string}) {
+export function opportunityDetailSections(item: {fee_notes: string; eligibility: string; field_facts?: OpportunityFieldFacts}) {
   const notes: string[] = [], seen = new Set<string>();
   const redundant = new Set([
     "The official event page lists an active application for this date.",
@@ -138,6 +159,7 @@ export function opportunityDetailSections(item: {fee_notes: string; eligibility:
       return [part];
     });
   }
-  const fees = bullets(item.fee_notes), requirements = bullets(item.eligibility);
+  const fees = bullets(item.fee_notes).filter(line => !(item.field_facts?.pricing_options?.length &&
+    (/\$/.test(line) || /exact cost not verified|no (?:single )?(?:universal|published) booth|fee schedules?.{0,30}dated/i.test(line)))), requirements = bullets(item.eligibility);
   return {fees, requirements, notes};
 }

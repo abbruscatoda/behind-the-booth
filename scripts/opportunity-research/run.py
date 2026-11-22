@@ -23,7 +23,7 @@ class Database:
   if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.supabase.co') or p.username or p.password or p.port not in (None,443) or p.path or p.query or p.fragment:raise ValueError('Set BTB_SUPABASE_URL to the project https://...supabase.co origin')
   if not self.key or len(self.secret)!=64:raise ValueError('Set BTB_SUPABASE_PUBLISHABLE_KEY and the dedicated BTB_RESEARCH_SECRET')
  def rpc(self,name,body=None):
-  if name not in {'btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads','btb_research_publish_ongoing','btb_research_market_gaps','btb_research_publish_verified_rolling','btb_research_publish_western_craft','btb_research_publish_official_program','btb_research_publish_market_catalog'}:raise ValueError('Worker RPC not allowed')
+  if name not in {'btb_research_fact_context','btb_research_record_facts','btb_research_context','btb_research_apply','btb_research_run','btb_research_record_discovery_leads','btb_research_record_discovery_leads_v2','btb_research_finalize_discovery_leads','btb_research_publish_discovery','btb_research_publish_form','btb_research_discovery_backlog','btb_research_publish_recurring','btb_research_publish_seasonal','btb_research_diagnose_leads','btb_research_publish_multidate','btb_research_reconcile_form_shortcuts','btb_research_coverage_context','btb_research_reconcile_covered_leads','btb_research_publish_ongoing','btb_research_market_gaps','btb_research_publish_verified_rolling','btb_research_publish_western_craft','btb_research_publish_official_program','btb_research_publish_market_catalog'}:raise ValueError('Worker RPC not allowed')
   # Credentials are sent only to the configured Supabase origin, never source pages.
   request=Request(self.url+'/rest/v1/rpc/'+name,data=json.dumps(body or {}).encode(),headers={'apikey':self.key,'Content-Type':'application/json','x-btb-research-secret':self.secret},method='POST')
   try:
@@ -462,6 +462,10 @@ def run(dry_run=False):
     'failure_reasons':getattr(fetcher,'browser_failures',{}),
     'attempt_limit':fetcher.browser_max_attempts,
     'brewgaloo_form_probe':form_probe}
+  # Independent request budget prevents broad discovery from starving the
+  # optional facts audit. No listing is opened/closed/published by this pass.
+  from fact_research import audit_published
+  discovery_stats['published_field_audit']=audit_published(db,Fetcher(limit=120),dry_run,now,context if dry_run else None)
   summary={'dry_run':dry_run,'counts':dict(counts),'issues':problems[:12],'source_requests':fetcher.requests,'discovery':discovery_stats}
   summary['failed']=bool(problems)
   if not dry_run:db.rpc('btb_research_run',{'p_id':run_id,'p_summary':summary})

@@ -38,3 +38,17 @@ The discovery registry also includes the Haven Farm venue calendar, official NC 
 Raleigh Retro Gamers currently embeds its vendor application on `/vendors/` (the old application URL redirects there). Its adapter checks the actual vendor form, enabled submission control, current intake statement and explicit free-application wording. It publishes general rolling intake, not a guaranteed event or booth. Booth fees stay unknown, the $0 is application-only, and the internal calendar-year verification horizon renews each year without fabricating event dates or a submission deadline. Closed-form evidence takes precedence over an old call for vendors. Workshop/retail-only forms, expired deadlines and social-media-only signups are not treated as confirmed open event applications.
 
 The source-sync deployment job also verifies and publishes the reviewed catalog and supported Retro intake, so these data additions do not require a frontend/Vercel build. The companion catalog and intake SQL scripts are applied to the connected production database; all publishers retain the worker-secret authorization.
+
+## Published field evidence and vendor-facing completeness
+
+Each worker run also audits optional fields on existing, visible published applications with its own bounded request budget. `fact_research.py` follows the exact organizer/application relationship and directly linked fee/rule documents. `opportunity-facts.yml` runs the same pass immediately when these rules change. It cannot publish/open a listing or override a manual hold.
+
+- Save date-only application deadlines as calendar dates with source evidence. Display the date without inventing 11:59 PM; close on the following local day. Event dates, opening dates and conflicting dates do not qualify.
+- Keep guest-day, attendance-tier, season-plan, resident-discount and application charges separate. Budget filtering considers eligible day/event options, not a whole-season price divided into invented daily rates.
+- Prefer the newest actually effective official rate sheet. Recognize reviewed government PDF download endpoints and ordinary link labels such as “Download Fees PDF”; follow only organizer-linked documents.
+- Distinguish an unreadable/partial form from a separate application fee not identified in readable materials. Neither establishes that applying is free. Zero requires explicit application-specific evidence.
+- Sample contracts are contextual reference only; their prices must never be promoted as confirmed rates for a future event.
+- Store source URL/hash, checked time, applicability and conditions. Public receipts expire after seven days and are invalidated by source/application/date/price changes. Hidden markets and private admin material remain inaccessible.
+- If previously sourced options or a calendar deadline disappear, keep the last still-valid evidence and record the regression for rechecking instead of silently deleting details.
+
+Regression fixtures: `test_fact_research.py` and `scripts/test_opportunity_facts.mjs` cover the Wake Forest November 27 cutoff, Fuquay guest/season plans, Western Wake regular/craft separation, the newer State Farmers Market schedule, blocked forms, free-application wording, sample contracts, category exclusions and budget/deadline filters.

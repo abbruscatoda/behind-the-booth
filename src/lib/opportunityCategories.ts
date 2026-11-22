@@ -32,7 +32,7 @@ export function activeCategoryEvidence(item: Opportunity, now = Date.now()): Rec
 export function opportunityCategoryStatus(item: Opportunity, category: string, now = Date.now()) {
   const evidence = activeCategoryEvidence(item, now);
   if (evidence[category]) return evidence[category].status;
-  if (item.categories.includes(category)) return "eligible";
+  if (item.categories.includes(category) || item.field_facts?.categories?.includes(category)) return "eligible";
   // All lists are partial. Only an explicit, fresh category fact can exclude a
   // type; absence from either a manual list or researched subset is unknown.
   return "unknown";
@@ -40,7 +40,7 @@ export function opportunityCategoryStatus(item: Opportunity, category: string, n
 
 export function listedOpportunityCategories(item: Opportunity, now = Date.now()) {
   const evidence = activeCategoryEvidence(item, now);
-  const listed = item.categories.filter(category => !evidence[category] || evidence[category].status === "eligible");
+  const listed = [...item.categories,...(item.field_facts?.categories ?? [])].filter(category => !evidence[category] || evidence[category].status === "eligible");
   return [...new Set([...listed, ...Object.keys(evidence).filter(category => evidence[category].status === "eligible")])];
 }
 

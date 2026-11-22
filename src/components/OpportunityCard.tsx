@@ -5,6 +5,7 @@ import { categoryEvidenceLabel, categoryHighlights, activeCategoryEvidence, list
 import { opportunityDeadline, opportunityBoothPrice } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
 import { isNewlyPosted } from "../lib/opportunityRecency";
+import { applicationFeePresentation, hasPublishedApplicationFee } from "../lib/opportunityFacts";
 import { fee, safeExternalUrl, statusLabel, type Opportunity } from "../lib/opportunities";
 
 /** Quick comparison card: verified facts first; detailed evidence lives in a modal. */
@@ -16,6 +17,8 @@ export default function OpportunityCard({
 }) {
  const deadline=opportunityDeadline(item);
  const booth=opportunityBoothPrice(item);
+ const applicationFee=applicationFeePresentation(item);
+ const showApplicationFee=hasPublishedApplicationFee(item);
  const listed=listedOpportunityCategories(item);
  const highlights=categoryHighlights(item);
  const evidence=activeCategoryEvidence(item);
@@ -53,11 +56,11 @@ export default function OpportunityCard({
      {!isRolling&&<p className="mt-2 text-xs leading-relaxed text-[#55554E]"><span className="font-semibold">{deadline.label}:</span> {deadline.value}</p>}
      {(isRolling||isProgram)&&<p className="mt-1 text-xs text-[#626C57]">Individual market dates and booths are subject to organizer approval.</p>}
    </div>
-   <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-y border-[#252521]/15 py-3">
+   <dl className={`mt-4 grid ${showApplicationFee ? "grid-cols-2" : "grid-cols-1"} gap-x-3 gap-y-2 border-y border-[#252521]/15 py-3`}>
      <div className="min-w-0"><dt className="text-[11px] font-medium text-[#626C57]">{booth.label}</dt><dd className="mt-1 text-base font-bold leading-tight text-[#252521]">{booth.value}</dd></div>
-     <div className="min-w-0"><dt className="text-[11px] font-medium text-[#626C57]">Application fee</dt><dd className="mt-1 text-sm font-semibold leading-snug">{item.application_fee === null ? "Not verified" : fee(item.application_fee)}</dd>{item.application_fee!==null&&/waived for current vendors/i.test(item.fee_notes)&&<p className="mt-1 text-[11px] leading-snug text-[#626C57]">Waived for current vendors</p>}</div>
-     {item.deposit!==null&&<div className="col-span-2 text-xs text-[#55554E]">Deposit: <span className="font-semibold">{fee(item.deposit)}</span></div>}
-     {booth.note&&<p className="col-span-2 text-xs text-[#07472B]">{booth.note}</p>}
+     {showApplicationFee&&<div className="min-w-0"><dt className="text-[11px] font-medium text-[#626C57]">Application fee</dt><dd className="mt-1 text-sm font-semibold leading-snug">{applicationFee.value}</dd>{item.application_fee!==null&&/waived for current vendors/i.test(item.fee_notes)&&<p className="mt-1 text-[11px] leading-snug text-[#626C57]">Waived for current vendors</p>}</div>}
+     {item.deposit!==null&&<div className="col-span-full text-xs text-[#55554E]">Deposit: <span className="font-semibold">{fee(item.deposit)}</span></div>}
+     {booth.note&&<p className="col-span-full text-xs text-[#07472B]">{booth.note}</p>}
    </dl>
    <p className="mt-3 text-xs leading-relaxed text-[#55554E]"><span className="font-semibold text-[#252521]">Vendor categories:</span> <span className="line-clamp-2">{categoryText}</span></p>
    {highlights.length>0&&<p className="mt-3 border-l-2 border-[#AD573B] pl-3 text-xs leading-relaxed text-[#55554E]"><strong>{highlights[0][0]}:</strong> {categoryEvidenceLabel(highlights[0][1])}{highlights.length>1?` · +${highlights.length-1} more notes`:""}</p>}

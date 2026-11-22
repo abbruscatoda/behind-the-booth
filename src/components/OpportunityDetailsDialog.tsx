@@ -3,10 +3,11 @@ import ExternalLinkIcon from "./ExternalLinkIcon";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { activeCategoryEvidence, categoryEvidenceLabel, categoryHighlights, listedOpportunityCategories } from "../lib/opportunityCategories";
-import { currentCoverage, coverageLabels, coverageStatus } from "../lib/researchCoverage";
+import { currentCoverage, coverageWithFieldFacts, coverageLabels, coverageStatus } from "../lib/researchCoverage";
 import { opportunityDeadline, opportunityBoothPrice, opportunityDetailSections } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
 import { fee, safeExternalUrl, statusLabel, type Opportunity } from "../lib/opportunities";
+import { applicationFeePresentation, moneyAmount } from "../lib/opportunityFacts";
 
 /** A native modal allows in-depth research without changing neighboring card heights. */
 export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunity;onClose:()=>void}) {
@@ -18,12 +19,14 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
  },[]);
  const deadline=opportunityDeadline(item);
  const booth=opportunityBoothPrice(item);
+ const applicationFee=applicationFeePresentation(item);
+ const priceOptions=item.field_facts?.pricing_options ?? [];
  const detail=opportunityDetailSections(item);
  const deadlineNotes=[...new Set([deadline.note,...detail.notes].filter(Boolean))];
  const evidence=activeCategoryEvidence(item);
  const listed=listedOpportunityCategories(item);
  const highlights=categoryHighlights(item);
- const coverage=currentCoverage(item.research_coverage);
+ const coverage=currentCoverage(coverageWithFieldFacts(item.research_coverage,item.field_facts));
  const actionUrl=safeExternalUrl(item.application_url);
  const sourceUrl=safeExternalUrl(item.source_url);
  const available=["open","limited","waitlist"].includes(item.effective_status);
@@ -50,8 +53,18 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
      {(item.schedule_type==="seasonal_application"||item.schedule_type==="recurring_season")&&<p className="mt-1 text-xs text-[#626C57]">Program coverage does not guarantee individual vending dates or booths.</p>}
     </div>
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">{booth.label}</p><p className="mt-1 font-semibold">{booth.value}</p>{booth.note&&<p className="mt-1 text-xs">{booth.note}</p>}</div>
-    <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">Application fee</p><p className="mt-1 font-semibold">{fee(item.application_fee)}</p>{item.deposit!==null&&<p className="mt-1">Deposit: {fee(item.deposit)}</p>}</div>
+    <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">Application fee</p><p className="mt-1 font-semibold">{applicationFee.value}</p>{applicationFee.note&&<p className="mt-1 text-xs">{applicationFee.note}</p>}{item.deposit!==null&&<p className="mt-1">Deposit: {fee(item.deposit)}</p>}</div>
    </div>
+   {priceOptions.length>0&&<section aria-label="Published pricing options">
+     <h3 className="font-semibold">Published pricing options</h3>
+     <p className="mt-1 text-xs text-[#626C57]">{item.field_facts?.pricing?.summary}</p>
+     <ul className="mt-3 space-y-3 text-sm">{priceOptions.map((option,index)=><li key={`${option.label}-${index}`} className="border-l-2 border-[#07472B]/30 pl-3">
+       <p><strong>{option.label}: {moneyAmount(option.amount)}</strong>{option.unit==="day"?" / day":option.unit==="event"?" / event":option.unit==="season"?" / season":option.unit==="application"?" to apply":""}{!option.applicable&&<strong> · {option.unavailable ? "Unavailable at source" : "Reference only"}</strong>}</p>
+       {option.conditions&&<p className="mt-1 text-xs text-[#55554E]">{option.conditions}</p>}
+       {safeExternalUrl(option.source_url)&&<a href={safeExternalUrl(option.source_url)!} target="_blank" rel="noopener noreferrer" className="text-xs text-[#07472B] underline">Official price source <ExternalLinkIcon /></a>}
+     </li>)}</ul>
+   </section>}
+   {item.field_facts?.requirements?.summary&&<section><h3 className="font-semibold">Application-specific requirements</h3><p className="mt-2 text-sm leading-relaxed">{item.field_facts.requirements.summary}</p></section>}
    {highlights.length>0&&<div className="border-l-2 border-[#AD573B] bg-[#F4F0E6] px-4 py-3">
     <h3 className="font-semibold">Important category notes</h3>
     <ul className="mt-2 list-disc space-y-2 pl-4 text-sm leading-relaxed">{highlights.map(([category,entry])=><li key={category}>

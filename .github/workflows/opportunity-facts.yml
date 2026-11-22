@@ -1,0 +1,45 @@
+name: Audit published opportunity facts
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/opportunity-research/fact_research.py'
+      - 'scripts/opportunity-research/audit_published_facts.py'
+      - 'scripts/opportunity-research/official_fee_documents.py'
+      - '.github/workflows/opportunity-facts.yml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Read official sources without saving changes
+        type: boolean
+        default: true
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: btb-published-field-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test source-scoped field extraction
+        run: python3 -m unittest discover -s scripts/opportunity-research -p 'test_*.py'
+      - name: Install PDF reader
+        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - name: Research official applications and linked documents
+        env:
+          BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
+          BTB_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.BTB_SUPABASE_PUBLISHABLE_KEY }}
+          BTB_RESEARCH_SECRET: ${{ secrets.BTB_RESEARCH_SECRET }}
+          BTB_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          if [ "$BTB_DRY_RUN" = "true" ]; then
+            python3 scripts/opportunity-research/audit_published_facts.py --dry-run
+          else
+            python3 scripts/opportunity-research/audit_published_facts.py
+          fi

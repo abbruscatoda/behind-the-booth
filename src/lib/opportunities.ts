@@ -3,12 +3,14 @@ import { opportunityCategoryStatus, type CategoryEvidence } from "./opportunityC
 import { opportunityDeadline } from "./opportunityPresentation";
 import { deadlineForInput } from "./opportunityDeadline";
 import { firstPublishedTime, isNewlyPosted, isPostedSince } from "./opportunityRecency";
+import { comparableBoothFee, publishedPriceOptions, type OpportunityFieldFacts } from "./opportunityFacts";
 
 export const VENDOR_CATEGORIES = ["Food & Beverages", "Food Trucks", "Art & Photography", "Handmade Crafts", "Jewelry & Accessories", "Clothing & Vintage", "Bath, Body & Beauty", "Plants & Farm Products", "Pet Products", "Services", "Other"];
 export type Opportunity = {
  id: string; title: string; organizer: string; city: string; state: string; venue: string;
  starts_on: string; ends_on: string; schedule_type?: 'dated_event' | 'recurring_season' | 'seasonal_application' | 'rolling_market'; deadline: string | null; application_url: string; source_url: string;
  research_coverage?: ResearchCoverage;
+ field_facts?: OpportunityFieldFacts;
  category_evidence?: Record<string, CategoryEvidence>;
  categories: string[]; booth_fee: number | null; application_fee: number | null; deposit: number | null;
  fee_notes: string; eligibility: string; verified_at: string | null; published_at?: string | null; effective_status: string;
@@ -53,15 +55,18 @@ export function filterOpportunities(
   if (filters.schedule === "ongoing" && item.schedule_type !== "rolling_market") return false;
   if (filters.schedule === "seasonal" && !["recurring_season","seasonal_application"].includes(item.schedule_type ?? "")) return false;
   if (filters.schedule === "dated" && item.schedule_type !== "dated_event" && item.schedule_type !== undefined) return false;
-  if (filters.priceAvailability === "published" && item.booth_fee === null) return false;
-  if (filters.priceAvailability === "unpublished" && item.booth_fee !== null) return false;
+  const boothPrice=comparableBoothFee(item);
+  const hasPublishedPrice=boothPrice !== null || publishedPriceOptions(item,"booth").length>0;
+  if (filters.priceAvailability === "published" && !hasPublishedPrice) return false;
+  if (filters.priceAvailability === "unpublished" && hasPublishedPrice) return false;
   // Never treat a missing or category-specific fee as a free booth.
   if (max !== null && Number.isFinite(max) && max >= 0 &&
-      (item.booth_fee === null || item.booth_fee > max)) return false;
+      (boothPrice === null || boothPrice > max)) return false;
   if (filters.deadlineBefore) {
-   const cutoff = opportunityDeadline(item).sortAt;
+   const deadline = opportunityDeadline(item);
+   const cutoff = deadline.sortAt;
    // Unknown / series deadlines are not confirmed to fall before the date.
-   if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.deadlineBefore) || !Number.isFinite(cutoff) || deadlineForInput(item.deadline ?? "") > filters.deadlineBefore) return false;
+   if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.deadlineBefore) || !Number.isFinite(cutoff) || ("calendarDate" in deadline ? String(deadline.calendarDate) : deadlineForInput(item.deadline ?? "")) > filters.deadlineBefore) return false;
   }
   return true;
  });
@@ -72,7 +77,7 @@ export function sortOpportunities(items: Opportunity[], sort: OpportunitySort): 
  return [...items].sort((a,b) => {
   if (sort === "posted_desc") return (firstPublishedTime(b) ?? 0) - (firstPublishedTime(a) ?? 0) || dateOrder(a,b);
   if (sort === "deadline") return opportunityDeadline(a).sortAt - opportunityDeadline(b).sortAt || dateOrder(a,b);
-  if (sort === "fee_asc") return (a.booth_fee ?? Infinity) - (b.booth_fee ?? Infinity) || dateOrder(a,b);
+  if (sort === "fee_asc") return (comparableBoothFee(a) ?? Infinity) - (comparableBoothFee(b) ?? Infinity) || dateOrder(a,b);
   if (sort === "rating_desc") return (b.history.review_count ? (b.history.overall ?? -1) : -1) - (a.history.review_count ? (a.history.overall ?? -1) : -1) || dateOrder(a,b);
   return dateOrder(a,b);
  });
