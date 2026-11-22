@@ -97,6 +97,9 @@ begin
   where c not in ('Food & Beverages','Food Trucks','Art & Photography','Handmade Crafts','Jewelry & Accessories','Clothing & Vintage','Bath, Body & Beauty','Plants & Farm Products','Pet Products','Services','Other'))
  then raise exception 'Unknown category in field evidence' using errcode='22023';end if;
  select receipt into previous from btb_private.opportunity_field_facts where opportunity_id=o.id;
+ if (previous->>'checked_at')::timestamptz>checked then
+  return jsonb_build_object('action','skipped','reason','Newer field evidence already stored');
+ end if;
  -- Keep the last good, still time-limited evidence when a formerly readable
  -- section disappears. Record the regression; do not silently erase it.
  if previous is not null and (

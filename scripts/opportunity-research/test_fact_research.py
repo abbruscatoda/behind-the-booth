@@ -1,5 +1,6 @@
 """Regression fixtures for the actual missing-field failures vendors reported."""
 import unittest
+from unittest.mock import patch
 from datetime import datetime,timezone
 from verifier import Document,valid_url,Uncertain
 from fact_research import audit_item,audit_published,date_only_deadline
@@ -69,6 +70,14 @@ class OptionalFactTests(unittest.TestCase):
         self.assertEqual(facts['application_fee']['status'],'not_listed')
         self.assertIn('Food & Beverages',facts['categories'])
 
+    def test_jotform_published_choices_and_guest_only_artisan_restriction(self):
+        source=f'<a href="{FVG_APP}">New Vendor Application</a>'
+        app='<h1>2027 NEW Vendor Application</h1><p>Full-time, $260 (22 Saturdays). Part-time, $180 (11 Saturdays). Guest $30 per day. Artisans may only apply as guest vendors.</p><input type="checkbox" value="Category 2: Processed/Prepared Food &amp; Beverage"><input type="checkbox" value="Category 4: Non-Edible Craft and Artisan Products"><input type="hidden" value="Category 1: Raw or minimally processed farm products"><button>Submit</button>'
+        facts=audit_item(item(FVG_SOURCE,FVG_APP,'fuquay-varina-growers-market'),Fetch({FVG_SOURCE:source,FVG_APP:app}),NOW,documents())['facts']
+        self.assertEqual(facts['categories'],['Food & Beverages','Handmade Crafts'])
+        self.assertIn('Artisans may apply only as guest',facts['restrictions'][0])
+        self.assertTrue(all('artisans are not eligible' in option['conditions'] for option in facts['pricing_options'] if option['unit']=='season'))
+
     def test_wake_public_deadline_survives_dynamic_form(self):
         source=f'<p>Beginning Monday, Nov. 9, 2026, the department accepts applications for 2027 PRCR events. The online application will be activated through Friday, Nov. 27.</p><a href="{COGNITO}">Application</a><p>There typically is a vendor fee associated with participation at events.</p>'
         pdf='Fee Structure $40 | $30 RD (Event - 4 Hours) $175 | $150 RD (Special Event) Hold Harmless'
@@ -131,6 +140,16 @@ class OptionalFactTests(unittest.TestCase):
     def test_unlinked_application_cannot_be_used_as_evidence(self):
         with self.assertRaises(Uncertain):
             audit_item(item(FVG_SOURCE,FVG_APP),Fetch({FVG_SOURCE:'<p>Market</p>',FVG_APP:'<p>Some unrelated form</p>'}),NOW,documents())
+
+    def test_short_link_identity_is_distinct_from_form_openness_or_booth_cost(self):
+        source='https://www.artsplosure.org/first-night-raleigh'
+        app='https://docs.google.com/forms/d/e/1FAIpQLScPXt0euH9ziXcAR3tA9BkXTQ4qtnTK9V6aqttIYbxlittBlA/viewform'
+        html='<p>First Night Raleigh December 31, 2026. Submit a $200 (food vendor) or $50 (novelty vendor) refundable deposit.</p><a href="https://forms.gle/e8JRmQUUcEirUzzY9">Apply Here</a>'
+        with patch('lead_reconciliation.resolve_shortcut',return_value=app):
+            receipt=audit_item(item(source,app,'first-night-raleigh',starts_on='2026-12-31'),Fetch({source:html,app:OSError('Not readable')}),NOW,documents())
+        self.assertEqual(receipt['facts']['application_access'],'access_limited')
+        self.assertTrue(all(p['kind']=='addon' for p in receipt['facts']['pricing_options']))
+        self.assertEqual([p['amount'] for p in receipt['facts']['pricing_options']],[200,50])
 
     def test_dry_run_reads_context_and_sources_without_writes(self):
         calls=[]

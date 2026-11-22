@@ -5,6 +5,7 @@ application, dates and source hash. Multiple prices retain their units and
 conditions. A sign-in wall is never evidence that a fee is absent or free.
 """
 from datetime import datetime, date, timezone
+from zoneinfo import ZoneInfo
 from urllib.parse import urlparse,urljoin
 import re
 
@@ -84,6 +85,7 @@ def western_regular_options(text, proof):
         if not m:raise Uncertain('The linked regular-vendor fee schedule changed.')
         out.append(_option(label,m[2] if kind=='booth' else m[1],unit,proof,
             (f'{"Fewer than" if label=="Guest vendor" else "At least"} {m[1]} attendance days per year') if kind=='booth' else 'Nonrefundable; confirm the applicable applicant type',kind))
+        out[-1]['excerpt']=m.group(0)[:350]
     return out
 
 def state_fee_options(text, proof):
@@ -102,7 +104,7 @@ def state_fee_options(text, proof):
         m=re.search(pattern,text,re.I)
         if not m:raise Uncertain('Current state-market fee rows are not fully readable.')
         for amount,season in [(m[1],'April–December'),(m[2],'January–March')]:
-            options.append(_option(label,amount,'day',proof,f'{condition}; {season}; per selling space. Out-of-state rates are double.'))
+            options.append(_option(label,amount,'day',{**proof,'excerpt':m.group(0)[-350:]},f'{condition}; {season}; per selling space. Out-of-state rates are double.'))
     return effective_day,options
 
 def audit_item(item, fetcher, now=None, document_inspector=inspect_official_fee_documents):
@@ -132,8 +134,15 @@ def audit_item(item, fetcher, now=None, document_inspector=inspect_official_fee_
     # exact linked form, or an exact Eventeny app naming the saved market.
     app_title=norm(item['title'].split(' — ')[0])
     eventeny=urlparse(application).hostname in {'www.eventeny.com','eventeny.com'}
-    if (application!=source and not linked_application(root,source,application)
-        and not (eventeny and app is not None and app_title in norm(app_text))):
+    bound=(application==source or linked_application(root,source,application)
+        or (eventeny and app is not None and app_title in norm(app_text)))
+    if not bound and urlparse(application).hostname=='docs.google.com':
+        from lead_reconciliation import resolve_shortcut,google_form_identity
+        target=google_form_identity(application)
+        for shortcut in [url for url in root.root.links(source) if urlparse(url).hostname=='forms.gle'][:3]:
+            if target and resolve_shortcut(shortcut,fetcher)==target:
+                bound=True;break
+    if not bound:
         # Western Wake's two organizer-advertised short links identify the same
         # already reviewed craft form. The existing dedicated adapter checks it.
         if not (item.get('verification_policy')=='western-wake-craft-official-v1' and 'register here' in root_text.lower()):
@@ -166,7 +175,7 @@ def audit_item(item, fetcher, now=None, document_inspector=inspect_official_fee_
         for document in documents['documents']:
             try:
                 effective,plans=state_fee_options(' '.join(document['text'].split()),_proof(document['url'],document['hash'],document['text'][:350]))
-                if effective<=now.date():candidates.append((effective,plans))
+                if effective<=now.astimezone(ZoneInfo('America/New_York')).date():candidates.append((effective,plans))
             except (ValueError,Uncertain):continue
         if candidates:
             effective,options=max(candidates,key=lambda p:p[0]);costs_status='options'
@@ -186,7 +195,7 @@ def audit_item(item, fetcher, now=None, document_inspector=inspect_official_fee_
         match=re.search(r'Nov\.?\s+9,\s*(20\d{2}).{0,600}?application will be activated through Friday,?\s*Nov\.?\s+(\d{1,2})',root_text,re.I)
         if match:
             cutoff=date(int(match[1]),11,int(match[2])).isoformat()
-            facts['deadline']={'status':'date_only','date':cutoff,'summary':'The town publishes the closing date without a cutoff time.',**_proof(source,root_hash,match[0])}
+            facts['deadline']={'status':'date_only','date':cutoff,'summary':'The town publishes the closing date without a cutoff time.',**_proof(source,root_hash,match[0][:30]+' … '+match[0][-190:])}
         costs_status='varies_by_event';costs_summary='The town says participation fees apply to individual events. Confirm the fee for your assigned 2027 event.'
         for document in documents['documents']:
             text=' '.join(document['text'].split())
@@ -195,6 +204,13 @@ def audit_item(item, fetcher, now=None, document_inspector=inspect_official_fee_
                 for m in re.finditer(r'\$(\d+)\s*\|\s*\$(\d+)\s*RD\s*\(([^)]+)\)',section[1],re.I):
                     p=_proof(document['url'],document['hash'],section[0])
                     options.extend([_option(m[3].strip(),m[1],'program',p,'Sample town agreement; confirm the rate for the 2027 event.',applicable=False),_option(m[3].strip()+' · resident',m[2],'program',p,'Sample agreement resident discount for Wake Forest taxpayers; confirm eligibility and current event rate.',applicable=False)])
+    if key=='first-night-raleigh' and re.search(r'December\s+31,?\s+'+item['starts_on'][:4],root_text,re.I):
+        deposits=re.search(r'\$(\d+)\s*\(food vendor\)\s*or\s*\$(\d+)\s*\(novelty vendor\)\s*refundable deposit',root_text,re.I)
+        if deposits:
+            p=_proof(source,root_hash,deposits[0])
+            options=[_option('Food-vendor refundable deposit',deposits[1],'program',p,'Refundable deposit, not the total booth fee. Read the organizer refund and payment terms.',kind='addon'),
+                     _option('Novelty-vendor refundable deposit',deposits[2],'program',p,'Refundable deposit, not the total booth fee. Read the organizer refund and payment terms.',kind='addon')]
+            costs_status='options';costs_summary='These are category-specific refundable deposits. A total booth or participation charge could not be confirmed from the readable materials.'
     if not facts.get('deadline') and item.get('deadline') is None:
         # A deadline on the verified organizer page can be usable even when
         # a Google/Cognito form cannot be read; do not invent its exact time.
@@ -237,9 +253,19 @@ def audit_item(item, fetcher, now=None, document_inspector=inspect_official_fee_
     # A reviewed, explicit application category invitation is safe even if the
     # source's form widget omits its category question choices.
     facts['categories']=[]
+    facts['restrictions']=[]
     if key=='fuquay-varina-growers-market':
+        # Jotform puts its published checkbox text in input values while the
+        # visual duplicate is aria-hidden. Read authored choices, never answers,
+        # hidden inputs, disabled choices or unrelated script state.
+        category_text=app_text+' '+' '.join(n.attrs.get('value','') for n,_ in nodes_with_parents(app.root)
+            if n.tag=='input' and n.attrs.get('type') in {'checkbox','radio'} and n.attrs.get('value','').startswith('Category ')) if app is not None else app_text
         for category,pattern in [('Food & Beverages',r'Category 2:\s*Processed/Prepared Food & Beverage'),('Handmade Crafts',r'Category 4:\s*Non.Edible Craft and Artisan Products'),('Plants & Farm Products',r'Category 1:\s*Raw or minimally processed farm products')]:
-            if re.search(pattern,app_text,re.I):facts['categories'].append(category)
+            if re.search(pattern,category_text,re.I):facts['categories'].append(category)
+        if re.search(r'Artisans may only apply as guest vendors',app_text,re.I):
+            facts['restrictions'].append('Artisans may apply only as guest vendors; season plans are for other eligible vendor types.')
+            for option in options:
+                if option['unit']=='season':option['conditions']+='; artisans are not eligible for this plan'
     if eventeny and 'heart' in item['title'].lower() and re.search(r'Create original, handmade, or artist.designed work',app_text,re.I):
         invitation=re.search(r'We strongly encourage applications from artists working in:(.+?)(?:The more unique|Important Values|Application Review)',app_text,re.I)
         if invitation:

@@ -11,6 +11,7 @@ export type OpportunityFieldFacts = {
   application_fee?: FieldProof & {status: "confirmed" | "options" | "not_listed" | "access_limited"; amount?: number};
   deadline?: FieldProof & {status: "date_only" | "rolling" | "not_listed" | "access_limited"; date?: string; early_close?: boolean};
   categories?: string[];
+  restrictions?: string[];
   requirements?: FieldProof;
   application_access?: string;
 };

@@ -55,6 +55,7 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">{booth.label}</p><p className="mt-1 font-semibold">{booth.value}</p>{booth.note&&<p className="mt-1 text-xs">{booth.note}</p>}</div>
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">Application fee</p><p className="mt-1 font-semibold">{applicationFee.value}</p>{applicationFee.note&&<p className="mt-1 text-xs">{applicationFee.note}</p>}{item.deposit!==null&&<p className="mt-1">Deposit: {fee(item.deposit)}</p>}</div>
    </div>
+   {item.field_facts?.restrictions?.map((restriction,index)=><p key={index} className="border-l-2 border-[#AD573B] pl-3 text-sm font-semibold">{restriction}</p>)}
    {priceOptions.length>0&&<section aria-label="Published pricing options">
      <h3 className="font-semibold">Published pricing options</h3>
      <p className="mt-1 text-xs text-[#626C57]">{item.field_facts?.pricing?.summary}</p>

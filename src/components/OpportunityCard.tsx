@@ -63,6 +63,7 @@ export default function OpportunityCard({
      {booth.note&&<p className="col-span-full text-xs text-[#07472B]">{booth.note}</p>}
    </dl>
    <p className="mt-3 text-xs leading-relaxed text-[#55554E]"><span className="font-semibold text-[#252521]">Vendor categories:</span> <span className="line-clamp-2">{categoryText}</span></p>
+   {item.field_facts?.restrictions?.map((restriction,index)=><p key={index} className="mt-3 border-l-2 border-[#AD573B] pl-3 text-xs font-semibold leading-relaxed text-[#55554E]">{restriction}</p>)}
    {highlights.length>0&&<p className="mt-3 border-l-2 border-[#AD573B] pl-3 text-xs leading-relaxed text-[#55554E]"><strong>{highlights[0][0]}:</strong> {categoryEvidenceLabel(highlights[0][1])}{highlights.length>1?` · +${highlights.length-1} more notes`:""}</p>}
    {selected?.note&&!highlights.some(([category])=>category===categoryFilter)&&<p className="mt-2 line-clamp-2 text-xs leading-relaxed text-[#626C57]">{selected.note}</p>}
    <p className="mt-3 text-xs text-[#626C57]">{item.history.review_count>0?`${item.history.overall?.toFixed(1)??"—"}/5 · ${item.history.review_count} vendor ${item.history.review_count===1?"review":"reviews"}`:"No vendor reviews yet"}</p>

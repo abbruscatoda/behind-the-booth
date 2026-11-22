@@ -89,7 +89,7 @@ export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes
     const values=comparable.map(plan=>plan.amount),min=Math.min(...values),max=Math.max(...values);
     const unit=comparable.every(plan=>plan.unit === "day") ? " / day" : comparable.every(plan=>plan.unit === "event") ? " / event" : "";
     return {label:season.length && daily.length ? `${daily.every(plan=>/guest/i.test(plan.label)) ? "Guest-day" : "Daily"} / season options` : "Published booth options",value:`${min === max ? moneyAmount(min) : `${moneyAmount(min)}–${moneyAmount(max)}`}${unit}`,
-      note:season.length>2 ? "Season plans also available. See full details." : season.length ? season.map(plan=>`${plan.label}: ${moneyAmount(plan.amount)} (${plan.conditions})`).join(" · ") : plans.length>1 ? "Prices depend on the option and eligibility. See full details." : comparable[0].conditions};
+      note:season.length>2 ? "Season plans also available. See full details." : season.length ? season.map(plan=>`${plan.label}: ${moneyAmount(plan.amount)} (${plan.conditions.replace(/; artisans are not eligible for this plan/,"")})`).join(" · ") : plans.length>1 ? "Prices depend on the option and eligibility. See full details." : comparable[0].conditions};
   }
   if (item.booth_fee === null && item.field_facts?.pricing?.status === "varies_by_event") return {label:"Participation pricing",value:"Varies by event",note:item.field_facts.pricing.summary};
   // A documented seasonal price must never appear as one universal year-round fee.
