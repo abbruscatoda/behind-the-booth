@@ -1,0 +1,48 @@
+name: Membership and alert checks
+on:
+  push:
+    paths:
+      - 'src/components/Opportunity*'
+      - 'src/lib/accountLinks.ts'
+      - 'src/app/login/**'
+      - 'src/app/auth/callback/**'
+      - 'src/app/verify/**'
+      - 'src/app/unsubscribe/**'
+      - 'supabase/migrations/*membership*'
+      - 'supabase/functions/opportunity-alerts/**'
+      - 'scripts/test_membership.mjs'
+      - 'scripts/fixtures/membership.sql'
+      - '.github/workflows/membership-check.yml'
+      - 'package-lock.json'
+  pull_request:
+    paths:
+      - 'src/components/Opportunity*'
+      - 'src/lib/accountLinks.ts'
+      - 'src/app/login/**'
+      - 'src/app/auth/callback/**'
+      - 'src/app/verify/**'
+      - 'src/app/unsubscribe/**'
+      - 'supabase/migrations/*membership*'
+      - 'supabase/functions/opportunity-alerts/**'
+      - 'scripts/test_membership.mjs'
+      - 'scripts/fixtures/membership.sql'
+      - '.github/workflows/membership-check.yml'
+      - 'package-lock.json'
+permissions:
+  contents: read
+jobs:
+  access-and-alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: node --experimental-strip-types --test scripts/test_membership.mjs

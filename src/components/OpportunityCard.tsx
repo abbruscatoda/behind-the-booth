@@ -47,6 +47,7 @@ export default function OpportunityCard({
      <span className={`rounded-sm border px-2 py-0.5 text-[11px] font-semibold leading-snug ${statusTone}`}>{statusLabel(item.effective_status)}</span>
    </div>
    <div className="mt-2 h-px bg-[#252521]/15" />
+   {item.access==="example"&&<p className="mt-2 text-xs font-semibold text-[#07472B]">Complete example · Real opportunity</p>}
    <h2 className="mt-3 font-serif text-[1.45rem] font-bold leading-[1.13] tracking-[-0.015em]"><Link href={`/markets/${item.market_slug}`} className="text-inherit underline-offset-4 hover:text-[#07472B] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">{displayTitle}</Link></h2>
    {item.organizer && item.organizer.toLocaleLowerCase()!==displayTitle.toLocaleLowerCase()&&<p className="mt-1.5 line-clamp-2 text-xs font-semibold text-[#07472B]">By {item.organizer}</p>}
    <p className="mt-1.5 text-[13px] leading-snug text-[#55554E]"><span className="font-medium">{item.city}, {item.state}</span>{item.venue && item.venue.toLocaleLowerCase()!==`${item.city}, ${item.state}`.toLocaleLowerCase()&&<> <span aria-hidden="true">·</span> <span className="text-[#626C57]">{item.venue}</span></>}</p>

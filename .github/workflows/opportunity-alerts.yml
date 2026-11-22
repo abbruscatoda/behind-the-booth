@@ -1,0 +1,38 @@
+name: Optional opportunity email digests
+on:
+  schedule:
+    # After the existing morning/afternoon discovery runs. Delivery is capped
+    # to one digest per member per Eastern calendar day by the database.
+    - cron: '55 13,17 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Check configuration without claiming jobs or sending email'
+        type: boolean
+        default: true
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: optional-opportunity-digests
+  cancel-in-progress: false
+jobs:
+  deliver:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Deliver only opted-in opportunity updates
+        env:
+          BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
+          BTB_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.BTB_SUPABASE_PUBLISHABLE_KEY }}
+          BTB_RESEARCH_SECRET: ${{ secrets.BTB_RESEARCH_SECRET }}
+          BTB_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          if [ "$BTB_DRY_RUN" = "true" ]; then
+            python3 scripts/run_opportunity_alerts.py --dry-run
+          else
+            python3 scripts/run_opportunity_alerts.py
+          fi

@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createClient } from "../../lib/supabase/client";
 
 import MySavedOpportunities from "../../components/MySavedOpportunities";
 import MyReviews from "../../components/MyReviews";
+import OpportunityAlertSettings from "../../components/OpportunityAlertSettings";
+import { AUTH_RETURN_COOKIE, safeReturnPath } from "../../lib/accountLinks";
 
 type Mode = "signin" | "signup";
 type VendorProfile = {
@@ -14,6 +17,7 @@ type VendorProfile = {
 };
 
 export default function LoginPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,10 +31,14 @@ export default function LoginPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileRefresh, setProfileRefresh] = useState(0);
+  const [returnTo, setReturnTo] = useState<string | null>(null);
   const submitting = useRef(false);
   const signedIn = userId !== null;
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("mode") === "signup") setMode("signup");
+    setReturnTo(safeReturnPath(params.get("next")));
     const supabase = createClient();
     let active = true;
     let authChanged = false;
@@ -54,6 +62,10 @@ export default function LoginPage() {
     void checkUser();
     return () => { active = false; subscription.unsubscribe(); };
   }, []);
+
+  useEffect(() => {
+    if (!checking && userId && returnTo) router.replace(returnTo);
+  }, [checking, userId, returnTo, router]);
 
   useEffect(() => {
     let active = true;
@@ -98,6 +110,9 @@ export default function LoginPage() {
     try {
       const supabase = createClient();
       if (mode === "signup") {
+        // Keep the existing allowed confirmation URL. The same-browser PKCE
+        // flow carries its validated destination in a short-lived cookie.
+        document.cookie = `${AUTH_RETURN_COOKIE}=${encodeURIComponent(returnTo ?? "/login")}; Path=/auth/callback; Max-Age=3600; SameSite=Lax${window.location.protocol === "https:" ? "; Secure" : ""}`;
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(), password,
           options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
@@ -162,10 +177,10 @@ export default function LoginPage() {
   const statusDescription = status === "approved"
     ? "Your vendor account is approved. You can submit firsthand market reviews for moderation."
     : status === "pending"
-      ? "Your application has been received and is waiting for review. You can keep reading full market reports while you wait."
+      ? "Your verification is waiting for review. Your full opportunity access, saved opportunities, and market reports are already available."
       : status === "rejected"
         ? "Your vendor application was not approved. You can still read full market reports. Application editing and resubmission are not available yet."
-        : "Want to share your own experience? Apply for vendor verification before submitting reviews. You can already read full market reports.";
+        : "Verify your business privately to share publicly anonymous market reviews and help fellow vendors make informed decisions. Your full opportunity access is already available.";
 
   return (
     <main className="flex-1 bg-[#F4F0E6] text-[#252521]">
@@ -175,15 +190,16 @@ export default function LoginPage() {
       <section className="mx-auto max-w-2xl px-6 py-14 md:py-20">
         <p className="heritage-label">{signedIn ? "My Account" : "The Vendor Community"}</p>
         <h1 className="heritage-heading mt-5 text-4xl md:text-5xl">{signedIn ? "Welcome back." : mode === "signup" ? "Join the conversation." : "Take your place."}</h1>
-        <p className="mt-6 leading-relaxed text-[#55554E]">Your free account unlocks full vendor reports and approved reviews. Reviews do not publicly display your account name or email. Vendor verification is required to submit reviews.</p>
+        <p className="mt-6 leading-relaxed text-[#55554E]">Create your free account to compare full opportunity details, save your shortlist, and read firsthand vendor reviews. Access starts after signup and email confirmation. Verify your business privately when you are ready to share your own publicly anonymous reviews.</p>
+        {!signedIn&&returnTo&&<p className="mt-3 text-sm text-[#07472B]">After signing in, you will return to the page you selected.</p>}
 
         {checking ? <p className="mt-10 text-[#55554E]" role="status">Checking your sign-in...</p> : signedIn ? (
           <div className="mt-8 space-y-4">
             <section className="border border-[#252521]/20 bg-[#FFFCF6] p-5 sm:p-6">
               <p className="heritage-label">Free Membership</p>
-              <h2 className="mt-3 font-serif text-2xl font-bold">Your full vendor report access is active.</h2>
-              <p className="mt-3 text-sm leading-relaxed text-[#55554E]">Read approved reviews, explore all five rating breakdowns, compare reported booth costs within a market, and see whether vendors would return.</p>
-              <Link href="/markets" className="heritage-button mt-5 inline-block">Explore Markets →</Link>
+              <h2 className="mt-3 font-serif text-2xl font-bold">Your full member access is active.</h2>
+              <p className="mt-3 text-sm leading-relaxed text-[#55554E]">Compare opportunity fees, deadlines, requirements, and official applications. Read full market reports and save places you would like to sell.</p>
+              <div className="mt-5 flex flex-wrap items-center gap-5"><Link href="/opportunities" className="heritage-button">Find Vendor Opportunities</Link><Link href="/markets" className="inline-flex min-h-11 items-center text-sm font-semibold text-[#07472B] underline">Explore Markets</Link></div>
             </section>
 
             <section className="border border-[#252521]/20 p-5 sm:p-6" aria-labelledby="vendor-status-heading">
@@ -209,6 +225,7 @@ export default function LoginPage() {
               )}
               <p className="mt-5 border-t border-[#252521]/15 pt-4 text-xs leading-relaxed text-[#626C57]">Business information submitted for verification stays private. Email confirmation verifies your email address; vendor approval is a separate review.</p>
             </section>
+            <OpportunityAlertSettings key={`alerts-${userId}`} />
             <MySavedOpportunities key={`saved-${userId}`} />
             <MyReviews key={userId} />
             <button type="button" onClick={handleSignOut} disabled={busy} className="mt-3 text-sm font-semibold text-[#07472B] underline underline-offset-4 disabled:opacity-50">{busy ? "Please wait..." : "Sign Out"}</button>

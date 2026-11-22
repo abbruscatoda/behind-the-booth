@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import OpportunityCard from "./OpportunityCard";
 import OpportunityDetailsDialog from "./OpportunityDetailsDialog";
+import OpportunityPreviewCard from "./OpportunityPreviewCard";
+import { accountLink } from "../lib/accountLinks";
 import { createClient } from "../lib/supabase/client";
 import { isNewlyPosted, isPostedSince } from "../lib/opportunityRecency";
 import { opportunityCategoryStatus } from "../lib/opportunityCategories";
@@ -27,6 +29,8 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  const [moreFiltersOpen,setMoreFiltersOpen]=useState(false);
  const [lastVisit,setLastVisit]=useState<string|null>(null);
  const [reviewedAt,setReviewedAt]=useState(0);
+ const [member,setMember]=useState(false);
+ const [vendorStatus,setVendorStatus]=useState<string|null>(null);
  const moreFiltersId=useId();
  useEffect(()=>{
   if(message&&messageOpportunityId)document.getElementById(`opportunity-save-message-${messageOpportunityId}`)?.scrollIntoView({block:"nearest"});
@@ -72,13 +76,13 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
   try{await navigator.clipboard.writeText(url.href);setShareMessage(filters.posted==="since"?"Search link copied. The since-last-visit view is specific to this browser, so it is not included in the link.":"Search link copied.");}
   catch{setShareMessage("Unable to copy automatically. Copy the address from your browser.");}
  }
- useEffect(()=>{let active=true;const client=createClient();const subscription=client.auth.onAuthStateChange(()=>{if(active)setSaved([]);});
- async function load(){setLoading(true);setError("");try{let all:Opportunity[]=[];let offset=0;while(true){const {data,error}=await client.rpc("btb_public_opportunities",{p_market_id:marketId??null,p_offset:offset});if(error)throw error;all=all.concat(data.items);offset+=100;if(offset>=data.total||data.items.length===0)break;}if(active){setReviewedAt(Date.now());setItems(all);}
- const {data:auth}=await client.auth.getUser();if(auth.user){const {data,error}=await client.rpc("btb_my_saved_opportunities");if(!error&&active)setSaved((data as {id:string}[]).map(row=>row.id));}
+ useEffect(()=>{let active=true;let identity:string|null|undefined;const client=createClient();const subscription=client.auth.onAuthStateChange((_event,session)=>{const next=session?.user.id??null;if(active&&identity!==undefined&&identity!==next){active=false;setItems([]);setSaved([]);setMember(false);setSelectedOpportunity(null);setLoading(true);setRefresh(value=>value+1);}identity=next;});
+ async function load(){setLoading(true);setError("");try{let all:Opportunity[]=[];let offset=0;let isMember=false;let verification:string|null=null;while(true){const {data,error}=await client.rpc("btb_public_opportunities",{p_market_id:marketId??null,p_offset:offset});if(error)throw error;all=all.concat(data.items);isMember=data.is_member===true;verification=data.vendor_status??null;offset+=100;if(offset>=data.total||data.items.length===0)break;}if(active){setReviewedAt(Date.now());setItems(all);setMember(isMember);setVendorStatus(verification);}
+ if(isMember){const {data,error}=await client.rpc("btb_my_saved_opportunities");if(!error&&active)setSaved((data as {id:string}[]).map(row=>row.id));}
  }catch{if(active)setError("We couldn't load application opportunities. Please refresh to try again.");}finally{if(active)setLoading(false);}}
  void load();const timer=setInterval(()=>{if(document.visibilityState==="visible")setRefresh(value=>value+1);},300000);
  return()=>{active=false;clearInterval(timer);subscription.data.subscription.unsubscribe();};},[marketId,refresh]);
- async function toggle(id:string){if(saving)return;setSaving(id);setMessage("");setMessageOpportunityId(id);try{const client=createClient();const {data}=await client.auth.getUser();if(!data.user){setMessage("Sign in to save opportunities, then return here. Browsing and application links are free to use.");return;}const add=!saved.includes(id);const {error}=await client.rpc("btb_save_opportunity",{p_id:id,p_saved:add});if(error)throw error;setSaved(previous=>add?[...previous,id]:previous.filter(value=>value!==id));setMessage(add?"Saved to My Account.":"Removed from saved opportunities.");}catch{setMessage("Unable to update your saved opportunities. Please try again.");}finally{setSaving(null);}}
+ async function toggle(id:string){if(saving)return;if(!member){window.location.assign(joinHref(id));return;}setSaving(id);setMessage("");setMessageOpportunityId(id);try{const client=createClient();const add=!saved.includes(id);const {error}=await client.rpc("btb_save_opportunity",{p_id:id,p_saved:add});if(error)throw error;setSaved(previous=>add?[...previous,id]:previous.filter(value=>value!==id));setMessage(add?"Saved to My Account.":"Removed from saved opportunities.");}catch{setMessage("Unable to update your saved opportunities. Please try again.");}finally{setSaving(null);}}
  const followedHash=useRef<string|null>(null);
  useEffect(()=>{
   if(loading||error)return;
@@ -88,7 +92,8 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
   const target=document.getElementById(id);
   if(target){target.scrollIntoView({block:"start"});followedHash.current=id;}
  },[loading,error,items]);
- const visible=sortOpportunities(filterOpportunities(items,filters,lastVisit,reviewedAt),sort);
+ useEffect(()=>{if(loading||!member)return;const url=new URL(window.location.href);const requested=url.searchParams.get("details");const found=items.find(item=>item.id===requested&&item.access!=="preview");if(found){setSelectedOpportunity(found);url.searchParams.delete("details");window.history.replaceState(window.history.state,"",url.href);}},[items,loading,member]);
+ const visible=sortOpportunities(filterOpportunities(items,member?filters:{...filters,deadlineBefore:""},lastVisit,reviewedAt),!member&&sort==="deadline"?"date":sort);
  const cards=compact?visible.slice(0,3):visible;
  const activeItems=items.filter(item=>["open","limited","waitlist"].includes(item.effective_status));
  const recentCount=activeItems.filter(item=>isNewlyPosted(item,reviewedAt)).length;
@@ -103,6 +108,8 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  const controlLabel="block min-w-0 text-[11px] font-bold uppercase tracking-[0.055em] text-[#626C57]";
  const action="inline-flex min-h-10 items-center text-sm font-semibold text-[#07472B] underline underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]";
  const resetAll=()=>{setFilters({...defaultOpportunityFilters});setSort(defaultOpportunitySort);setMoreFiltersOpen(false);setShareMessage("");};
+ function joinHref(id?:string){const next=writeOpportunitySearch(new URL("https://www.behindtheboothhq.com/opportunities"),filters,sort);if(id){next.searchParams.set("details",id);next.hash=id;}return accountLink(next.pathname+next.search+next.hash);}
+ const example=items.find(item=>item.access==="example");
  const additionalChips:{label:string;clear:()=>void}[]=[];
  if(filters.month)additionalChips.push({label:"Month: "+filters.month,clear:()=>setFilters(previous=>({...previous,month:""}))});
  if((filters.schedule??"all")!=="all")additionalChips.push({
@@ -116,6 +123,12 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  if(filters.maxBoothFee)additionalChips.push({label:"Max booth: $"+filters.maxBoothFee,clear:()=>setFilters(previous=>({...previous,maxBoothFee:""}))});
  if(filters.deadlineBefore)additionalChips.push({label:"Deadline by: "+filters.deadlineBefore,clear:()=>setFilters(previous=>({...previous,deadlineBefore:""}))});
  return <div>
+ {!loading&&!error&&!member&&items.length>0&&<section aria-label="Free opportunity membership" className="mt-5 border border-[#07472B]/25 bg-[#E9E7DA] p-5 sm:p-6">
+  <h2 className="font-serif text-2xl font-bold">Find opportunities worth your time.</h2>
+  <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[#55554E]">Browse real markets below. Create your free account to compare application details, save your shortlist, and read firsthand vendor reviews. Opportunity access starts after signup; vendor verification is for sharing reviews.</p>
+  <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3"><Link href={joinHref()} className="heritage-button min-h-11">Create my free account</Link>{example&&<button type="button" onClick={()=>setSelectedOpportunity(example)} aria-haspopup="dialog" className="min-h-11 text-sm font-semibold text-[#07472B] underline">See a complete example</button>}<Link href={accountLink("/opportunities","signin")} className="min-h-11 content-center text-sm font-semibold text-[#07472B] underline">Already a member? Sign in</Link></div>
+ </section>}
+ {!compact&&!loading&&member&&<p className="mt-4 text-sm text-[#55554E]">Your full opportunity access is active. <Link href="/login#opportunity-alerts" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">Set up optional email alerts</Link></p>}
  {!compact&&<section aria-label="Newly posted vendor opportunities"
   className="mt-5 border-y border-[#252521]/20 bg-[#E9E7DA]/55 px-4 py-3 sm:px-5">
   <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
@@ -170,7 +183,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
     <select className={input} value={sort} onChange={event=>setSort(event.target.value as OpportunitySort)}>
      <option value="date">Upcoming event date</option>
      <option value="posted_desc">Newest posted first</option>
-     <option value="deadline">Application deadline (confirmed first)</option>
+     <option value="deadline" disabled={!member}>Application deadline{member?" (confirmed first)":" · free account"}</option>
      <option value="fee_asc">Booth fee (lowest verified first)</option>
      <option value="rating_desc">Vendor rating (reviewed first)</option>
     </select>
@@ -213,7 +226,8 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
     <input className={input} type="number" min="0" step="1" inputMode="numeric" value={filters.maxBoothFee} onChange={event=>setFilters({...filters,maxBoothFee:event.target.value,priceAvailability:event.target.value?"all":filters.priceAvailability})} placeholder="No maximum" />
    </label>
    <label className={controlLabel}>Application deadline on or before
-    <input className={input} type="date" value={filters.deadlineBefore} onChange={event=>setFilters({...filters,deadlineBefore:event.target.value})} />
+    <input className={input+" disabled:opacity-50"} type="date" disabled={!member} value={member?filters.deadlineBefore:""} onChange={event=>setFilters({...filters,deadlineBefore:event.target.value})} />
+    {!member&&<Link href={joinHref()} className="mt-2 inline-block text-xs font-semibold text-[#07472B] underline">Unlock deadline filters with a free account</Link>}
    </label>
    <p className="self-end pb-1 text-xs leading-relaxed text-[#626C57]">
     Booth prices must be independently verified; missing prices are never treated as free. Deadline filters use confirmed cutoffs, not estimated dates.
@@ -243,7 +257,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  {!compact&&filters.posted==="since"&&lastVisit&&<p className="mt-3 text-xs text-[#626C57]">Showing opportunities first published since your previous visit to this page on this browser.</p>}
  {message&&!cards.some(item=>item.id===messageOpportunityId)&&<p role="status" className="my-5 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm">{message} <Link href="/login" className="font-semibold underline">My Account →</Link></p>}
  {error?<div role="alert" className="mt-6"><p>{error}</p><button onClick={()=>setRefresh(value=>value+1)} className="mt-3 font-semibold underline">Refresh opportunities</button></div>:loading?<p role="status" className="mt-6">Loading opportunities…</p>:visible.length===0?<p className="mt-6 text-[#55554E]">{compact?"No recently verified vendor applications or waitlists are listed for this market right now.":"No opportunities match these filters. Try another location or month, include unconfirmed categories, or show all statuses."}</p>:<div className={`mt-5 grid items-stretch gap-5 ${compact?"":"md:grid-cols-2 lg:grid-cols-3"}`}>
- {cards.map(item=><OpportunityCard
+ {cards.map(item=>item.access==="preview"?<OpportunityPreviewCard key={item.id} item={item} joinHref={joinHref(item.id)} />:<OpportunityCard
    key={item.id}
    item={item}
    categoryFilter={filters.category}
@@ -254,6 +268,11 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
    onViewDetails={()=>setSelectedOpportunity(item)}
  />)}
  </div>}
+ {!compact&&!loading&&!error&&member&&<aside className="mt-6 border-l-2 border-[#07472B] bg-[#E9E7DA] p-5">
+   <h2 className="font-serif text-xl font-bold">Help the next vendor book with confidence.</h2>
+   <p className="mt-2 text-sm leading-relaxed text-[#55554E]">{vendorStatus==="approved"?"Your vendor account is approved. Share your firsthand market experiences to help fellow local businesses.":vendorStatus==="pending"?"Your vendor verification is under review. Full opportunities and market reports are available while you wait.":"Verify your business privately to share publicly anonymous market reviews. Your experience can help another local business make a better decision."}</p>
+   <Link href={vendorStatus==="approved"?"/markets":"/verify"} className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-[#07472B] underline">{vendorStatus==="approved"?"Find a market to review":vendorStatus==="pending"?"Check verification status":"Verify my vendor account"}</Link>
+ </aside>}
  {selectedOpportunity&&<OpportunityDetailsDialog item={selectedOpportunity} onClose={()=>setSelectedOpportunity(null)} />}
  </div>;
 }

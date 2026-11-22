@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { AUTH_RETURN_COOKIE, safeReturnPath } from "../../../lib/accountLinks";
 
 function confirmationFailed() {
   return new NextResponse(
@@ -21,9 +22,11 @@ export async function GET(request: NextRequest) {
     return confirmationFailed();
   }
 
-  const response = NextResponse.redirect(
-    new URL("/markets", request.url)
-  );
+  const cookie = request.cookies.get(AUTH_RETURN_COOKIE)?.value;
+  let fromCookie = safeReturnPath(cookie);
+  if (!fromCookie && cookie) { try { fromCookie = safeReturnPath(decodeURIComponent(cookie)); } catch { /* Invalid cookie: use the account page. */ } }
+  const response = NextResponse.redirect(new URL(safeReturnPath(request.nextUrl.searchParams.get("next")) ?? fromCookie ?? "/login", request.url));
+  response.cookies.set(AUTH_RETURN_COOKIE,"",{path:"/auth/callback",maxAge:0,sameSite:"lax",secure:request.nextUrl.protocol==="https:"});
 
   response.headers.set("Cache-Control", "private, no-store");
   response.headers.set("Pragma", "no-cache");

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { createClient } from "../../lib/supabase/client";
+import { accountLink } from "../../lib/accountLinks";
 
 type VendorProfile = {
   business_name: string;
@@ -170,9 +171,10 @@ export default function VerifyPage() {
         </h1>
 
         <p className="mt-6 leading-relaxed text-[#55554E]">
-          Tell us about your business so we can review your vendor
-          status. Your application is private and will not appear on
-          your public reviews.
+          Help fellow vendors make informed decisions. Verify your business
+          privately to share publicly anonymous market reviews. Your business
+          details are not displayed with your reviews. Full opportunity access
+          is already included with a free account.
         </p>
 
         {loading ? (
@@ -195,7 +197,7 @@ export default function VerifyPage() {
               verification application.
             </p>
             <Link
-              href="/login"
+              href={accountLink("/verify")}
               className="heritage-button mt-6 inline-block"
             >
               Sign In / Create Account →
@@ -217,10 +219,10 @@ export default function VerifyPage() {
 
             <p className="mt-5 leading-relaxed text-[#55554E]">
               {profile.verification_status === "approved"
-                ? "Your vendor application has been approved. Review submission will be available once we finish connecting the review form."
+                ? "Your vendor account is approved. Choose a market to share your firsthand experience. Your review will be moderated before publication."
                 : profile.verification_status === "rejected"
                   ? "Your application was reviewed and was not approved. Application updates and resubmissions are not available yet."
-                  : "Your application has been received and is waiting for review. You can return to this page to check its status."}
+                  : "Your application has been received and is waiting for review. You can keep using full opportunities and market reports while you wait."}
             </p>
 
             <Link

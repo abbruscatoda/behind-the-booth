@@ -12,7 +12,7 @@ export default function PrivacyPage() {
       <header>
         <p className="heritage-label">Your information, explained</p>
         <h1 className="heritage-heading mt-5 text-4xl md:text-6xl">Privacy notice.</h1>
-        <p className="mt-5 text-sm text-[#626C57]">Last updated November 12, 2026</p>
+        <p className="mt-5 text-sm text-[#626C57]">Last updated November 22, 2026</p>
         <p className="mt-6 text-lg leading-relaxed text-[#55554E]">This notice describes how Behind the Booth uses information when you browse markets, create an account, apply for vendor verification, submit content, or contact us at www.behindtheboothhq.com.</p>
       </header>
 
@@ -26,17 +26,19 @@ export default function PrivacyPage() {
           <ul className="mt-4 list-disc space-y-3 pl-5">
             <li><strong>Account information:</strong> your email address, account identifier, authentication records, and account status. Supabase Auth handles password authentication; please never send us your password by email.</li>
             <li><strong>Vendor applications:</strong> your business name, business link, verification notes, application status, and submission time.</li>
-            <li><strong>Reviews:</strong> ratings, written experience, willingness to return, and optional product categories and booth cost or duration details, along with the market, submitting account, moderation status, and submission time.</li>
+            <li><strong>Reviews:</strong> ratings, written experience, willingness to return, attendance date, category choice (including “Prefer not to disclose”), and optional booth cost or duration details, along with the market, submitting account, moderation status, and submission time.</li>
             <li><strong>Market suggestions:</strong> market name, location, website, optional notes, submitting account, submission time, and moderation status.</li>
             <li><strong>Messages:</strong> your email address and anything you choose to send when you contact us.</li>
+            <li><strong>Opportunity preferences:</strong> opportunities you save, locations and categories you select for alerts, your email opt-in choices, and delivery records used to prevent repeat reminders. These preferences stay private.</li>
             <li><strong>Technical information:</strong> hosting, authentication, and email providers may process IP addresses, browser or device information, request times, errors, and delivery or security logs to operate and protect the service.</li>
           </ul>
         </section>
         <section aria-labelledby="purpose"><h2 id="purpose">2. How we use information</h2>
-          <p>We use information to operate accounts, verify vendors, moderate submissions, publish market information and approved reviews, calculate rating summaries, prevent abuse, troubleshoot problems, respond to requests, and send account-related emails and admin notifications.</p>
+          <p>We use information to operate accounts, verify vendors, moderate submissions, publish market information and approved reviews, calculate rating summaries, prevent abuse, troubleshoot problems, respond to requests, and send account-related emails and admin notifications. If you explicitly enable opportunity emails, we also use your preferences and saved opportunities to send new-opportunity digests and deadline reminders. Creating an account, saving an opportunity, or applying for verification does not subscribe you.</p>
         </section>
         <section aria-labelledby="visibility"><h2 id="visibility">3. What other people can see</h2>
           <p>Market listings and summary ratings are available without an account. Signed-in members can access approved review details, including the text, ratings, submission date, and any optional category or booth details provided. These details may also contribute to aggregate reports.</p>
+          <p>Opportunity names, dates, locations, and booth-price previews, plus one complete example listing, are public. Full opportunity details and application links are included with a free account. Private vendor verification is required for submitting reviews, not for reading opportunities.</p>
           <p>Account email addresses, private vendor application details, and private market suggestion notes are not included in published reviews or market listings. Site administrators can access submission and account information needed for verification, support, and moderation. Approved market suggestions become listings with public market details.</p>
           <p>Access restrictions cannot prevent someone who can view content from copying or sharing it. Avoid including personal contact details, private messages, or sensitive information in a review.</p>
         </section>
@@ -53,6 +55,7 @@ export default function PrivacyPage() {
           <p>If you want information removed, contact us. We will review what can be deleted, what content is affected, and whether any records need to be retained for security or legal reasons. Deletion from active systems does not necessarily remove information immediately from provider backups or copies others have made.</p>
         </section>
         <section aria-labelledby="choices"><h2 id="choices">7. Questions, corrections, and deletion requests</h2>
+          <p>Optional opportunity emails can be turned off in My Account or through the unsubscribe link in each digest. Unsubscribing stops future opportunity emails without deleting your account or saved opportunities. Essential account and approval notifications are managed separately.</p>
           <p>Email <a href="mailto:behindtheboothhq@gmail.com?subject=Privacy%20request" className="break-all font-semibold text-[#07472B] underline underline-offset-4">behindtheboothhq@gmail.com</a> to request access to, correction of, or deletion of your information or account. When possible, write from the email associated with your account. We may need to verify ownership before acting.</p>
           <p>There is currently no self-service account deletion button. Please identify the affected account, review, or listing, but do not include passwords, reset links, government identification, or payment information in your initial message.</p>
         </section>
