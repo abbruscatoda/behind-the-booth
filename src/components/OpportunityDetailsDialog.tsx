@@ -44,7 +44,7 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
    <h2 id={`opportunity-dialog-title-${item.id}`} className="opportunity-dialog-title col-span-2 min-w-0 font-serif text-xl font-bold leading-tight sm:text-3xl">{item.title}</h2>
    <p className="col-span-2 text-sm text-[#626C57]">{item.city}, {item.state} · {statusLabel(item.effective_status)}</p>
   </div>
-  <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7 sm:py-6">
+  <div className="min-h-0 min-w-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5 [overflow-wrap:anywhere] sm:px-7 sm:py-6">
    <div className="grid gap-4 border-b border-[#252521]/15 pb-5 text-sm sm:grid-cols-2">
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">Organizer</p><p className="mt-1 font-semibold">{item.organizer}</p><p className="mt-1 text-[#55554E]">{item.venue} · {item.city}, {item.state}</p></div>
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">{item.schedule_type==="rolling_market"?"Application window":item.schedule_type==="seasonal_application"||item.schedule_type==="recurring_season"?"Application / program season":"Market dates"}</p>

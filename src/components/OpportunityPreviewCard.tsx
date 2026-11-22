@@ -7,6 +7,7 @@ import { statusLabel, type Opportunity } from "../lib/opportunities";
 /** Public summaries are also redacted by the database, not merely hidden here. */
 export default function OpportunityPreviewCard({item,joinHref}:{item:Opportunity;joinHref:string}) {
   const booth = opportunityBoothPrice(item);
+  const priceNote = booth.note.length>130 ? "Pricing depends on the option and eligibility. See full details." : booth.note;
   const rolling = item.schedule_type === "rolling_market";
   const program = item.schedule_type === "seasonal_application" || item.schedule_type === "recurring_season";
   return <article id={item.id} className="heritage-card opportunity-card flex min-w-0 scroll-mt-8 flex-col [overflow-wrap:anywhere]">
@@ -23,7 +24,7 @@ export default function OpportunityPreviewCard({item,joinHref}:{item:Opportunity
       {program && <p className="mt-1 text-xs text-[#626C57]">Individual dates and booths require organizer approval.</p>}
       <p className="mt-3 text-[#626C57]">{booth.label}</p>
       <p className="mt-1 text-base font-bold">{booth.value}</p>
-      {booth.note && <p className="mt-1 text-xs text-[#55554E]">{booth.note}</p>}
+      {priceNote && <p className="mt-1 text-xs text-[#55554E]">{priceNote}</p>}
     </div>
     <p className="mb-4 text-sm leading-relaxed text-[#55554E]">See application deadlines, fee details, category requirements, and the official application with a free account.</p>
     <Link href={joinHref} className="heritage-button mt-auto min-h-11 text-center">Unlock full details</Link>

@@ -1,5 +1,11 @@
 name: Optional opportunity email digests
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/opportunity-alerts.yml'
+      - 'supabase/functions/opportunity-alerts/**'
+      - 'scripts/run_opportunity_alerts.py'
   schedule:
     # After the existing morning/afternoon discovery runs. Delivery is capped
     # to one digest per member per Eastern calendar day by the database.
@@ -29,7 +35,7 @@ jobs:
           BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
           BTB_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.BTB_SUPABASE_PUBLISHABLE_KEY }}
           BTB_RESEARCH_SECRET: ${{ secrets.BTB_RESEARCH_SECRET }}
-          BTB_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          BTB_DRY_RUN: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
         run: |
           if [ "$BTB_DRY_RUN" = "true" ]; then
             python3 scripts/run_opportunity_alerts.py --dry-run
