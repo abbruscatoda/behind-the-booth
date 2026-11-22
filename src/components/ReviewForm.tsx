@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useDeferredAnchor } from "../hooks/useDeferredAnchor";
 import { createClient } from "../lib/supabase/client";
 import { getRatingColor } from "../lib/ratingColors";
+import { PREFER_NOT_TO_DISCLOSE, reviewVendorCategories, validReviewCategoryChoice, toggleReviewCategory } from "../lib/reviewCategories";
 
 import { marketToday, validAttendanceDate, formatAttendanceDate } from "../lib/attendanceDate";
 
@@ -16,21 +17,6 @@ const ratingLabels = [
   "Average",
   "Good",
   "Exceptional",
-];
-
-const vendorCategories = [
-  "Food & Beverages",
-  "Jewelry & Accessories",
-  "Art & Photography",
-  "Handmade Crafts",
-  "Clothing & Apparel",
-  "Bath, Body & Beauty",
-  "Home Goods & Décor",
-  "Plants & Garden",
-  "Farm & Agricultural Products",
-  "Pet Products",
-  "On-Site Services & Experiences",
-  "Other",
 ];
 
 const categories = [
@@ -90,6 +76,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
   const [occurrences,setOccurrences]=useState<Occurrence[]>([]);
   const [myReviews,setMyReviews]=useState<OwnDatedReview[]>([]);
   const [occurrenceId,setOccurrenceId]=useState("");
+  const [attendedOn, setAttendedOn] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -139,6 +126,8 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
     useState<string[]>([]);
 
   const [otherCategory, setOtherCategory] = useState("");
+  const [categoryError, setCategoryError] = useState("");
+  const firstCategoryInput = useRef<HTMLInputElement>(null);
 
   // Optional booth fee information
   const [boothCost, setBoothCost] = useState("");
@@ -146,7 +135,6 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
     useState<BoothDuration>("");
   const [numberOfDays, setNumberOfDays] = useState("");
 
-  const [attendedOn, setAttendedOn] = useState("");
   const attendanceInput = useRef<HTMLInputElement>(null);
   const [experience, setExperience] = useState("");
   const [wouldReturn, setWouldReturn] = useState("");
@@ -190,12 +178,9 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
       : null;
 
   function toggleVendorCategory(category: string) {
-    setSelectedVendorCategories((previous) =>
-      previous.includes(category)
-        ? previous.filter((item) => item !== category)
-        : [...previous, category]
-    );
-
+    setSelectedVendorCategories(previous => toggleReviewCategory(previous, category));
+    if (category === PREFER_NOT_TO_DISCLOSE) setOtherCategory("");
+    setCategoryError("");
     setShowPreview(false);
   }
 
@@ -208,6 +193,12 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
     }
     const conflict=occurrenceReviewError(attendedOn,occurrenceId,occurrences,myReviews);
     if(conflict){setError(conflict);setShowPreview(false);return;}
+    if (!validReviewCategoryChoice(selectedVendorCategories)) {
+      setCategoryError("Select at least one category or choose “Prefer not to disclose.”");
+      firstCategoryInput.current?.focus();
+      setShowPreview(false);
+      return;
+    }
     setError("");
     if (!allRated || !experience.trim() || !wouldReturn) {
       alert(
@@ -239,7 +230,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
 
   async function handleSubmit() {
     if (submitting.current || !showPreview || access !== "ready") return;
-    if (!validAttendanceDate(attendedOn) || !allRated || !experience.trim() || !["Yes", "No", "Maybe"].includes(wouldReturn) ||
+    if (!validAttendanceDate(attendedOn) || !validReviewCategoryChoice(selectedVendorCategories) || !allRated || !experience.trim() || !["Yes", "No", "Maybe"].includes(wouldReturn) ||
       (hasBoothCost && !validBoothCost) ||
       (boothDuration === "multi" && numberOfDays.trim() !== "" && !validMultiDay)) {
       setError("Please check your answers and preview the review again.");
@@ -279,6 +270,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
       if (insertError) {
         if (insertError.code === "23505") throw new Error("You already submitted a review for this market date or event occurrence. Check My Account for its status.");
         if (insertError.code === "42501") throw new Error("You don't currently have permission to submit. Refresh and check your vendor verification status.");
+        if (insertError.code === "23514" && insertError.message.includes("vendor category")) throw new Error("Select at least one category or choose “Prefer not to disclose,” then preview your review again.");
         throw insertError;
       }
       setReviewStatus("pending");
@@ -364,46 +356,47 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
             className="mt-4 w-full max-w-xs border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 text-sm outline-none focus:border-[#07472B]" />
         </div>
 
-        {occurrences.length>0&&<div className="mb-8"><label htmlFor="review-occurrence" className="block text-sm font-semibold">Which dated event did you attend? (optional if your date identifies it)</label><select id="review-occurrence" value={occurrenceId} onChange={event=>{setOccurrenceId(event.target.value);setShowPreview(false);setError("");}} className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 text-sm"><option value="">Identify from my attendance date / another date</option>{occurrences.filter(item=>item.starts_on<=marketToday()).map(item=><option key={item.id} value={item.id}>{item.title} — {formatAttendanceDate(item.starts_on)}{item.ends_on!==item.starts_on?` – ${formatAttendanceDate(item.ends_on)}`:""}</option>)}</select><p className="mt-3 text-xs text-[#626C57]">One review per vendor per dated event. For multi-day events, review the visit together and enter the first day you attended. If your visit isn't listed, your attendance date still identifies the experience.</p></div>}
+        {occurrences.length>0&&<div className="mb-8"><label htmlFor="review-occurrence" className="block text-sm font-semibold">Which dated event did you attend? (optional if your date identifies it)</label><select id="review-occurrence" value={occurrenceId} onChange={event=>{setOccurrenceId(event.target.value);setShowPreview(false);setError("");}} className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 text-sm"><option value="">Identify from my attendance date / another date</option>{occurrences.filter(item=>item.starts_on<=marketToday()).map(item=><option key={item.id} value={item.id}>{item.title} — {formatAttendanceDate(item.starts_on)}{item.ends_on!==item.starts_on?` – ${formatAttendanceDate(item.ends_on)}`:""}</option>)}</select><p className="mt-3 text-xs text-[#626C57]">One review per vendor per dated event. For multi-day events, review the visit together and enter the first day you attended. If your visit isn&apos;t listed, your attendance date still identifies the experience.</p></div>}
         {myReviews.length>0&&<p className="mb-8 text-sm text-[#626C57]">You have {myReviews.length} prior submission(s) for this market. You may review another event date. <Link href="/login" className="font-semibold underline">View My Reviews →</Link></p>}
         {/* Vendor categories */}
-        <div className="mb-10">
+        <fieldset className="mb-10 min-w-0 border-0 p-0" aria-labelledby="review-category-heading review-category-required"
+          aria-describedby={categoryError ? "review-category-help review-category-error" : "review-category-help"}
+          aria-invalid={Boolean(categoryError)}>
           <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#07472B]">
             About Your Business
           </p>
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <h4 className="font-serif text-2xl font-bold">
+            <h4 id="review-category-heading" className="font-serif text-2xl font-bold">
               What Do You Sell?
             </h4>
 
-            <span className="border border-[#D6D4BF] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#626C57]">
-              Optional
+            <span id="review-category-required" className="border border-[#D6D4BF] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#626C57]">
+              Required
             </span>
           </div>
 
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#55554E]">
+          <p id="review-category-help" className="mt-3 max-w-2xl text-sm leading-relaxed text-[#55554E]">
             Help other vendors understand your perspective.
-            Select the categories that best describe your
-            business. You can choose more than one or skip
-            this section entirely.
+            Select one or more categories, or choose “Prefer not to disclose.”
           </p>
 
           <div className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {vendorCategories.map((category) => {
+            {reviewVendorCategories.map((category, index) => {
               const selected =
                 selectedVendorCategories.includes(category);
 
               return (
                 <label
                   key={category}
-                  className={`flex cursor-pointer items-center gap-3 border px-4 py-3 text-sm transition ${
+                  className={`flex cursor-pointer items-center gap-3 border px-4 py-3 text-sm transition ${category === PREFER_NOT_TO_DISCLOSE ? "sm:col-span-2 lg:col-span-3" : ""} ${
                     selected
                       ? "border-[#07472B] bg-[#E9E7DA]"
                       : "border-[#D6D4BF] bg-[#FFFCF6] hover:border-[#07472B]"
                   }`}
                 >
                   <input
+                    ref={index === 0 ? firstCategoryInput : undefined}
                     type="checkbox"
                     checked={selected}
                     onChange={() =>
@@ -454,15 +447,18 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
           )}
 
           <p className="mt-4 text-xs text-[#626C57]">
-            {selectedVendorCategories.length === 0
-              ? "No categories selected. This section is optional."
+            {selectedVendorCategories.includes(PREFER_NOT_TO_DISCLOSE)
+              ? "Prefer not to disclose selected."
+              : selectedVendorCategories.length === 0
+              ? "Choose at least one option."
               : `${selectedVendorCategories.length} ${
                   selectedVendorCategories.length === 1
                     ? "category"
                     : "categories"
                 } selected.`}
           </p>
-        </div>
+          {categoryError && <p id="review-category-error" role="alert" className="mt-3 text-sm font-semibold text-[#9B3E35]">{categoryError}</p>}
+        </fieldset>
 
         {/* Rating heading */}
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-t border-[#252521]/15 pt-8">
@@ -878,7 +874,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
                 </div>
               ) : (
                 <p className="mt-2 text-sm italic text-[#626C57]">
-                  Not provided (optional).
+                  No category selected.
                 </p>
               )}
             </div>

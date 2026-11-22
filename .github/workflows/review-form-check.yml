@@ -1,0 +1,37 @@
+name: Review form checks
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/components/ReviewForm.tsx'
+      - 'src/lib/reviewCategories.ts'
+      - 'src/app/markets/**/MarketProfileClient.tsx'
+      - 'scripts/test_review_categories.mjs'
+      - 'supabase/migrations/**'
+      - '.github/workflows/review-form-check.yml'
+  pull_request:
+    paths:
+      - 'src/components/ReviewForm.tsx'
+      - 'src/lib/reviewCategories.ts'
+      - 'src/app/markets/**/MarketProfileClient.tsx'
+      - 'scripts/test_review_categories.mjs'
+      - 'supabase/migrations/**'
+      - '.github/workflows/review-form-check.yml'
+permissions:
+  contents: read
+jobs:
+  review-form:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: node --experimental-strip-types --test scripts/test_review_categories.mjs

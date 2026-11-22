@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { organizerHref } from "../../../lib/marketOrganizers";
+import { PREFER_NOT_TO_DISCLOSE, publicReviewCategories } from "../../../lib/reviewCategories";
 import { Suspense, useEffect, useState } from "react";
 import { useDeferredAnchor } from "../../../hooks/useDeferredAnchor";
 import { createClient } from "../../../lib/supabase/client";
@@ -116,7 +117,11 @@ function MarketReviews({ marketId }: { marketId: string }) {
         const { data, error: reviewError } = await supabase.rpc("btb_market_reviews_with_attendance", { p_market_id: marketId });
         if (reviewError) throw reviewError;
         if (isCurrent()) {
-          setReviews((data ?? []) as PublicReview[]);
+          setReviews(((data ?? []) as PublicReview[]).map(review => ({
+            ...review,
+            vendor_categories: publicReviewCategories(review.vendor_categories),
+            other_category: review.vendor_categories.includes(PREFER_NOT_TO_DISCLOSE) ? null : review.other_category,
+          })));
           setMember(true);
         }
       } catch (cause) {
