@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'src/components/ReviewForm.tsx'
+      - 'src/components/ReviewPreviewDialog.tsx'
+      - 'src/app/globals.css'
       - 'src/lib/reviewCategories.ts'
       - 'src/app/markets/**/MarketProfileClient.tsx'
       - 'scripts/test_review_categories.mjs'
@@ -12,6 +14,8 @@ on:
   pull_request:
     paths:
       - 'src/components/ReviewForm.tsx'
+      - 'src/components/ReviewPreviewDialog.tsx'
+      - 'src/app/globals.css'
       - 'src/lib/reviewCategories.ts'
       - 'src/app/markets/**/MarketProfileClient.tsx'
       - 'scripts/test_review_categories.mjs'

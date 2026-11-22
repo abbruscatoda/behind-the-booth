@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import ReviewPreviewDialog from "./ReviewPreviewDialog";
 import { useDeferredAnchor } from "../hooks/useDeferredAnchor";
 import { createClient } from "../lib/supabase/client";
 import { getRatingColor } from "../lib/ratingColors";
@@ -65,7 +66,7 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
-export default function ReviewForm({ marketId }: { marketId: string }) {
+export default function ReviewForm({ marketId, marketName }: { marketId: string; marketName: string }) {
   const [access, setAccess] = useState<"loading" | "signin" | "verify" | "ready" | "exists" | "error">("loading");
   useDeferredAnchor("write-review", access !== "loading", marketId);
   const [reviewStatus, setReviewStatus] = useState("");
@@ -73,6 +74,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const submitting = useRef(false);
+  const reviewSection = useRef<HTMLElement>(null);
   const [occurrences,setOccurrences]=useState<Occurrence[]>([]);
   const [myReviews,setMyReviews]=useState<OwnDatedReview[]>([]);
   const [occurrenceId,setOccurrenceId]=useState("");
@@ -139,6 +141,13 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
   const [experience, setExperience] = useState("");
   const [wouldReturn, setWouldReturn] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+
+  useEffect(() => {
+    if (submitted) {
+      reviewSection.current?.focus({ preventScroll: true });
+      reviewSection.current?.scrollIntoView({ block: "start" });
+    }
+  }, [submitted]);
 
   const allRated = categories.every(
     (category) => ratings[category.key] !== undefined
@@ -298,7 +307,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
 
   if (access !== "ready") {
     return (
-      <section id="write-review" tabIndex={-1} className="mt-10 border border-[#252521]/20 bg-[#F4F0E6] p-6 text-[#252521] sm:p-10">
+      <section ref={reviewSection} id="write-review" tabIndex={-1} className="mt-10 border border-[#252521]/20 bg-[#F4F0E6] p-6 text-[#252521] sm:p-10">
         <h3 className="font-serif text-3xl font-bold">Share Your Experience</h3>
         <div className="mt-5 leading-relaxed text-[#55554E]" role="status">
           {access === "loading" && <p>Checking your review access...</p>}
@@ -312,7 +321,7 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
   }
 
   return (
-    <section id="write-review" tabIndex={-1} className="mt-10 overflow-hidden border border-[#252521]/20 bg-[#F4F0E6] text-[#252521]">
+    <section ref={reviewSection} id="write-review" tabIndex={-1} className="mt-10 overflow-hidden border border-[#252521]/20 bg-[#F4F0E6] text-[#252521]">
       {/* Header */}
       <div className="bg-[#07472B] px-6 py-8 text-[#F4F0E6] sm:px-10">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D6D4BF]">
@@ -842,24 +851,18 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
           </p>
         </div>
 
+        </fieldset>
         {/* Review preview */}
         {showPreview && (
-          <div className="mt-10 border border-[#D6D4BF] bg-[#FFFCF6] p-5 sm:p-8">
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#07472B]">
-              Review Preview — Not Submitted
-            </p>
-
-            <h4 className="mt-3 font-serif text-2xl font-bold">
-              Your Vendor Field Report
-            </h4>
-
-            <p className="mt-4 text-sm text-[#55554E]"><strong>Attended:</strong>{" "}<time dateTime={attendedOn}>{formatAttendanceDate(attendedOn)}</time></p>
+          <ReviewPreviewDialog busy={busy} error={error} onClose={() => setShowPreview(false)} onSubmit={() => void handleSubmit()}>
+            <p className="font-serif text-xl font-bold">{marketName}</p>
+            <p className="mt-2 text-sm text-[#55554E]"><strong>Attended:</strong>{" "}<time dateTime={attendedOn}>{formatAttendanceDate(attendedOn)}</time></p>
 
             {/* Vendor category preview */}
             <div className="mt-6">
-              <h5 className="font-serif text-lg font-bold">
+              <h3 className="font-serif text-lg font-bold">
                 Vendor Category
-              </h5>
+              </h3>
 
               {displayVendorCategories.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -882,9 +885,9 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
             {/* Booth fee preview */}
             {(validBoothCost || boothDuration !== "") && (
               <div className="mt-7 border-t border-[#252521]/10 pt-6">
-                <h5 className="font-serif text-lg font-bold">
+                <h3 className="font-serif text-lg font-bold">
                   Booth Fee Information
-                </h5>
+                </h3>
 
                 {validBoothCost && (
                   <p className="mt-3 text-sm text-[#55554E]">
@@ -944,9 +947,9 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
 
             {/* Written review preview */}
             <div className="mt-6">
-              <h5 className="font-serif text-lg font-bold">
+              <h3 className="font-serif text-lg font-bold">
                 Your Experience
-              </h5>
+              </h3>
 
               <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-[#55554E]">
                 {experience}
@@ -963,18 +966,9 @@ export default function ReviewForm({ marketId }: { marketId: string }) {
               describes your firsthand vendor experience. Your review will be held
               for moderation. Editing after submission is not available yet.
             </p>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={busy}
-              className="heritage-button mt-6 disabled:cursor-wait disabled:opacity-50"
-            >
-              {busy ? "Submitting..." : "Submit for Moderation"}
-            </button>
-          </div>
+          </ReviewPreviewDialog>
         )}
-        </fieldset>
-        {error && (
+        {error && !showPreview && (
           <p role="alert" className="mt-6 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm text-[#07472B]">
             {error}
           </p>
