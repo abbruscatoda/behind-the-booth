@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { organizerHref, organizerKey, organizerOptions } from "../../lib/marketOrganizers";
-import { getRatingColor } from "../../lib/ratingColors";
+import { getRatingColor, getRatingDescriptor } from "../../lib/ratingColors";
 import { createClient } from "../../lib/supabase/client";
 import { hasNewReviews, latestReviewTime, type ReviewActivity, type ReviewWindow } from "../../lib/marketReviewRecency";
 
@@ -263,12 +263,18 @@ function MarketDirectory() {
 
               {market.organizer && <Link href={organizerHref(market.organizer)} className="mt-4 self-start rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-3 py-2 text-xs font-semibold text-[#07472B] hover:underline">Organizer: {market.organizer}</Link>}
 
-              <p className="mt-4 text-sm font-semibold" style={{color: activity?.[market.id]?.overall == null ? "#626C57" : getRatingColor(activity[market.id].overall!)}}>
-                {activity?.[market.id] ? activity[market.id].count > 0
-                  ? `${activity[market.id].overall?.toFixed(1) ?? "—"}/5 · ${activity[market.id].count} ${activity[market.id].count === 1 ? "review" : "reviews"}`
-                  : "No reviews yet"
-                  : loading ? "Loading review activity…" : "Review activity unavailable"}
-              </p>
+              {activity?.[market.id]?.count && activity[market.id].overall != null ? (
+                <div className="mt-5 border-y border-[#252521]/15 py-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#55554E]">Overall vendor rating</p>
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1" style={{color: getRatingColor(activity[market.id].overall!)}}>
+                    <p><span className="text-4xl font-bold tracking-tight">{activity[market.id].overall!.toFixed(1)}</span><span className="ml-1 text-base font-semibold">/ 5</span></p>
+                    <p className="text-base font-bold" title="Rating scale: 1 Poor · 2 Below Average · 3 Average · 4 Good · 5 Exceptional">{getRatingDescriptor(activity[market.id].overall!)}</p>
+                  </div>
+                  <p className="mt-1 text-xs text-[#55554E]">Based on {activity[market.id].count} vendor {activity[market.id].count === 1 ? "review" : "reviews"}</p>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm font-semibold text-[#626C57]">{activity?.[market.id] ? "No reviews yet" : loading ? "Loading review activity…" : "Review activity unavailable"}</p>
+              )}
               <p className="mt-3 flex-1 leading-relaxed text-[#55554E]">
                 {market.description}
               </p>

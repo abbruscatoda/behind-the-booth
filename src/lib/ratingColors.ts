@@ -7,6 +7,12 @@ export const RATING_COLORS = [
   "#07472B", // 5 — forest green
 ] as const;
 
+/** Matches the review form's five-point scale; averages use the nearest point. */
+export function getRatingDescriptor(score: number): string {
+  const labels = ["Poor", "Below Average", "Average", "Good", "Exceptional"];
+  return labels[Math.round(Math.min(5, Math.max(1, score))) - 1] ?? "";
+}
+
 export function getRatingColor(score: number | null | undefined): string {
   if (typeof score !== "number" || !Number.isFinite(score)) return "#626C57";
   const value = Math.min(5, Math.max(1, score));
