@@ -1,6 +1,7 @@
 "use client";
 
 import ExternalLinkIcon from "../../components/ExternalLinkIcon";
+import AdminAccounts from "../../components/AdminAccounts";
 import Link from "next/link";
 import OrganizerField from "../../components/OrganizerField";
 import ConfirmationDialog from "../../components/ConfirmationDialog";
@@ -256,8 +257,9 @@ export default function AdminPage() {
   return <main className="mx-auto min-h-[65vh] max-w-6xl px-6 py-12 md:py-16">
     <p className="heritage-label">Behind the scenes</p>
     <h1 className="heritage-heading mt-4 text-4xl md:text-5xl">Community moderation.</h1>
-    <p className="mt-4 max-w-3xl leading-relaxed text-[#55554E]">Review submissions, verify vendors, and keep the directory useful. This area is restricted to your admin account.</p>
+    <p className="mt-4 max-w-3xl leading-relaxed text-[#55554E]">Review submissions, verify vendors, and track account signups. This area is restricted to your admin account.</p>
     {checking || (userId && accessChecking && !allowed) ? <p className="mt-10" role="status">Checking admin access…</p> : !userId ? <div className="heritage-card mt-8"><h2 className="font-serif text-2xl font-bold">Sign in to continue.</h2><p className="mt-3 text-[#55554E]">Use the account configured as your administrator, then return here.</p><Link href="/login" className="heritage-button mt-5">Sign in →</Link></div> : !allowed ? <div className="heritage-card mt-8"><h2 className="font-serif text-2xl font-bold">{accessError ? "Unable to check access" : "Admin access required"}</h2><p className="mt-3 break-words text-[#55554E]">{accessError || "This account does not have permission to moderate submissions."}</p><div className="mt-5 flex flex-wrap gap-3"><Link href="/login" className={secondaryClass}>My Account / switch account</Link><button type="button" className={secondaryClass} onClick={() => setRefresh(n => n + 1)}>Try again</button></div></div> : <>
+      {userId && <AdminAccounts key={userId} ownerId={userId} />}
       <div className="mt-8 flex flex-wrap items-center gap-3 border-b border-[#252521]/20 pb-5" aria-label="Moderation queues">
         {(Object.keys(labels) as Kind[]).map(key => <button key={key} type="button" aria-pressed={kind === key} disabled={busy || Boolean(action)} onClick={() => { resetView(); setKind(key); setStatus("pending"); }} className={`rounded-sm border px-4 py-3 text-sm font-semibold disabled:opacity-50 ${kind === key ? "border-[#07472B] bg-[#07472B] text-white" : "border-[#252521]/20 hover:bg-[#E9E7DA]"}`}>{labels[key]}{queue && <span className="ml-2 rounded-full bg-white/20 px-2 py-0.5">{queue.pending[key]}</span>}</button>)}
       </div>

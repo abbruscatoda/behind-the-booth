@@ -1,0 +1,34 @@
+name: Admin account reporting checks
+on:
+  push:
+    paths:
+      - 'src/components/AdminAccounts.tsx'
+      - 'src/app/admin/page.tsx'
+      - 'supabase/migrations/*admin_account_activity.sql'
+      - 'scripts/test_admin_accounts.mjs'
+      - '.github/workflows/admin-accounts-check.yml'
+  pull_request:
+    paths:
+      - 'src/components/AdminAccounts.tsx'
+      - 'src/app/admin/page.tsx'
+      - 'supabase/migrations/*admin_account_activity.sql'
+      - 'scripts/test_admin_accounts.mjs'
+      - '.github/workflows/admin-accounts-check.yml'
+permissions:
+  contents: read
+jobs:
+  private-account-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: node --test scripts/test_admin_accounts.mjs
