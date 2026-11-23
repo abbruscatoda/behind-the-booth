@@ -8,7 +8,9 @@ import { createClient } from "../../lib/supabase/client";
 import MySavedOpportunities from "../../components/MySavedOpportunities";
 import MyReviews from "../../components/MyReviews";
 import OpportunityAlertSettings from "../../components/OpportunityAlertSettings";
-import { AUTH_RETURN_COOKIE, safeReturnPath } from "../../lib/accountLinks";
+import GoogleSignInButton from "../../components/GoogleSignInButton";
+import { authFailureMessage, authReturnCookie, safeReturnPath } from "../../lib/accountLinks";
+import { googleSignInEnabled, googleSignInRequest } from "../../lib/googleAuth";
 
 type Mode = "signin" | "signup";
 type VendorProfile = {
@@ -24,6 +26,8 @@ export default function LoginPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [googleAvailable, setGoogleAvailable] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [profile, setProfile] = useState<VendorProfile | null>(null);
@@ -39,6 +43,12 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("mode") === "signup") setMode("signup");
     setReturnTo(safeReturnPath(params.get("next")));
+    const failureMessage = authFailureMessage(params.get("auth_error"));
+    if (failureMessage) setError(failureMessage);
+    if (params.has("auth_error")) {
+      params.delete("auth_error");
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${params.size ? `?${params}` : ""}${window.location.hash}`);
+    }
     const supabase = createClient();
     let active = true;
     let authChanged = false;
@@ -61,6 +71,21 @@ export default function LoginPage() {
     }
     void checkUser();
     return () => { active = false; subscription.unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void googleSignInEnabled(controller.signal).then(enabled => {
+      if (!controller.signal.aborted) setGoogleAvailable(enabled);
+    });
+    // A browser's Back button can restore the form from before the Google redirect.
+    const restored = () => {
+      submitting.current = false;
+      setBusy(false);
+      setGoogleBusy(false);
+    };
+    window.addEventListener("pageshow", restored);
+    return () => { controller.abort(); window.removeEventListener("pageshow", restored); };
   }, []);
 
   useEffect(() => {
@@ -112,7 +137,7 @@ export default function LoginPage() {
       if (mode === "signup") {
         // Keep the existing allowed confirmation URL. The same-browser PKCE
         // flow carries its validated destination in a short-lived cookie.
-        document.cookie = `${AUTH_RETURN_COOKIE}=${encodeURIComponent(returnTo ?? "/login")}; Path=/auth/callback; Max-Age=3600; SameSite=Lax${window.location.protocol === "https:" ? "; Secure" : ""}`;
+        document.cookie = authReturnCookie(returnTo, window.location.protocol === "https:");
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(), password,
           options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
@@ -137,6 +162,26 @@ export default function LoginPage() {
     } finally {
       submitting.current = false;
       setBusy(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    if (submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setGoogleBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      document.cookie = authReturnCookie(returnTo, window.location.protocol === "https:");
+      const { data, error } = await createClient().auth.signInWithOAuth(googleSignInRequest(window.location.origin));
+      if (error || !data.url) throw new Error("Google sign-in unavailable");
+      window.location.assign(data.url);
+    } catch {
+      setError("We couldn't start Google sign-in. Please try again, or use email and password.");
+      submitting.current = false;
+      setBusy(false);
+      setGoogleBusy(false);
     }
   }
 
@@ -190,7 +235,7 @@ export default function LoginPage() {
       <section className="mx-auto max-w-2xl px-6 py-14 md:py-20">
         <p className="heritage-label">{signedIn ? "My Account" : "The Vendor Community"}</p>
         <h1 className="heritage-heading mt-5 text-4xl md:text-5xl">{signedIn ? "Welcome back." : mode === "signup" ? "Join the conversation." : "Take your place."}</h1>
-        <p className="mt-6 leading-relaxed text-[#55554E]">Create your free account to compare full opportunity details, save your shortlist, read firsthand vendor reviews, and choose optional opportunity emails. Access starts after signup and email confirmation. Verify your business privately when you are ready to share your own publicly anonymous reviews.</p>
+        <p className="mt-6 leading-relaxed text-[#55554E]">Create your free account to compare full opportunity details, save your shortlist, read firsthand vendor reviews, and choose optional opportunity emails. {googleAvailable ? "Continue with Google, or sign up with your email and confirm your address." : "Access starts after signup and email confirmation."} Verify your business privately when you are ready to share your own publicly anonymous reviews.</p>
         {!signedIn&&returnTo&&<p className="mt-3 text-sm text-[#07472B]">After signing in, you will return to the page you selected.</p>}
 
         {checking ? <p className="mt-10 text-[#55554E]" role="status">Checking your sign-in...</p> : signedIn ? (
@@ -223,7 +268,7 @@ export default function LoginPage() {
                   </div>
                 </>
               )}
-              <p className="mt-5 border-t border-[#252521]/15 pt-4 text-xs leading-relaxed text-[#626C57]">Business information submitted for verification stays private. Email confirmation verifies your email address; vendor approval is a separate review.</p>
+              <p className="mt-5 border-t border-[#252521]/15 pt-4 text-xs leading-relaxed text-[#626C57]">Business information submitted for verification stays private. Signing in verifies your account; vendor approval is a separate review.</p>
             </section>
             <OpportunityAlertSettings key={`alerts-${userId}`} />
             <MySavedOpportunities key={`saved-${userId}`} />
@@ -236,6 +281,10 @@ export default function LoginPage() {
               <button type="button" onClick={() => changeMode("signin")} disabled={busy} aria-pressed={mode === "signin"} className={`text-sm font-bold ${mode === "signin" ? "text-[#07472B] underline underline-offset-8" : "text-[#626C57]"}`}>Sign In</button>
               <button type="button" onClick={() => changeMode("signup")} disabled={busy} aria-pressed={mode === "signup"} className={`text-sm font-bold ${mode === "signup" ? "text-[#07472B] underline underline-offset-8" : "text-[#626C57]"}`}>Create Account</button>
             </div>
+            {googleAvailable && <>
+              <GoogleSignInButton busy={busy} redirecting={googleBusy} onClick={() => void handleGoogleSignIn()} />
+              <div className="my-6 flex items-center gap-4 text-xs text-[#626C57]"><span className="h-px flex-1 bg-[#252521]/20" /><span>or continue with email</span><span className="h-px flex-1 bg-[#252521]/20" /></div>
+            </>}
             <form onSubmit={handleSubmit}>
               <label htmlFor="email" className="block text-sm font-semibold">Email Address</label>
               <input id="email" type="email" autoComplete="email" required disabled={busy} value={email} onChange={(event) => setEmail(event.target.value)} className="mt-3 w-full border border-[#D6D4BF] bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]" />

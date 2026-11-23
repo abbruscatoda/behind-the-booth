@@ -1,36 +1,29 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { AUTH_RETURN_COOKIE, safeReturnPath } from "../../../lib/accountLinks";
-
-function confirmationFailed() {
-  return new NextResponse(
-    "We couldn't complete your email confirmation. The link may have expired or already been used. Return to the website and try signing in. If needed, request a new confirmation email. Open the link in the same browser you used to sign up.",
-    {
-      status: 400,
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-store",
-      },
-    }
-  );
-}
+import { AUTH_RETURN_COOKIE, authFailurePath, authReturnPath } from "../../../lib/accountLinks";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-
-  if (!code || request.nextUrl.searchParams.has("error")) {
-    return confirmationFailed();
-  }
-
-  const cookie = request.cookies.get(AUTH_RETURN_COOKIE)?.value;
-  let fromCookie = safeReturnPath(cookie);
-  if (!fromCookie && cookie) { try { fromCookie = safeReturnPath(decodeURIComponent(cookie)); } catch { /* Invalid cookie: use the account page. */ } }
-  const response = NextResponse.redirect(new URL(safeReturnPath(request.nextUrl.searchParams.get("next")) ?? fromCookie ?? "/login", request.url));
+  const flowId = request.nextUrl.searchParams.get("sb_flow_id");
+  const destination = authReturnPath(request.nextUrl.searchParams.get("next"), request.cookies.get(AUTH_RETURN_COOKIE)?.value);
+  const response = NextResponse.redirect(new URL(destination, request.url));
   response.cookies.set(AUTH_RETURN_COOKIE,"",{path:"/auth/callback",maxAge:0,sameSite:"lax",secure:request.nextUrl.protocol==="https:"});
 
-  response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set("Cache-Control", "private, no-store, max-age=0");
   response.headers.set("Pragma", "no-cache");
   response.headers.set("Expires", "0");
+  response.headers.set("Referrer-Policy", "no-referrer");
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+
+  const failed = (cancelled = false) => {
+    // Keep any verifier-cookie cleanup supplied by Supabase on the response.
+    response.headers.set("Location", new URL(authFailurePath(destination, cancelled), request.url).href);
+    return response;
+  };
+  if (request.nextUrl.searchParams.has("error")) {
+    return failed(request.nextUrl.searchParams.get("error") === "access_denied");
+  }
+  if (!code || code.length > 2048 || (flowId !== null && !/^[a-f0-9]{32}$/.test(flowId))) return failed();
 
   try {
     const supabase = createServerClient(
@@ -50,14 +43,12 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-    if (error) {
-      return confirmationFailed();
-    }
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code, flowId ? { flowId } : undefined);
+    if (error || !data.session || !data.user) return failed();
 
     return response;
   } catch {
-    return confirmationFailed();
+    // Never expose or log authorization codes, cookies, tokens or provider errors.
+    return failed();
   }
 }

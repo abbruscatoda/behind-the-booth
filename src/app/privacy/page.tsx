@@ -12,7 +12,7 @@ export default function PrivacyPage() {
       <header>
         <p className="heritage-label">Your information, explained</p>
         <h1 className="heritage-heading mt-5 text-4xl md:text-6xl">Privacy notice.</h1>
-        <p className="mt-5 text-sm text-[#626C57]">Last updated November 22, 2026</p>
+        <p className="mt-5 text-sm text-[#626C57]">Last updated November 23, 2026</p>
         <p className="mt-6 text-lg leading-relaxed text-[#55554E]">This notice describes how Behind the Booth uses information when you browse markets, create an account, apply for vendor verification, submit content, or contact us at www.behindtheboothhq.com.</p>
       </header>
 
@@ -24,7 +24,7 @@ export default function PrivacyPage() {
       <div className="mt-10 space-y-9 text-[#55554E] [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-[#252521] [&_p]:mt-3 [&_p]:leading-relaxed [&_li]:leading-relaxed">
         <section aria-labelledby="collected"><h2 id="collected">1. Information we collect</h2>
           <ul className="mt-4 list-disc space-y-3 pl-5">
-            <li><strong>Account information:</strong> your email address, account identifier, authentication records, and account status. Supabase Auth handles password authentication; please never send us your password by email.</li>
+            <li><strong>Account information:</strong> your email address, account identifier, authentication records, and account status. If you choose Google sign-in, Google also provides basic profile information, such as your name and profile picture, to Supabase Auth. Your Google name and picture are not shown with public reviews. Supabase Auth handles password authentication; please never send us your password by email.</li>
             <li><strong>Vendor applications:</strong> your business name, business link, verification notes, application status, and submission time.</li>
             <li><strong>Reviews:</strong> ratings, written experience, willingness to return, attendance date, category choice (including “Prefer not to disclose”), optional booth cost or duration details, and any photos and captions you attach, along with the market, submitting account, moderation status, and submission time.</li>
             <li><strong>Market suggestions:</strong> market name, location, website, optional notes, submitting account, submission time, and moderation status.</li>
@@ -45,6 +45,7 @@ export default function PrivacyPage() {
         </section>
         <section aria-labelledby="providers"><h2 id="providers">4. Providers and other disclosures</h2>
           <p>We use Vercel to host the website, Supabase for authentication, database services, and private photo storage, Resend for transactional email delivery, and Gmail for support messages and the admin notification inbox. They process information needed to provide those services. For example, account emails require your recipient address, and support messages are handled through Gmail.</p>
+          <p>If you choose Google sign-in, Google authenticates your account and shares basic identity information with Supabase. This option requests your email and profile information, without access to your Gmail messages, Drive files, or other Google services.</p>
           <p>We may also disclose information when required by law or when necessary to investigate abuse, protect the service, or protect people’s rights or safety. Provider processing and storage may occur outside your state or country.</p>
         </section>
         <section aria-labelledby="cookies"><h2 id="cookies">5. Cookies and tracking</h2>

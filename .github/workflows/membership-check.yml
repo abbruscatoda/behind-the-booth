@@ -4,6 +4,8 @@ on:
     paths:
       - 'src/components/Opportunity*'
       - 'src/lib/accountLinks.ts'
+      - 'src/lib/googleAuth.ts'
+      - 'src/components/GoogleSignInButton.tsx'
       - 'src/app/login/**'
       - 'src/app/auth/callback/**'
       - 'src/app/verify/**'
@@ -12,6 +14,7 @@ on:
       - 'supabase/migrations/*opportunity_alert*'
       - 'supabase/functions/opportunity-alerts/**'
       - 'scripts/test_membership.mjs'
+      - 'scripts/test_google_auth.mjs'
       - 'scripts/fixtures/membership.sql'
       - '.github/workflows/membership-check.yml'
       - 'package-lock.json'
@@ -19,6 +22,8 @@ on:
     paths:
       - 'src/components/Opportunity*'
       - 'src/lib/accountLinks.ts'
+      - 'src/lib/googleAuth.ts'
+      - 'src/components/GoogleSignInButton.tsx'
       - 'src/app/login/**'
       - 'src/app/auth/callback/**'
       - 'src/app/verify/**'
@@ -27,6 +32,7 @@ on:
       - 'supabase/migrations/*opportunity_alert*'
       - 'supabase/functions/opportunity-alerts/**'
       - 'scripts/test_membership.mjs'
+      - 'scripts/test_google_auth.mjs'
       - 'scripts/fixtures/membership.sql'
       - '.github/workflows/membership-check.yml'
       - 'package-lock.json'
@@ -48,3 +54,4 @@ jobs:
       - run: npx next typegen
       - run: npx tsc --noEmit
       - run: node --experimental-strip-types --test scripts/test_membership.mjs
+      - run: node --experimental-strip-types --test scripts/test_google_auth.mjs
