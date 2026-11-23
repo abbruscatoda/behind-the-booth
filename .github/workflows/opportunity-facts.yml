@@ -6,6 +6,12 @@ on:
       - 'scripts/opportunity-research/fact_research.py'
       - 'scripts/opportunity-research/audit_published_facts.py'
       - 'scripts/opportunity-research/official_fee_documents.py'
+      - 'scripts/opportunity-research/application_prices.py'
+      - 'scripts/opportunity-research/google_forms.py'
+      - 'scripts/opportunity-research/published_form_metadata.py'
+      - 'scripts/opportunity-research/form_fees.py'
+      - 'scripts/test_application_price_refresh.mjs'
+      - 'supabase/migrations/*application_hub_price_refresh.sql'
       - '.github/workflows/opportunity-facts.yml'
   workflow_dispatch:
     inputs:
@@ -29,13 +35,22 @@ jobs:
           persist-credentials: false
       - name: Test source-scoped field extraction
         run: python3 -m unittest discover -s scripts/opportunity-research -p 'test_*.py'
-      - name: Install PDF reader
-        run: python3 -m pip install --disable-pip-version-check 'pypdf==5.9.0'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - name: Test price publication permissions
+        run: node --test scripts/test_application_price_refresh.mjs scripts/test_opportunity_facts.mjs
+      - name: Install public form and document readers
+        run: |
+          python3 -m pip install --disable-pip-version-check 'playwright==1.56.0' 'pypdf==5.9.0'
+          python3 -m playwright install --with-deps chromium
       - name: Research official applications and linked documents
         env:
           BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
           BTB_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.BTB_SUPABASE_PUBLISHABLE_KEY }}
           BTB_RESEARCH_SECRET: ${{ secrets.BTB_RESEARCH_SECRET }}
+          BTB_BROWSER_FALLBACK: '1'
           BTB_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         run: |
           if [ "$BTB_DRY_RUN" = "true" ]; then

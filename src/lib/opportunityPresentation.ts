@@ -12,6 +12,9 @@ type DeadlineDetails = {
 
 export function opportunityDeadline(item: DeadlineDetails) {
   const field = item.field_facts?.deadline;
+  if (item.deadline === null && field?.status === "rolling") return {
+    label:"Application window",value:"Applications accepted year-round",note:field.summary,sortAt:Infinity,
+  };
   if (item.deadline === null && field?.status === "date_only" && field.date && /^20\d{2}-\d{2}-\d{2}$/.test(field.date)) {
     const date = new Date(`${field.date}T00:00:00Z`);
     if (Number.isFinite(date.getTime()) && date.toISOString().slice(0,10) === field.date) return {
@@ -92,6 +95,7 @@ export function opportunityBoothPrice(item: {booth_fee: number | null; fee_notes
       note:season.length>2 ? "Season plans also available. See full details." : season.length ? season.map(plan=>`${plan.label}: ${moneyAmount(plan.amount)} (${plan.conditions.replace(/; artisans are not eligible for this plan/,"")})`).join(" · ") : plans.length>1 ? "Prices depend on the option and eligibility. See full details." : comparable[0].conditions};
   }
   if (item.booth_fee === null && item.field_facts?.pricing?.status === "varies_by_event") return {label:"Participation pricing",value:"Varies by event",note:item.field_facts.pricing.summary};
+  if (item.booth_fee === null && item.field_facts?.pricing?.status === "unconfirmed") return {label:"Booth / table fee",value:"Price not yet verified",note:item.field_facts.pricing.summary};
   // A documented seasonal price must never appear as one universal year-round fee.
   if (item.booth_fee !== null && /displayed (?:booth price|\$[\d.]+) is the winter rate/i.test(item.fee_notes)) {
     const summer = /\$([\d,]+(?:\.\d{1,2})?) per (?:stall|market day).*?summer market day/i.exec(item.fee_notes)

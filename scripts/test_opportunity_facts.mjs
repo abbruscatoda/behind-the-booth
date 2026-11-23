@@ -48,6 +48,16 @@ test("confirmed calendar deadlines display and filter without fabricating a time
   assert.equal(filterOpportunities([item],{status:"all",search:"",deadlineBefore:"2026-11-27"},null,0).length,1);
   assert.equal(filterOpportunities([item],{status:"all",search:"",deadlineBefore:"2026-11-26"},null,0).length,0);
 });
+test("a dated festival can explicitly accept applications year-round",()=>{
+  const display=opportunityDeadline({...base,schedule_type:"dated_event",field_facts:{deadline:{status:"rolling",summary:"The organizer accepts applications year-round."}}});
+  assert.equal(display.value,"Applications accepted year-round");assert.equal(display.sortAt,Infinity);
+});
+test("published application prices replace missing main-field prices without inventing a universal tier",()=>{
+  const item={...base,field_facts:{pricing_options:[option("Retail vendor",350,"event"),option("Food truck",800,"event"),option("Refundable deposit",200,"event","addon")]}};
+  assert.equal(opportunityBoothPrice(item).value,"$350.00–$800.00 / event");
+  assert.equal(comparableBoothFee(item),350);
+  assert.equal(opportunityBoothPrice({...base,field_facts:{pricing:{status:"unconfirmed",summary:"Application requires Google sign-in."}}}).value,"Price not yet verified");
+});
 test("new category facts never override an explicit exclusion",()=>{
   const item={...base,field_facts:{categories:["Handmade Crafts","Food Trucks"]},category_evidence:{"Food Trucks":{status:"excluded",checked_at:"2026-11-22T00:00:00Z"}}};
   assert.deepEqual(listedOpportunityCategories(item,Date.parse("2026-11-22T16:00:00Z")),["Handmade Crafts"]);

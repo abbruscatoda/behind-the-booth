@@ -13,6 +13,7 @@ from verifier import Uncertain, valid_url, norm
 from category_rules import visible_text, nodes_with_parents, price_rows
 from form_fees import extract_labeled_fees,extract_linked_fee_options
 from official_fee_documents import inspect_official_fee_documents
+from application_prices import application_materials,published_price_options
 
 POLICY = 'published-field-evidence-v1'
 MONTHS = {name: i + 1 for i, name in enumerate(
@@ -148,6 +149,9 @@ def audit_item(item, fetcher, now=None, document_inspector=inspect_official_fee_
         if not (item.get('verification_policy')=='western-wake-craft-official-v1' and 'register here' in root_text.lower()):
             raise Uncertain('The current source no longer binds this saved application.')
     documents=document_inspector(pages,source)
+    materials,material_diagnostics=application_materials(app,application,item,fetcher,app_hash) if app is not None else ([],[])
+    if materials:
+        access='readable' if not material_diagnostics and all(m['access']=='readable' for m in materials) else 'partial'
     facts={}
     proof=_proof(application,app_hash,app_text[:350]) if app_hash else _proof(source,root_hash,root_text[:350])
     options=[]
@@ -221,7 +225,17 @@ def audit_item(item, fetcher, now=None, document_inspector=inspect_official_fee_
                 day,quote,early=result
                 if day<=item['ends_on']:matches.append({'status':'date_only','date':day,'early_close':early,'summary':'Time not published.'+( ' May close earlier if full.' if early else ''),**_proof(url,digest,quote)})
         if len({m['date'] for m in matches})==1:facts['deadline']=matches[0]
+    if not facts.get('deadline') and item.get('deadline') is None and app_hash and re.search(r'applications\s+(?:are\s+)?open\s+year[- ]round',app_text,re.I):
+        facts['deadline']={'status':'rolling','summary':'The organizer explicitly accepts applications year-round. Review timing and approval are separate from an application closing date.',**_proof(application,app_hash,_snippet(app_text,r'applications\s+(?:are\s+)?open\s+year'))}
     facts.setdefault('deadline',{'status':'rolling' if item.get('schedule_type')=='rolling_market' else 'access_limited' if access!='readable' else 'not_listed','summary':'No single application cutoff applies to this rolling intake.' if item.get('schedule_type')=='rolling_market' else 'A cutoff could not be confirmed from all application materials.' if access!='readable' else 'No application closing date was found in the readable application and checked linked materials.',**proof})
+    pricing_proof=proof
+    if not options:
+        for material in materials:
+            options.extend(published_price_options(material['blocks'],material['source_url'],material['source_hash'],material['title']))
+        options=options[:12]
+        if options:
+            costs_status='options';costs_summary='Published prices from the linked vendor applications. Compare each vendor type, space and payment condition; these are not one universal fee.'
+            pricing_proof={k:options[0][k] for k in ('source_url','source_hash','excerpt')}
     # Exact application fees are parsed only from this specific application.
     # A booth charge, deposit or silence never becomes a $0 application fee.
     fees=extract_labeled_fees(app_text) if access in {'readable','partial'} else {}
@@ -247,7 +261,7 @@ def audit_item(item, fetcher, now=None, document_inspector=inspect_official_fee_
         if options:costs_status='options';costs_summary='These options are listed in the exact vendor application; acceptance and remaining space are subject to organizer approval.'
     if costs_status=='unconfirmed' and re.search(r'(?:fees|costs|pricing|rates).{0,55}var(?:y|ies)|vendor fee associated with participation',root_text+' '+app_text,re.I):
         costs_status='varies_by_event';costs_summary='The organizer describes variable participation pricing; confirm your event, space and vendor type.'
-    facts['pricing']={'status':costs_status,'summary':costs_summary,**proof}
+    facts['pricing']={'status':costs_status,'summary':costs_summary,**pricing_proof}
     facts['pricing_options']=options[:12]
     facts['application_access']=access
     # A reviewed, explicit application category invitation is safe even if the
@@ -287,6 +301,8 @@ def audit_item(item, fetcher, now=None, document_inspector=inspect_official_fee_
             'starts_on':item['starts_on'],'ends_on':item['ends_on'],'checked_at':now.isoformat(),
             'source_hash':root_hash,'application_hash':app_hash,'facts':facts,
             'anchor':{k:item.get(k) for k in ('booth_fee','application_fee','deposit','deadline')},
+            'application_sources':[{'source_url':m['source_url'],'source_hash':m['source_hash'],'access':m['access']} for m in materials],
+            'application_source_diagnostics':material_diagnostics,
             'documents_checked':documents['readable_count'],'documents_blocked':documents['blocked_count']}
 
 def audit_published(db, fetcher, dry_run=False, now=None, context=None):
@@ -301,6 +317,8 @@ def audit_published(db, fetcher, dry_run=False, now=None, context=None):
         except (Uncertain,OSError,ValueError) as error:
             summary['inconclusive'].append({'title':item['title'],'reason':str(error)[:160] if isinstance(error,Uncertain) else 'Official source unavailable; existing facts retained.'});continue
         summary['checked']+=1
+        if result.get('application_source_diagnostics'):
+            summary['inconclusive'].append({'title':item['title'],'reason':'Some linked vendor applications remain unreadable or mismatched; only independently verified fields can be saved.'})
         if not dry_run:
             outcome=db.rpc('btb_research_record_facts',{'p_result':result})
             if outcome.get('action')=='updated':summary['updated']+=1

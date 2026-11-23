@@ -29,7 +29,10 @@ _REQUIREMENT_TERMS = re.compile(
 _MAX_SCRIPT = 500_000
 _MAX_STRINGS = 180
 _MAX_DEPTH = 18
-_MAX_TEXT = 1_200
+# Organizer introductions can contain several pages of published fee terms.
+# Keep them available to the bounded field extractor rather than dropping the
+# entire price section because the surrounding introduction is long.
+_MAX_TEXT = 16_000
 
 
 def _authored_strings(value, depth=0):
