@@ -7,6 +7,7 @@ import { organizerHref, organizerKey, organizerOptions } from "../../lib/marketO
 import { getRatingColor, getRatingDescriptor } from "../../lib/ratingColors";
 import { createClient } from "../../lib/supabase/client";
 import { hasNewReviews, latestReviewTime, type ReviewActivity, type ReviewWindow } from "../../lib/marketReviewRecency";
+import { marketToday } from "../../lib/attendanceDate";
 
 type Market = {
   id: string;
@@ -29,6 +30,11 @@ function MarketDirectory() {
     router.replace(`/markets${next.size ? `?${next.toString()}` : ""}`, { scroll: false });
   }
   const [hasReviewsOnly, setHasReviewsOnly] = useState(false);
+  const [hasUpcomingOnly, setHasUpcomingOnly] = useState(false);
+  const [upcomingDates, setUpcomingDates] = useState<Record<string, string> | null>(null);
+  const [checkingUpcoming, setCheckingUpcoming] = useState(true);
+  const [upcomingRefresh, setUpcomingRefresh] = useState(0);
+  const [today, setToday] = useState("");
   const [activity, setActivity] = useState<Record<string, ReviewActivity> | null>(null);
   const [reviewWindow, setReviewWindow] = useState<ReviewWindow>("all");
   const [sort, setSort] = useState("name");
@@ -108,10 +114,34 @@ function MarketDirectory() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    async function loadDates() {
+      setCheckingUpcoming(true);
+      try {
+        const { data, error } = await createClient().rpc("btb_public_market_upcoming_dates");
+        if (error || !Array.isArray(data)) throw error || new Error("Upcoming dates unavailable");
+        if (active) {
+          setUpcomingDates(Object.fromEntries(data.map((row: { market_id: string; last_event_ends_on: string }) => [row.market_id, row.last_event_ends_on])));
+          setToday(marketToday());
+        }
+      } catch {
+        if (active) setUpcomingDates(null);
+      } finally { if (active) setCheckingUpcoming(false); }
+    }
+    void loadDates();
+    // Expire past dates at North Carolina's midnight, including a tab left open.
+    const updateDay = () => setToday(marketToday());
+    const timer = setInterval(updateDay, 60_000);
+    document.addEventListener("visibilitychange", updateDay);
+    return () => { active = false; clearInterval(timer); document.removeEventListener("visibilitychange", updateDay); };
+  }, [upcomingRefresh]);
+
   const organizers = organizerOptions(markets.map(market => market.organizer));
   const selectedOrganizer = organizers.find(name => organizerKey(name) === organizerKey(organizer)) ?? organizer;
   const filteredMarkets = markets.filter(market =>
     (!hasReviewsOnly || (activity?.[market.id]?.count ?? 0) > 0) &&
+    (!hasUpcomingOnly || Boolean(upcomingDates?.[market.id] && upcomingDates[market.id] >= today)) &&
     (reviewWindow === "all" || hasNewReviews(activity?.[market.id], reviewWindow, lastVisit, checkedAt)) &&
     (!organizer || organizerKey(market.organizer) === organizerKey(organizer)) &&
     `${market.name} ${market.city} ${market.state} ${market.description} ${market.organizer ?? ""}`
@@ -126,15 +156,17 @@ function MarketDirectory() {
     {value: "week", label: `New reviews this week (${weekCount})`},
     ...(lastVisit ? [{value: "since" as const, label: `New reviews since last visit (${sinceCount})`}] : []),
   ];
-  function clearFilters() { setSearch(""); selectOrganizer(""); setHasReviewsOnly(false); setReviewWindow("all"); setSort("name"); }
+  const hasFilters = Boolean(search || organizer || hasReviewsOnly || hasUpcomingOnly || reviewWindow !== "all" || sort !== "name");
+  const toggleClass = (selected: boolean) => `min-h-11 border px-3 py-2 text-sm font-semibold disabled:opacity-50 ${selected ? "border-[#07472B] bg-[#07472B] text-[#F4F0E6]" : "border-[#07472B]/30 text-[#07472B] hover:bg-[#E9E7DA]"}`;
+  function clearFilters() { setSearch(""); selectOrganizer(""); setHasReviewsOnly(false); setHasUpcomingOnly(false); setReviewWindow("all"); setSort("name"); }
 
   return (
     <main className="flex-1 bg-[#F4F0E6] text-[#252521]">
-      
-      
 
-      
-      
+
+
+
+
 
       {/* Directory */}
       <section className="mx-auto max-w-6xl px-6 pb-16 pt-8 md:pt-10">
@@ -156,42 +188,47 @@ function MarketDirectory() {
 
         {/* Search */}
         <div className="mt-6 border-y border-[#252521]/20 py-4">
-          <label
-            htmlFor="market-search"
-            className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-[#626C57]"
-          >
-            Search the Directory
-          </label>
+          <div className="grid items-end gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(10rem,0.65fr)]">
+            <div className="min-w-0">
+              <label
+                htmlFor="market-search"
+                className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-[#626C57]"
+              >
+                Search the Directory
+              </label>
 
-          <input
-            id="market-search"
-            type="search"
-            placeholder="Search markets, cities, or organizers..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-4 py-3 text-[#252521] outline-none transition placeholder:text-[#626C57] focus:border-[#07472B]"
-          />
-
-          <div className="mt-5 grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
-            <div><label htmlFor="organizer-filter" className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-[#626C57]">Filter by organizer</label>
-              <select id="organizer-filter" value={selectedOrganizer} disabled={loading || Boolean(error)} onChange={event => selectOrganizer(event.target.value)} className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]">
+              <input
+                id="market-search"
+                type="search"
+                placeholder="Markets, cities, or organizers..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="h-12 w-full min-w-0 border border-[#252521]/30 bg-[#FFFCF6] px-3 text-[#252521] outline-none transition placeholder:text-[#626C57] focus:border-[#07472B]"
+              />
+            </div>
+            <div className="min-w-0"><label htmlFor="organizer-filter" className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-[#626C57]">Filter by organizer</label>
+              <select id="organizer-filter" value={selectedOrganizer} disabled={loading || Boolean(error)} onChange={event => selectOrganizer(event.target.value)} className="h-12 w-full min-w-0 border border-[#252521]/30 bg-[#FFFCF6] px-3 outline-none focus:border-[#07472B]">
                 <option value="">All organizers</option>
                 {organizer && !organizers.some(name => organizerKey(name) === organizerKey(organizer)) && <option value={organizer}>{organizer}</option>}
                 {organizers.map(name => <option key={organizerKey(name)} value={name}>{name}</option>)}
               </select>
             </div>
-            <div><label htmlFor="market-sort" className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-[#626C57]">Sort markets</label>
-              <select id="market-sort" value={sort} disabled={loading} onChange={event => setSort(event.target.value)} className="w-full border border-[#252521]/30 bg-[#FFFCF6] px-4 py-3 outline-none focus:border-[#07472B]">
+            <div className="min-w-0"><label htmlFor="market-sort" className="mb-2 block text-xs font-bold uppercase tracking-[0.15em] text-[#626C57]">Sort markets</label>
+              <select id="market-sort" value={sort} disabled={loading} onChange={event => setSort(event.target.value)} className="h-12 w-full min-w-0 border border-[#252521]/30 bg-[#FFFCF6] px-3 outline-none focus:border-[#07472B]">
                 <option value="name">Market name</option><option value="reviews" disabled={activity === null}>Latest reviews</option>
               </select>
             </div>
-            <label className="flex min-h-11 items-center gap-3 text-sm font-semibold text-[#07472B]"><input type="checkbox" checked={hasReviewsOnly} disabled={loading || activity === null} onChange={event => setHasReviewsOnly(event.target.checked)} />Has reviews</label>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Filter by new review activity">
+          <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Filter markets">
+            <button type="button" aria-pressed={hasReviewsOnly} disabled={loading || activity === null} onClick={() => setHasReviewsOnly(value => !value)} className={toggleClass(hasReviewsOnly)}>Has reviews</button>
+            <button type="button" aria-pressed={hasUpcomingOnly} aria-describedby="upcoming-events-help" disabled={loading || upcomingDates === null} onClick={() => setHasUpcomingOnly(value => !value)} className={toggleClass(hasUpcomingOnly)}>Has upcoming events</button>
+          </div>
+          <p id="upcoming-events-help" className="sr-only">Matches published event dates today or later, including multi-day events still in progress. General and seasonal application periods are excluded.</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label="Filter by new review activity">
             {reviewOptions.map(option =>
-              <button key={option.value} type="button" aria-pressed={reviewWindow === option.value} disabled={loading || activity === null} onClick={() => setReviewWindow(option.value)} className={`min-h-11 border px-3 py-2 text-sm font-semibold disabled:opacity-50 ${reviewWindow === option.value ? "border-[#07472B] bg-[#07472B] text-[#F4F0E6]" : "border-[#07472B]/30 text-[#07472B] hover:bg-[#E9E7DA]"}`}>{option.label}</button>
+              <button key={option.value} type="button" aria-pressed={reviewWindow === option.value} disabled={loading || activity === null} onClick={() => setReviewWindow(option.value)} className={toggleClass(reviewWindow === option.value)}>{option.label}</button>
             )}
-            {(search || organizer || hasReviewsOnly || reviewWindow !== "all" || sort !== "name") && <button type="button" onClick={clearFilters} className="min-h-11 px-3 py-2 text-sm font-semibold text-[#07472B] underline underline-offset-4">Clear filters</button>}
+            {hasFilters && <button type="button" onClick={clearFilters} className="min-h-11 px-3 py-2 text-sm font-semibold text-[#07472B] underline underline-offset-4">Clear filters</button>}
           </div>
           <p className="mt-2 text-xs leading-relaxed text-[#626C57]">New reviews are approved vendor feedback added in the last 7 days. Since last visit is specific to this browser.</p>
           <p
@@ -210,6 +247,7 @@ function MarketDirectory() {
         </div>
 
         {!loading && !error && activity === null && <p role="status" className="mt-3 text-xs text-[#626C57]">Review counts are temporarily unavailable. You can still browse markets and open their profiles.</p>}
+        {!loading && !error && upcomingDates === null && !checkingUpcoming && <p role="status" className="mt-3 text-xs text-[#626C57]">Upcoming-event dates are temporarily unavailable. <button type="button" onClick={() => setUpcomingRefresh(value => value + 1)} className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">Retry upcoming dates</button></p>}
         <p className="mt-4 text-sm leading-relaxed text-[#55554E]">
           Can’t find the market you’re looking for?{" "}
           <Link
@@ -301,14 +339,16 @@ function MarketDirectory() {
             <p className="mt-3 text-[#55554E]">
               {markets.length === 0
                 ? "There are no market listings yet. Check back soon."
-                : reviewWindow !== "all" ? "No markets match this review window and your other filters. Try All markets or clear your filters." : "Try a different search or clear your filters, including Has reviews."}
+                : hasUpcomingOnly ? "No markets match upcoming event dates and your other filters. Try a different search or clear your filters."
+                : reviewWindow !== "all" ? "No markets match this review window and your other filters. Try All markets or clear your filters." : "Try a different search or clear your filters."}
             </p>
+            {hasFilters && <button type="button" onClick={clearFilters} className="mt-4 min-h-11 px-3 text-sm font-semibold text-[#07472B] underline">Clear filters</button>}
           </div>
         )}
       </section>
 
-      
-      
+
+
     </main>
   );
 }

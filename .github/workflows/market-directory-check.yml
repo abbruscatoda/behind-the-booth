@@ -1,0 +1,38 @@
+name: Market directory checks
+on:
+  push:
+    paths:
+      - 'src/app/markets/page.tsx'
+      - 'src/lib/marketReviewRecency.ts'
+      - 'src/lib/attendanceDate.ts'
+      - 'scripts/test_market_upcoming_events.mjs'
+      - 'scripts/test_market_review_recency.mjs'
+      - 'supabase/migrations/*market_directory_upcoming_events*'
+      - '.github/workflows/market-directory-check.yml'
+  pull_request:
+    paths:
+      - 'src/app/markets/page.tsx'
+      - 'src/lib/marketReviewRecency.ts'
+      - 'src/lib/attendanceDate.ts'
+      - 'scripts/test_market_upcoming_events.mjs'
+      - 'scripts/test_market_review_recency.mjs'
+      - 'supabase/migrations/*market_directory_upcoming_events*'
+      - '.github/workflows/market-directory-check.yml'
+permissions:
+  contents: read
+jobs:
+  directory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: node --experimental-strip-types --test scripts/test_market_upcoming_events.mjs scripts/test_market_review_recency.mjs
