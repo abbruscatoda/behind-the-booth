@@ -6,6 +6,10 @@ on:
       - 'scripts/opportunity-research/discovery.py'
       - 'scripts/opportunity-research/run.py'
       - 'scripts/opportunity-research/sync_sources.py'
+      - 'scripts/opportunity-research/independent_markets.py'
+      - 'scripts/opportunity-research/market_catalog.py'
+      - 'scripts/test_independent_market_publication.mjs'
+      - 'supabase/migrations/*independent_market_discovery.sql'
       - '.github/workflows/discovery-sources.yml'
   workflow_dispatch:
 permissions:
@@ -16,13 +20,20 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Check verifier rules
         run: python3 -m unittest discover -s scripts/opportunity-research -p 'test_*.py'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Check database publication guards
+        run: node --test scripts/test_independent_market_publication.mjs
       - name: Synchronize reviewed sources
         env:
           BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}

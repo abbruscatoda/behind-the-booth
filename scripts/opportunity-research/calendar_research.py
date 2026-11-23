@@ -12,6 +12,10 @@ from form_discovery import supported_form
 
 # Each calendar belongs to an existing, explicitly curated organizer source.
 CALENDARS=(
+ ('Hartwell','https://www.hartwellraleigh.com/retail-markets','https://www.hartwellraleigh.com/monthlyeventcalendar'),
+ ('North Hills','https://www.visitnorthhills.com/signature-events/midtown-makers-market','https://www.visitnorthhills.com/events'),
+ ('Grasshopper Farms','https://www.grasshopperfarmsnc.com/special-events','https://www.grasshopperfarmsnc.com/makers-markets'),
+ ('Unhinged Coffee & Co.','https://www.unhingedcoffee.co/','https://www.unhingedcoffee.co/'),
  ('NC Vintage Market','https://www.eventbrite.com/o/nc-vintage-market-121068658483','https://www.eventbrite.com/o/nc-vintage-market-121068658483'),
  ('Haven Farm','https://www.havenofknightdale.com/work-with-haven','https://www.havenofknightdale.com/community-events'),
  ('NC Vintage Bazaar','https://ncvintagebazaar.com/vendor-booths/','https://ncvintagebazaar.com/'),

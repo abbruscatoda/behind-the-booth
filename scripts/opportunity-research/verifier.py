@@ -25,7 +25,7 @@ SERIES = {
  'raleightwilightmarket':('raleigh-twilight-market','Raleigh Twilight Market'),
 }
 CITIES={'raleigh','durham','cary','apex','wendell','rolesville','wake forest','chapel hill','carrboro','holly springs','fuquay-varina','morrisville','garner','clayton','pittsboro','hillsborough','knightdale','zebulon','youngsville','creedmoor','angier','siler city','mebane','franklinton'}
-HOSTS={'managemymarket.com','www.cognitoforms.com','www.queerolina.org','queerolina.org','www.eventbrite.com','www.havenofknightdale.com','havenofknightdale.com',
+HOSTS={'forms.monday.com','linktr.ee','grlmarket.com','www.grlmarket.com','www.dogwoodraleigh.com','www.hartwellraleigh.com','www.visitnorthhills.com','www.grasshopperfarmsnc.com','www.unhingedcoffee.co','downtownraleigh.org','managemymarket.com','www.cognitoforms.com','www.queerolina.org','queerolina.org','www.eventbrite.com','www.havenofknightdale.com','havenofknightdale.com',
  'ncvintagebazaar.com','www.ncvintagebazaar.com','thepatchworkmarket.com','www.thepatchworkmarket.com',
  'www.rebusworks.us','rebusworks.us','raleighretrogamers.com','www.raleighretrogamers.com','www.artsplosure.org','docs.google.com','forms.gle','makrs.com','www.makrs.com','eventeny.com','www.eventeny.com','artspacenc.org','form.jotform.com','pci.jotform.com',
  'www.trianglepopup.com','trianglepopup.com','thenightmarketcompany.com','www.thenightmarketcompany.com',
@@ -57,6 +57,9 @@ def norm(value):return re.sub(r'[^a-z0-9]','',value.lower())
 def clean(value):return ' '.join(unescape(value).split())
 def valid_url(url):
  p=urlparse(url)
+ if p.hostname=='linktr.ee' and (p.path.rstrip('/')!='/Grlmarket' or p.query):return False
+ if p.hostname=='forms.monday.com' and (not re.fullmatch(r'/forms/[a-f0-9]{32}',p.path) or p.query not in ('','r=use1')):return False
+ if p.hostname=='downtownraleigh.org' and (p.path.rstrip('/')!='/do/fairy-lights-bazaar' or p.query):return False
  if p.hostname=='www.cognitoforms.com' and (p.query or p.path!='/TownOfWakeForestPRCR1/_2027TownOfWakeForestParksRecreationCulturalResourcesSpecialEventFoodVendingOpportun'):return False
  if p.hostname=='managemymarket.com' and (p.path!='/VendorRegister.aspx' or p.query!='orgID=933'):return False
  if p.hostname=='www.eventbrite.com' and (p.query or not (p.path.rstrip('/')=='/o/nc-vintage-market-121068658483' or re.fullmatch(r'/e/[A-Za-z0-9-]+-[0-9]+/?',p.path))):return False

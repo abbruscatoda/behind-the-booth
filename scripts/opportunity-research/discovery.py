@@ -21,6 +21,14 @@ from verifier import (Uncertain, canonical_event, canonical_application,
 # These are *discovery hints*, not a license to auto-publish their listings.
 # All addresses must also be covered by verifier.HOSTS.
 SOURCES = (
+ ('Dogwood Bar & Eatery','Raleigh','https://www.dogwoodraleigh.com/'),
+ ('Fairy Lights Bazaar','Raleigh','https://downtownraleigh.org/do/fairy-lights-bazaar'),
+ ('Hartwell','Raleigh','https://www.hartwellraleigh.com/retail-markets'),
+ ('M.I.N.E.','Durham','https://www.eventeny.com/events/krampusmarket-24719/'),
+ ('GRL Market','Raleigh','https://grlmarket.com/'),
+ ('North Hills','Raleigh','https://www.visitnorthhills.com/signature-events/midtown-makers-market'),
+ ('Grasshopper Farms','Knightdale','https://www.grasshopperfarmsnc.com/special-events'),
+ ('Unhinged Coffee & Co.','Knightdale','https://www.unhingedcoffee.co/'),
  ('NC Vintage Market','Knightdale','https://www.eventbrite.com/o/nc-vintage-market-121068658483'),
  ('Haven Farm','Knightdale','https://www.havenofknightdale.com/work-with-haven'),
  ('NC Vintage Bazaar','Raleigh','https://ncvintagebazaar.com/vendor-booths/'),
@@ -128,6 +136,9 @@ def is_application_hint(url,label):
   return False
  if p.hostname in {'godaddy.com','www.godaddy.com'}:return False
  if canonical_application(url):return True
+ if p.hostname=='forms.monday.com':
+  from verifier import valid_url
+  return bool(valid_url(url) and re.search(r'vendor|market|apply|application',title,re.I))
  if p.hostname in {'docs.google.com','forms.gle','form.jotform.com','pci.jotform.com'}:
   from verifier import valid_url
   if p.hostname=='pci.jotform.com':

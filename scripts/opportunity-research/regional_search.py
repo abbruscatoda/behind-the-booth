@@ -11,7 +11,9 @@ REGION_GROUPS=(
  'Holly Springs Fuquay-Varina Angier Clayton Wendell Zebulon',
 )
 INTENTS=('market festival vendor application','food truck artisan holiday market apply',
-         'farmers market rolling seasonal vendor registration','call for vendors pop up craft fair','vintage thrift flea collectible market vendor application')
+         'farmers market rolling seasonal vendor registration','call for vendors pop up craft fair','vintage thrift flea collectible market vendor application',
+         'independent makers bazaar night market vendor application','bar brewery coffee shop farm venue pop up vendors',
+         'women owned makers market vendor application','holiday Christmas Krampus themed market call for vendors')
 MAX_QUERIES=24
 MAX_RESULTS_PER_QUERY=10
 MAX_SEARCH_PAGES=12

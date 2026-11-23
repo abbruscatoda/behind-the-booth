@@ -34,6 +34,9 @@ CATALOG={
   signals=(r'Raleigh Retro Gamers',r'(?:Triangle|North Carolina)',r'(?:pop.up|markets)',r'vintage')),
 }
 
+from independent_markets import catalog_additions
+CATALOG.update(catalog_additions())
+
 def verify_catalog_entry(key,fetcher,now=None):
  cfg=CATALOG[key]
  if not valid_url(cfg['source']):raise Uncertain('Catalog source is not approved for public fetching.')

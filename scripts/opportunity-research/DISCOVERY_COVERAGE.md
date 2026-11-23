@@ -1,6 +1,6 @@
 # Triangle discovery coverage
 
-The scheduled worker now checks 40 curated organizer/application roots and 13 official event calendars. Regional search runs one query for each of the 24 communities in `verifier.CITIES`, rotates seasonal, artisan, food-truck, festival, and rolling-intake terms, and includes the current and following year.
+The scheduled worker now checks 54 curated organizer/application roots and 23 official event calendars. Regional search runs one query for each of the 24 communities in `verifier.CITIES`, rotates seasonal, artisan, food-truck, festival, and rolling-intake terms, and includes the current and following year.
 
 When RSS search supplies irrelevant geography pages or no vendor results, up to six community queries per run use an independent read-only HTML search fallback. The fallback selection rotates across runs. Both providers have bounded response sizes, timeouts and failure reporting; neither provider supplies publication evidence. Eventeny application hits can lead back to their own structured event metadata for normal verification.
 
@@ -52,3 +52,13 @@ Each worker run also audits optional fields on existing, visible published appli
 - If previously sourced options or a calendar deadline disappear, keep the last still-valid evidence and record the regression for rechecking instead of silently deleting details.
 
 Regression fixtures: `test_fact_research.py` and `scripts/test_opportunity_facts.mjs` cover the Wake Forest November 27 cutoff, Fuquay guest/season plans, Western Wake regular/craft separation, the newer State Farmers Market schedule, blocked forms, free-application wording, sample contracts, category exclusions and budget/deadline filters.
+
+## Independent venues and historical flyer regressions (November 23, 2026)
+
+The reviewed watchlist now includes Dogwood, Fairy Lights Bazaar, Hartwell, M.I.N.E./Krampus, GRL Market, North Hills Midtown Makers Market, Grasshopper Farms and Unhinged Coffee & Co. These are monitored source identities, not claims that applications are open. The two St. Nick of Time flyers describe the same historical event; GRL venues are kept separate so their reviews and application restrictions do not get mixed. Midtown Makers Market is distinct from Midtown Farmers Market.
+
+`independent_markets.py` follows the reviewed GRL link hub, corroborates the exact venue/date against the explicit year on the current organizer calendar, and reads the public `window.form_data` JSON embedded in Monday WorkForms. It does not execute page JavaScript, submit an application, read responses, log in, or fetch private board APIs. Only visible published questions and enabled category choices are captured. Welcome-page fees are included. Missing/changed schemas and date restrictions remain unconfirmed. Explicit closures close existing automated listings; they cannot create new openings. Application fees, deposits and cutoffs stay unknown without evidence.
+
+New GRL editions can be discovered from new public form IDs at the three reviewed venues. Shared Linktree trust is restricted to `/Grlmarket`; unrelated profile recommendations are ignored. WorkForms are restricted to their public 32-character form paths without prefilled inputs. The venue-specific Transfer food exclusion and conflicting setup wording, and Waverly beverage restrictions and conflicting end times, are surfaced for vendors.
+
+The source-sync workflow publishes fresh catalog receipts and verified independent applications immediately. The regular scheduled worker also runs the reader and rechecks previously published applications. Both use the same secret-guarded publication function and retain hidden-market, manual-hold, stale-evidence and duplicate safeguards. General venue hire forms, attendee ticket links, craft-class registrations, employment forms, outdated fees in hidden confirmation messages and old social flyers are never treated as active vendor applications. Historical dates retain their original year; annual recurrence is not invented. Public-source failures are recorded for monitoring, not replaced with guessed facts.

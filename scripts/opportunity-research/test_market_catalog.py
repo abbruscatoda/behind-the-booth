@@ -17,6 +17,18 @@ class Pages:
    'raleigh-retro-markets':'Raleigh Retro Gamers hosts pop-up markets in the Triangle with vintage sellers.',
   }
   self.docs={CATALOG[key]['source']:value for key,value in texts.items()}
+  from independent_markets import catalog_additions
+  extra={
+   'grl-waverly':'GRL Market at Waverly Place Cary and Transfer Food Hall Raleigh and Seaboard Station Raleigh.',
+   'grl-transfer':'GRL Market at Waverly Place Cary and Transfer Food Hall Raleigh and Seaboard Station Raleigh.',
+   'grl-seaboard':'GRL Market at Waverly Place Cary and Transfer Food Hall Raleigh and Seaboard Station Raleigh.',
+   'grasshopper-makers':'Grasshopper Farms Makers Market Knightdale',
+   'midtown-makers':'Midtown Makers Market in the North Hills Innovation District of Raleigh',
+   'hartwell-markets':'Hartwell Raleigh monthly markets',
+   'unhinged-markets':'Unhinged Knightdale vendor market',
+   'krampus-durham':'Krampus Market Durham 2025 M.I.N.E.',
+  }
+  self.docs.update({CATALOG[key]['source']:value for key,value in extra.items()})
  def get(self,url):
   if url not in self.docs:raise IOError('Unavailable')
   return Document('<h1>'+self.docs[url]+'</h1>'),'a'*64
@@ -24,10 +36,10 @@ class CatalogTests(unittest.TestCase):
  def test_small_deployment_fetch_budget_still_checks_catalog(self):
   pages=Pages();pages.limit=16
   results,notes=discover_catalog(pages,NOW)
-  self.assertEqual(len(results),5)
+  self.assertEqual(len(results),len(CATALOG))
  def test_verified_profiles_do_not_imply_open_applications(self):
   results,notes=discover_catalog(Pages(),NOW)
-  self.assertEqual(len(results),5);self.assertFalse(notes)
+  self.assertEqual(len(results),len(CATALOG));self.assertFalse(notes)
   for result in results:
    self.assertNotIn('candidate',result)
    self.assertNotIn('application_url',result)
@@ -40,7 +52,7 @@ class CatalogTests(unittest.TestCase):
  def test_one_blocked_source_does_not_block_other_verified_profiles(self):
   pages=Pages();del pages.docs[CATALOG['nc-vintage-haven']['source']]
   results,notes=discover_catalog(pages,NOW)
-  self.assertEqual(len(results),4);self.assertEqual(len(notes),1)
+  self.assertEqual(len(results),len(CATALOG)-1);self.assertEqual(len(notes),1)
  def test_eventbrite_fetch_scope_does_not_include_unreviewed_organizers(self):
   self.assertTrue(valid_url(CATALOG['nc-vintage-haven']['source']))
   self.assertFalse(valid_url('https://www.eventbrite.com/o/unknown-123456789'))
