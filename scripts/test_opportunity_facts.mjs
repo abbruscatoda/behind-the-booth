@@ -57,6 +57,7 @@ test("published application prices replace missing main-field prices without inv
   assert.equal(opportunityBoothPrice(item).value,"$350.00–$800.00 / event");
   assert.equal(comparableBoothFee(item),350);
   assert.equal(opportunityBoothPrice({...base,field_facts:{pricing:{status:"unconfirmed",summary:"Application requires Google sign-in."}}}).value,"Price not yet verified");
+  assert.equal(opportunityBoothPrice({...base,field_facts:{pricing:{status:"unconfirmed",summary:"Published booth pricing. Full costs and eligibility are available with a free account."}}}).note,"Current application costs have not yet been verified.");
 });
 test("new category facts never override an explicit exclusion",()=>{
   const item={...base,field_facts:{categories:["Handmade Crafts","Food Trucks"]},category_evidence:{"Food Trucks":{status:"excluded",checked_at:"2026-11-22T00:00:00Z"}}};
