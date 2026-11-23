@@ -4,6 +4,8 @@ import json
 import os
 from urllib.parse import urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler
+from urllib.error import HTTPError
+import re
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -31,6 +33,17 @@ def main():
         try:
             with build_opener(NoRedirect()).open(request, timeout=120) as response:
                 result = json.load(response)
+        except HTTPError as error:
+            stage = code = "unknown"
+            try:
+                detail = json.loads(error.read(4096))
+                if re.fullmatch(r"[a-z_]{1,40}", str(detail.get("stage", ""))):
+                    stage = detail["stage"]
+                if re.fullmatch(r"[A-Za-z0-9_]{1,60}", str(detail.get("code", ""))):
+                    code = detail["code"]
+            except (ValueError, UnicodeError):
+                pass
+            raise RuntimeError(f"Opportunity alert batch failed (HTTP {error.code}, stage {stage}, code {code}). No credentials or recipient details are logged.") from None
         except Exception:
             raise RuntimeError("Opportunity alert batch failed. Inspect the worker status; credentials and recipient details are not logged.") from None
         print(json.dumps({k: result[k] for k in ("dry_run", "configured", "due_members", "sent", "skipped", "failed", "more") if k in result}))

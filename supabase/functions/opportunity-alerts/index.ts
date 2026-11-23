@@ -31,7 +31,7 @@ export function buildOpportunityDigest(entries:Entry[],origin:string,unsubscribe
 export async function handleOpportunityAlerts(req:Request,env:(name:string)=>string|undefined=name=>Deno.env.get(name),fetcher:typeof fetch=fetch):Promise<Response>{
   if(req.method!=="POST")return response(405,{error:"POST required."});
   const supplied=req.headers.get("x-btb-research-secret")??"";
-  if(!/^[a-f\d]{64}$/i.test(supplied))return response(401,{error:"Unauthorized."});
+  if(supplied.length!==64)return response(401,{error:"Unauthorized.",stage:"authorization",code:"invalid_worker_header"});
   const base=(env("SUPABASE_URL")??"").replace(/\/$/,"");
   const publicKey=env("SUPABASE_ANON_KEY");
   const service=env("SUPABASE_SERVICE_ROLE_KEY");
@@ -44,13 +44,18 @@ export async function handleOpportunityAlerts(req:Request,env:(name:string)=>str
   let authorization:Response;
   try{authorization=await fetcher(`${base}/rest/v1/rpc/btb_research_authorize`,{method:"POST",headers:{apikey:publicKey,"Content-Type":"application/json","x-btb-research-secret":supplied},body:"{}",signal:AbortSignal.timeout(12000)});}
   catch{return response(502,{error:"Could not verify worker authorization."});}
-  if(!authorization.ok)return response(authorization.status===401||authorization.status===403?401:502,{error:"Worker authorization failed."});
+  if(!authorization.ok){
+    let code="unknown";try{const detail=await authorization.json();if(typeof detail.code==="string"&&/^(?:[A-Z0-9]{5}|PGRST[0-9]{3})$/.test(detail.code))code=detail.code;}catch{}
+    return response(authorization.status===401||authorization.status===403?401:502,{error:"Worker authorization failed.",stage:"authorization",code:`http_${authorization.status}_${code}`});
+  }
   if(!req.headers.get("content-type")?.startsWith("application/json"))return response(415,{error:"Use application/json."});
   let dryRun:boolean;
   try{const text=await req.text();if(text.length>1024)throw Error();const body=JSON.parse(text);if(typeof body.dry_run!=="boolean")throw Error();dryRun=body.dry_run;}
   catch{return response(400,{error:"Provide an explicit dry_run boolean."});}
   const headers={apikey:service,Authorization:`Bearer ${service}`,"Content-Type":"application/json"};
+  let stage="configuration";
   async function api(path:string,init:RequestInit={}){
+    stage=path.includes('btb_due_')?'due_members':path.includes('btb_claim_')?'claim':path.includes('/auth/v1/')?'recipient_lookup':path.includes('btb_public_opportunities')?'current_opportunities':path.includes('btb_prepare_')?'prepare_payload':path.includes('btb_finish_')?'finish_delivery':'database';
     const result=await fetcher(`${base}${path}`,{...init,headers,signal:AbortSignal.timeout(12000)});
     if(!result.ok)throw Error(`database_${result.status}`);
     const text=await result.text();return text?JSON.parse(text):null;
@@ -92,6 +97,6 @@ export async function handleOpportunityAlerts(req:Request,env:(name:string)=>str
       }
     }
     return response(failed?502:200,{sent,skipped,failed,more:due.length===10});
-  }catch{return response(502,{error:"Alert batch failed. No recipient details are logged."});}
+  }catch(cause){const code=cause instanceof Error&&/^database_[0-9]{3}$/.test(cause.message)?cause.message:'request_failed';return response(502,{error:"Alert batch failed. No recipient details are logged.",stage,code});}
 }
 if(typeof Deno!=="undefined")Deno.serve(req=>handleOpportunityAlerts(req));

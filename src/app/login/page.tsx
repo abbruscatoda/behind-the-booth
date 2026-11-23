@@ -190,7 +190,7 @@ export default function LoginPage() {
       <section className="mx-auto max-w-2xl px-6 py-14 md:py-20">
         <p className="heritage-label">{signedIn ? "My Account" : "The Vendor Community"}</p>
         <h1 className="heritage-heading mt-5 text-4xl md:text-5xl">{signedIn ? "Welcome back." : mode === "signup" ? "Join the conversation." : "Take your place."}</h1>
-        <p className="mt-6 leading-relaxed text-[#55554E]">Create your free account to compare full opportunity details, save your shortlist, and read firsthand vendor reviews. Access starts after signup and email confirmation. Verify your business privately when you are ready to share your own publicly anonymous reviews.</p>
+        <p className="mt-6 leading-relaxed text-[#55554E]">Create your free account to compare full opportunity details, save your shortlist, read firsthand vendor reviews, and choose optional opportunity emails. Access starts after signup and email confirmation. Verify your business privately when you are ready to share your own publicly anonymous reviews.</p>
         {!signedIn&&returnTo&&<p className="mt-3 text-sm text-[#07472B]">After signing in, you will return to the page you selected.</p>}
 
         {checking ? <p className="mt-10 text-[#55554E]" role="status">Checking your sign-in...</p> : signedIn ? (
