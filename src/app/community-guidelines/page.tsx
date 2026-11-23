@@ -21,7 +21,7 @@ const guidelines = [
   },
   {
     title: "Protect your privacy and other people’s.",
-    text: "Public reviews do not display your account name or email. However, your writing, product category, booth costs, or event details may identify you. Avoid names, phone numbers, private messages, order details, and other identifying information you do not want published. Vendor verification information is separate from the public review.",
+    text: "Public reviews do not display your account name or email. However, your writing, photos, product category, booth costs, or event details may identify you. Share only photos you took, and avoid recognizable people or identifying signs unless you have permission to share them. Avoid names, phone numbers, private messages, order details, and other identifying information you do not want published. Vendor verification information is separate from the public review.",
   },
   {
     title: "Keep ratings independent.",
@@ -62,6 +62,7 @@ export default function CommunityGuidelinesPage() {
         <h2 id="moderation-heading" className="heritage-heading mt-4 text-3xl">How moderation works.</h2>
         <div className="mt-5 space-y-4 leading-relaxed text-[#55554E]">
           <p>Review submission requires an approved vendor account. Submitted reviews enter a moderation queue and appear publicly only after approval. Pending and rejected reviews are excluded from published rating summaries.</p>
+          <p>Optional photos are moderated with the review. We may hide an individual photo that raises a privacy concern or breaks these guidelines while keeping an otherwise useful written review.</p>
           <p>We assess submissions against these guidelines. Verification and moderation help us evaluate submissions; they do not guarantee that every statement is accurate or that every vendor will have the same experience.</p>
           <p>Submissions that break these guidelines may be rejected. To question a moderation decision, flag a privacy concern, or request a correction, email us with the market link and a brief explanation. Please avoid sending sensitive documents in your initial message.</p>
         </div>

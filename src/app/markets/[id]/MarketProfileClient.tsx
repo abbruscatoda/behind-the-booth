@@ -8,6 +8,8 @@ import { useDeferredAnchor } from "../../../hooks/useDeferredAnchor";
 import { createClient } from "../../../lib/supabase/client";
 import MarketParticipationPanel from "../../../components/MarketParticipationPanel";
 import ReviewForm from "../../../components/ReviewForm";
+import ReviewPhotoGallery from "../../../components/ReviewPhotoGallery";
+import type { ReviewPhoto } from "../../../lib/reviewPhotos";
 import { getRatingColor } from "../../../lib/ratingColors";
 
 import { formatAttendanceDate } from "../../../lib/attendanceDate";
@@ -26,6 +28,7 @@ type Market = {
 };
 
 type PublicReview = {
+  photos?: ReviewPhoto[];
   attended_on: string | null;
   created_at?: string;
   id: string;
@@ -376,6 +379,7 @@ function MarketReviews({ marketId }: { marketId: string }) {
                 {review.vendor_categories.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{review.vendor_categories.map((category) => <span key={category} className="border border-[#D6D4BF] bg-[#E9E7DA] px-3 py-2 text-xs text-[#55554E]">{category === "Other" && review.other_category ? `Other: ${review.other_category}` : category}</span>)}</div>}
                 <dl className="mt-7 grid gap-4 border-y border-[#252521]/15 py-5 sm:grid-cols-2 lg:grid-cols-3">{ratingCategories.map(({ key, label }) => <div key={key}><dt className="text-xs font-semibold text-[#626C57]">{label}</dt><dd className="mt-1 text-sm font-bold" style={{ color: getRatingColor(review[key]) }}>{review[key]}/5 · {ratingLabels[review[key] - 1]}</dd></div>)}</dl>
                 <p className="mt-7 whitespace-pre-wrap break-words leading-relaxed text-[#55554E]">{review.experience}</p>
+                <ReviewPhotoGallery photos={review.photos} />
                 {(review.booth_cost !== null || review.booth_duration !== null) && <div className="mt-7 border-l-2 border-[#07472B] bg-[#E9E7DA] p-4 text-sm text-[#55554E]"><p className="font-semibold">Vendor-Reported Booth Information</p>{review.booth_cost !== null && <p className="mt-2">Total booth cost: {money.format(Number(review.booth_cost))}</p>}{review.booth_duration !== null && <p className="mt-2">Duration: {review.booth_duration === "single" ? "Single day" : review.number_of_days !== null ? `${review.number_of_days} days` : "Multi-day; number of days not provided"}</p>}{dailyCost !== null && <p className="mt-2">Estimated cost per day: {money.format(dailyCost)}</p>}</div>}
                 <p className="mt-6 text-sm"><strong>Would participate again:</strong> {review.would_return}</p>
               </article>

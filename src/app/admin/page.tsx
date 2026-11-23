@@ -4,6 +4,8 @@ import ExternalLinkIcon from "../../components/ExternalLinkIcon";
 import Link from "next/link";
 import OrganizerField from "../../components/OrganizerField";
 import ConfirmationDialog from "../../components/ConfirmationDialog";
+import ReviewPhotoGallery from "../../components/ReviewPhotoGallery";
+import type { ReviewPhoto } from "../../lib/reviewPhotos";
 import { cleanOrganizer } from "../../lib/marketOrganizers";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createClient } from "../../lib/supabase/client";
@@ -22,6 +24,7 @@ type Vendor = Base & {
   business_name: string; business_url: string | null; verification_notes: string;
 };
 type Review = Base & {
+  photos?: ReviewPhoto[];
   attended_on: string | null;
   market_name: string; market_slug: string; vendor_categories: string[];
   other_category: string | null; booth_value: number; foot_traffic: number;
@@ -273,7 +276,7 @@ export default function AdminPage() {
         {action.type === "publish" ? <div className="space-y-2 text-sm"><p className="font-semibold">{action.listing.name} — {action.listing.city}, {action.listing.state}</p><p className="break-all">/markets/{action.listing.slug}</p><p className="whitespace-pre-wrap">{action.listing.description}</p><p className="break-all">{action.listing.website}</p><p>Organizer: {action.listing.organizer || "Not assigned"}</p></div> : <div className="space-y-3 text-sm">
           <p className="font-semibold">{"business_name" in action.row ? action.row.business_name : "name" in action.row ? action.row.name : `Review of ${action.row.market_name}`}</p>
           <p>Status: <strong>{action.row.status} → {action.status}</strong></p>
-          {"market_name" in action.row && <><p>{action.row.attended_on ? `Attended: ${formatAttendanceDate(action.row.attended_on)}` : "Attendance date not provided"}</p><blockquote className="whitespace-pre-wrap border-l-2 border-[#07472B]/30 pl-3 leading-relaxed">{action.row.experience}</blockquote></>}
+          {"market_name" in action.row && <><p>{action.row.attended_on ? `Attended: ${formatAttendanceDate(action.row.attended_on)}` : "Attendance date not provided"}</p><blockquote className="whitespace-pre-wrap border-l-2 border-[#07472B]/30 pl-3 leading-relaxed">{action.row.experience}</blockquote><ReviewPhotoGallery photos={action.row.photos} disabled={busy} /></>}
         </div>}
       </ConfirmationDialog>}
       {loading ? <p role="status" className="py-8">Loading {labels[kind].toLowerCase()}…</p> : queue && !queue.items.length ? <div className="heritage-card py-10 text-center"><h2 className="font-serif text-2xl font-bold">No {status} {labels[kind].toLowerCase()}.</h2><p className="mt-3 text-sm text-[#626C57]">You&apos;re up to date for this queue.</p></div> : <div className="space-y-5">{queue?.items.map(row => <article key={row.id} className="rounded-sm border border-[#252521]/20 bg-[#FFFCF6] p-5 md:p-7">
@@ -292,6 +295,7 @@ export default function AdminPage() {
           <p className="mt-4 text-sm"><strong>Vendor categories:</strong> {row.vendor_categories.join(", ") || "Not supplied"}{row.other_category ? ` — ${row.other_category}` : ""}</p>
           <p className="mt-3 text-sm font-semibold">{row.attended_on ? `Attended: ${formatAttendanceDate(row.attended_on)}` : "Attendance date not provided"}</p>
           <p className="mt-3 whitespace-pre-wrap break-words leading-relaxed">{row.experience}</p>
+          <ReviewPhotoGallery photos={row.photos} moderation disabled={busy || Boolean(action)} onModerated={() => setRefresh(value => value + 1)} />
           <p className="mt-4 text-sm"><strong>Reported booth cost:</strong> {row.booth_cost === null ? "Not supplied" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(row.booth_cost)} · {row.booth_duration === "single" ? "Single day" : row.booth_duration === "multi" ? `Multiple days${row.number_of_days ? ` (${row.number_of_days})` : ""}` : "Duration not supplied"}</p><p className="mt-2 text-sm"><strong>Would return:</strong> {row.would_return}</p>{actions(row)}
         </>}
       </article>)}</div>}

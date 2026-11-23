@@ -5,6 +5,12 @@ on:
     paths:
       - 'src/components/ReviewForm.tsx'
       - 'src/components/ReviewPreviewDialog.tsx'
+      - 'src/components/ReviewPhotoPicker.tsx'
+      - 'src/components/ReviewPhotoGallery.tsx'
+      - 'src/components/MyReviews.tsx'
+      - 'src/lib/reviewPhotos.ts'
+      - 'scripts/test_review_photos.mjs'
+      - 'scripts/fixtures/review_photos.sql'
       - 'src/components/ConfirmationDialog.tsx'
       - 'src/app/admin/page.tsx'
       - 'src/app/globals.css'
@@ -17,6 +23,12 @@ on:
     paths:
       - 'src/components/ReviewForm.tsx'
       - 'src/components/ReviewPreviewDialog.tsx'
+      - 'src/components/ReviewPhotoPicker.tsx'
+      - 'src/components/ReviewPhotoGallery.tsx'
+      - 'src/components/MyReviews.tsx'
+      - 'src/lib/reviewPhotos.ts'
+      - 'scripts/test_review_photos.mjs'
+      - 'scripts/fixtures/review_photos.sql'
       - 'src/components/ConfirmationDialog.tsx'
       - 'src/app/admin/page.tsx'
       - 'src/app/globals.css'
@@ -42,4 +54,4 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npx next typegen
       - run: npx tsc --noEmit
-      - run: node --experimental-strip-types --test scripts/test_review_categories.mjs
+      - run: node --experimental-strip-types --test scripts/test_review_categories.mjs scripts/test_review_photos.mjs

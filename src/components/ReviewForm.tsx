@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ReviewPreviewDialog from "./ReviewPreviewDialog";
+import ReviewPhotoPicker from "./ReviewPhotoPicker";
+import ReviewPhotoGallery from "./ReviewPhotoGallery";
+import { submitReviewWithPhotos, type DraftReviewPhoto, type ReviewUploadAttempt } from "../lib/reviewPhotos";
 import { useDeferredAnchor } from "../hooks/useDeferredAnchor";
 import { createClient } from "../lib/supabase/client";
 import { getRatingColor } from "../lib/ratingColors";
@@ -141,6 +144,13 @@ export default function ReviewForm({ marketId, marketName }: { marketId: string;
   const [experience, setExperience] = useState("");
   const [wouldReturn, setWouldReturn] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const [photos, setPhotos] = useState<DraftReviewPhoto[]>([]);
+  const [preparingPhotos, setPreparingPhotos] = useState(false);
+  const [submissionProgress, setSubmissionProgress] = useState("");
+  const photoRef = useRef(photos);
+  const uploadAttempt = useRef<ReviewUploadAttempt | null>(null);
+  useEffect(() => { photoRef.current = photos; }, [photos]);
+  useEffect(() => () => { photoRef.current.forEach(photo => URL.revokeObjectURL(photo.preview)); }, []);
 
   useEffect(() => {
     if (submitted) {
@@ -194,6 +204,7 @@ export default function ReviewForm({ marketId, marketName }: { marketId: string;
   }
 
   function handlePreview() {
+    if (preparingPhotos) return;
     if (!validAttendanceDate(attendedOn)) {
       setError("Please enter the date you attended. It must be today or earlier.");
       attendanceInput.current?.focus();
@@ -258,11 +269,11 @@ export default function ReviewForm({ marketId, marketName }: { marketId: string;
         setAccess("signin");
         throw new Error("Please sign in again before submitting.");
       }
-      const { error: insertError } = await supabase.from("reviews").insert({
+      uploadAttempt.current ??= { id: crypto.randomUUID(), uploaded: new Set() };
+      await submitReviewWithPhotos(supabase, auth.user.id, {
         occurrence_id: occurrenceId || null,
         attended_on: attendedOn,
         market_id: marketId,
-        vendor_id: auth.user.id,
         vendor_categories: selectedVendorCategories,
         other_category: selectedVendorCategories.includes("Other") && otherCategory.trim() ? otherCategory.trim() : null,
         booth_value: ratings.value,
@@ -275,24 +286,21 @@ export default function ReviewForm({ marketId, marketName }: { marketId: string;
         number_of_days: totalDays,
         experience: experience.trim(),
         would_return: wouldReturn,
-      });
-      if (insertError) {
-        if (insertError.code === "23505") throw new Error("You already submitted a review for this market date or event occurrence. Check My Account for its status.");
-        if (insertError.code === "42501") throw new Error("You don't currently have permission to submit. Refresh and check your vendor verification status.");
-        if (insertError.code === "23514" && insertError.message.includes("vendor category")) throw new Error("Select at least one category or choose “Prefer not to disclose,” then preview your review again.");
-        throw insertError;
-      }
+      }, photos, uploadAttempt.current, setSubmissionProgress);
       setReviewStatus("pending");
       setSubmitted(true);
       setAccess("exists");
       setShowPreview(false);
       setExperience("");
+      photos.forEach(photo => URL.revokeObjectURL(photo.preview));
+      setPhotos([]);
     } catch (cause) {
       console.error("Unable to submit review:", cause);
       setError(cause instanceof Error ? cause.message : "We couldn't submit your review. Please try again.");
     } finally {
       submitting.current = false;
       setBusy(false);
+      setSubmissionProgress("");
     }
   }
 
@@ -799,6 +807,8 @@ export default function ReviewForm({ marketId, marketName }: { marketId: string;
           </p>
         </div>
 
+        <ReviewPhotoPicker photos={photos} onPreparing={setPreparingPhotos} onChange={next => { setPhotos(next); setShowPreview(false); }} />
+
         {/* Return preference */}
         <fieldset className="mt-7 border-t border-[#252521]/15 pt-7">
           <legend className="font-serif text-xl font-bold">
@@ -841,7 +851,8 @@ export default function ReviewForm({ marketId, marketName }: { marketId: string;
           <button
             type="button"
             onClick={handlePreview}
-            className="heritage-button"
+            disabled={preparingPhotos}
+            className="heritage-button disabled:opacity-50"
           >
             Preview My Review
           </button>
@@ -854,9 +865,10 @@ export default function ReviewForm({ marketId, marketName }: { marketId: string;
         </fieldset>
         {/* Review preview */}
         {showPreview && (
-          <ReviewPreviewDialog busy={busy} error={error} onClose={() => setShowPreview(false)} onSubmit={() => void handleSubmit()}>
+          <ReviewPreviewDialog busy={busy} progress={submissionProgress} error={error} onClose={() => setShowPreview(false)} onSubmit={() => void handleSubmit()}>
             <p className="font-serif text-xl font-bold">{marketName}</p>
             <p className="mt-2 text-sm text-[#55554E]"><strong>Attended:</strong>{" "}<time dateTime={attendedOn}>{formatAttendanceDate(attendedOn)}</time></p>
+            <ReviewPhotoGallery photos={photos.map(photo => ({ ...photo, path: "", hidden: false }))} disabled={busy} />
 
             {/* Vendor category preview */}
             <div className="mt-6">

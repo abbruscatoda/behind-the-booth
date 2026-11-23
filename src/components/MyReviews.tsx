@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import { formatAttendanceDate } from "../lib/attendanceDate";
+import ReviewPhotoGallery from "./ReviewPhotoGallery";
+import type { ReviewPhoto } from "../lib/reviewPhotos";
 
-type Review = { id: string; market_name: string | null; market_slug: string | null; status: string; attended_on: string | null; overall: number; experience: string; created_at: string };
+type Review = { id: string; market_name: string | null; market_slug: string | null; status: string; attended_on: string | null; overall: number; experience: string; created_at: string; photos?: ReviewPhoto[] };
 type Result = { items: Review[]; total: number };
 
 export default function MyReviews() {
@@ -42,6 +44,7 @@ export default function MyReviews() {
         <p className="mt-3 text-sm text-[#626C57]">{review.attended_on ? `Attended: ${formatAttendanceDate(review.attended_on)}` : "Attendance date not provided"}</p>
         <p className="mt-2 text-xs text-[#626C57]">Submitted: {new Date(review.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "America/New_York" })} · Overall: {review.overall}/5</p>
         <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed">{review.experience}</p>
+        <ReviewPhotoGallery photos={review.photos} />
         <p className="mt-3 text-xs leading-relaxed text-[#626C57]">{review.status === "approved" ? "Published in the market's member report." : review.status === "pending" ? "Waiting for moderation. Your review is not public yet." : "Not published. Editing and resubmission are not available yet. Contact us if you have a question."}</p>
         <div className="mt-4 flex flex-wrap gap-5">{review.market_slug && <Link href={`/markets/${encodeURIComponent(review.market_slug)}#vendor-reviews`} className="text-sm font-semibold text-[#07472B] underline">{review.status === "approved" ? "View market reviews" : "View market"} →</Link>}{review.status === "rejected" && <Link href="/contact" className="text-sm font-semibold text-[#07472B] underline">Contact us →</Link>}</div>
       </article>)}</div>

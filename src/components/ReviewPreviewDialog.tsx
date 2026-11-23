@@ -2,9 +2,10 @@
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
-export default function ReviewPreviewDialog({ children, busy, error, onClose, onSubmit }: {
+export default function ReviewPreviewDialog({ children, busy, progress, error, onClose, onSubmit }: {
   children: ReactNode;
   busy: boolean;
+  progress?: string;
   error: string;
   onClose: () => void;
   onSubmit: () => void;
@@ -54,6 +55,7 @@ export default function ReviewPreviewDialog({ children, busy, error, onClose, on
       </div>
 
       <div className="review-preview-dialog-footer shrink-0 border-t border-[#252521]/20 px-4 py-3 sm:px-7 sm:py-4">
+        {busy && progress && <p role="status" className="mb-2 text-xs text-[#626C57]">{progress}</p>}
         {error && <p role="alert" className="mb-3 border-l-2 border-[#9B3E35] bg-[#F4F0E6] px-3 py-2 text-sm text-[#9B3E35]">{error}</p>}
         <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
           <button type="button" onClick={close} disabled={busy}
