@@ -6,6 +6,14 @@ CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$SELECT coalesc
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$SELECT (auth.jwt()->>'sub')::uuid$$;
 GRANT USAGE ON SCHEMA auth TO anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION auth.jwt(),auth.uid() TO anon,authenticated,service_role;
+-- The production research authorizer is an internal helper, not an executable
+-- client RPC. A service worker must use the dedicated narrow bridge.
+CREATE FUNCTION public.btb_research_authorize() RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF coalesce(nullif(current_setting('request.headers',true),'')::jsonb->>'x-btb-research-secret','')<>repeat('f',64) THEN
+ RAISE EXCEPTION 'Research worker authorization required.' USING errcode='42501';END IF;
+END; $$;
+REVOKE ALL ON FUNCTION public.btb_research_authorize() FROM PUBLIC,anon,authenticated,service_role;
 CREATE TABLE public.markets(id uuid PRIMARY KEY,slug text,is_hidden boolean DEFAULT false);
 CREATE TABLE public.vendor_opportunities(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),title text,market_id uuid REFERENCES public.markets(id),schedule_type text DEFAULT 'dated_event',

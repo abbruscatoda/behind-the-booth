@@ -33,16 +33,15 @@ export async function handleOpportunityAlerts(req:Request,env:(name:string)=>str
   const supplied=req.headers.get("x-btb-research-secret")??"";
   if(supplied.length!==64)return response(401,{error:"Unauthorized.",stage:"authorization",code:"invalid_worker_header"});
   const base=(env("SUPABASE_URL")??"").replace(/\/$/,"");
-  const publicKey=env("SUPABASE_ANON_KEY");
   const service=env("SUPABASE_SERVICE_ROLE_KEY");
   const provider=env("RESEND_API_KEY");
   const from=env("MEMBER_NOTIFICATION_FROM")?.trim();
   const origin=(env("MEMBER_SITE_URL")??"https://www.behindtheboothhq.com").replace(/\/$/,"");
   try{const site=new URL(origin);if(site.protocol!=="https:"||site.username||site.password||site.pathname!=="/"||site.search||site.hash)throw Error();}
   catch{return response(503,{error:"Invalid site configuration."});}
-  if(!base||!publicKey||!service||!provider||!from||/[\r\n]/.test(from))return response(503,{error:"Alert delivery is not configured."});
+  if(!base||!service||!provider||!from||/[\r\n]/.test(from))return response(503,{error:"Alert delivery is not configured."});
   let authorization:Response;
-  try{authorization=await fetcher(`${base}/rest/v1/rpc/btb_research_authorize`,{method:"POST",headers:{apikey:publicKey,"Content-Type":"application/json","x-btb-research-secret":supplied},body:"{}",signal:AbortSignal.timeout(12000)});}
+  try{authorization=await fetcher(`${base}/rest/v1/rpc/btb_authorize_opportunity_alert_worker`,{method:"POST",headers:{apikey:service,Authorization:`Bearer ${service}`,"Content-Type":"application/json","x-btb-research-secret":supplied},body:"{}",signal:AbortSignal.timeout(12000)});}
   catch{return response(502,{error:"Could not verify worker authorization."});}
   if(!authorization.ok){
     let code="unknown";try{const detail=await authorization.json();if(typeof detail.code==="string"&&/^(?:[A-Z0-9]{5}|PGRST[0-9]{3})$/.test(detail.code))code=detail.code;}catch{}

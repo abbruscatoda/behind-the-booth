@@ -11,7 +11,8 @@ const durham='bbbbbbbb-0003-4000-8000-000000000003';
 const db=new PGlite();
 const ready=(async()=>{
   await db.exec(await readFile(new URL('./fixtures/membership.sql',import.meta.url),'utf8'));
-  try{await db.exec(await readFile(new URL('../supabase/migrations/20261122232113_opportunity_membership_and_alerts.sql',import.meta.url),'utf8'));}
+  try{await db.exec(await readFile(new URL('../supabase/migrations/20261122232113_opportunity_membership_and_alerts.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261123005456_opportunity_alert_worker_authorization.sql',import.meta.url),'utf8'));}
   catch(error){delete error.query;throw error;}
 })();
 async function value(sql,params=[]){return (await db.query(sql,params)).rows[0]?.result;}
@@ -28,6 +29,15 @@ async function service(run){return role('service_role',null,run);}
 
 test('membership and opt-in database contracts',async t=>{
   await ready;
+  await t.test('only the service worker can check its dedicated secret; internal helpers stay private',async()=>{
+    await assert.rejects(role('anon',null,()=>value('select public.btb_authorize_opportunity_alert_worker() as result')),/permission denied/);
+    await assert.rejects(role('authenticated',user,()=>value('select public.btb_authorize_opportunity_alert_worker() as result')),/permission denied/);
+    await assert.rejects(service(()=>value('select public.btb_research_authorize() as result')),/permission denied/);
+    await assert.rejects(service(()=>value('select public.btb_authorize_opportunity_alert_worker() as result')),/authorization required/);
+    await db.query("select set_config('request.headers',$1,false)",[JSON.stringify({'x-btb-research-secret':'f'.repeat(64)})]);
+    await service(()=>value('select public.btb_authorize_opportunity_alert_worker() as result'));
+    await db.query("select set_config('request.headers','{}',false)");
+  });
   await t.test('guests receive real summaries and exactly one global full example',async()=>{
     const data=await role('anon',null,()=>value('select public.btb_public_opportunities() as result'));
     assert.equal(data.is_member,false);assert.equal(data.items.length,3);
@@ -159,7 +169,7 @@ function deliveryScenario({consent=true,status='open',failFirst=false}={}){
   const mock=async(url,init)=>{
     requests.push(url);
     const input=init.body?JSON.parse(init.body):{};
-    if(url.endsWith('btb_research_authorize'))return new Response(null,{status:204});
+    if(url.endsWith('btb_authorize_opportunity_alert_worker'))return new Response(null,{status:204});
     if(url.endsWith('btb_due_opportunity_alerts'))return Response.json([user]);
     if(url.endsWith('btb_claim_opportunity_alert'))return Response.json(finished?null:job);
     if(url.includes('/auth/v1/admin/users/'))return Response.json({email:'trusted-fixture@example.org',email_confirmed_at:'2026-11-01T00:00:00Z'});
