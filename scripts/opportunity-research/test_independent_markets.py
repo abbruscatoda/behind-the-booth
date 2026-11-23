@@ -1,7 +1,7 @@
 import unittest,json
 from datetime import datetime,timezone
 from verifier import Document,Uncertain,valid_url
-from independent_markets import read_monday,discover_independent,monitoring_leads,GRL,GRL_HUB
+from independent_markets import read_monday,discover_independent,monitoring_leads,GRL,GRL_HUB,REVIEWED_APPS
 
 APP='https://forms.monday.com/forms/'+'a'*32+'?r=use1'
 NOW=datetime(2026,11,23,15,tzinfo=timezone.utc)
@@ -31,6 +31,25 @@ class IndependentMarketTests(unittest.TestCase):
  def test_historical_calendar_does_not_roll_forward_or_publish_from_new_year_guess(self):
   self.assertFalse(discover_independent(Pages(year=2025),NOW)[0])
   self.assertFalse(discover_independent(Pages(),datetime(2027,1,1,tzinfo=timezone.utc))[0])
+ def test_unavailable_hub_rechecks_only_reviewed_exact_date_forms(self):
+  pages=Pages();del pages.docs[GRL_HUB]
+  app=REVIEWED_APPS[0][2];data=payload();data['token']=app.split('/forms/')[1].split('?')[0]
+  pages.docs[app]=page(data)
+  results,notes=discover_independent(pages,NOW)
+  self.assertEqual(len(results),1);self.assertTrue(notes)
+  self.assertEqual(results[0]['candidate']['application_url'],app)
+  self.assertEqual(results[0]['link_provenance']['method'],'reviewed_official_hub')
+  self.assertEqual(results[0]['checked_at'],NOW.isoformat())
+  pages.docs[app]=Document('<h1>Loading</h1>')
+  self.assertFalse(discover_independent(pages,NOW)[0])
+ def test_reviewed_links_cannot_roll_into_another_year_or_override_calendar(self):
+  pages=Pages(year=2027);del pages.docs[GRL_HUB]
+  self.assertFalse(discover_independent(pages,NOW)[0])
+  pages=Pages(day='12/19');del pages.docs[GRL_HUB]
+  self.assertFalse(discover_independent(pages,NOW)[0])
+  pages=Pages(year=2027)
+  pages.docs[GRL_HUB]=Document(f'<a href="{REVIEWED_APPS[0][2]}">VENDOR APP | DECEMBER 5TH | WAVERLY PLACE CARY</a>')
+  self.assertFalse(discover_independent(pages,NOW)[0])
  def test_exact_date_and_venue_pair_must_be_corrobated(self):
   self.assertFalse(discover_independent(Pages(label='TRANSFER FOOD HALL',day='12/5'),NOW)[0])
   self.assertFalse(discover_independent(Pages(day='12/19'),NOW)[0])
