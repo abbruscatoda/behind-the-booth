@@ -201,7 +201,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
     <input type="checkbox" checked={filters.includeUnconfirmed} onChange={event=>setFilters({...filters,includeUnconfirmed:event.target.checked})} aria-describedby="opportunity-unconfirmed-category-help" className="accent-[#07472B]" />
     Include opportunities where this category is unconfirmed
    </label>
-   <p id="opportunity-unconfirmed-category-help" className="text-xs leading-relaxed text-[#626C57]">Unconfirmed categories are possible matches, not organizer-approved categories.</p>
+   <p id="opportunity-unconfirmed-category-help" className="text-xs leading-relaxed text-[#626C57]">Search groups can match only some products. Food listings do not confirm beverages or food trucks. Read the organizer’s wording in the opportunity details.</p>
   </div>}
   <div id={moreFiltersId} role="region" aria-label="Additional opportunity filters"
    className={(moreFiltersOpen?"grid":"hidden")+" mt-4 gap-x-4 gap-y-4 border-t border-[#252521]/15 bg-[#E9E7DA]/45 px-3 py-4 sm:grid-cols-2 lg:grid-cols-3 sm:px-4"}>

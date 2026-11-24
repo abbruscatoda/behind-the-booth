@@ -18,7 +18,7 @@ def build_quality(result,app,requirements=''):
  field('identity','confirmed','Official event, location and application identity were checked.',source)
  field('availability','confirmed','Application controls and status were checked; category space is not guaranteed.')
  category_sources=sorted({fact.get('source_url',source) for fact in facts.values() if fact.get('status')=='eligible'})
- field('categories','partial' if facts else 'unconfirmed','Some sourced category facts were found; the list is not exhaustive.' if facts else 'Category eligibility is unconfirmed. Ask the organizer.',category_sources[0] if category_sources else source)
+ field('categories','partial' if facts else 'unconfirmed','Specific source-listed products are grouped for searching; other products in each group are unconfirmed.' if facts else 'Product eligibility is unconfirmed. Ask the organizer.',category_sources[0] if category_sources else source)
  known_cost=any(c.get(k) is not None for k in ('booth_fee','application_fee','deposit'))
  field('costs','partial' if known_cost else 'unconfirmed','Some published prices were found; confirm the complete cost and required add-ons.' if known_cost else 'Specific prices are unconfirmed. Ask the organizer.',source)
  field('requirements','partial' if requirements else 'unconfirmed','Some explicit requirements were found; read the full official terms.' if requirements else 'Specific attendance, setup and cancellation requirements remain unconfirmed.')

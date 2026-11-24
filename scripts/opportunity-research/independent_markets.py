@@ -144,7 +144,7 @@ def grl_results(fetcher,now=None):
    categories={};stamp=now.isoformat()
    for category,pattern in mapping.items():
     choices=[v for v in options if re.search(pattern,v,re.I)]
-    if choices:categories[category]=evidence('eligible','The application lists: '+', '.join(choices)+'. Confirm product approval and remaining space.',app,digest,', '.join(choices))
+    if choices:categories[category]=evidence('eligible','Only these listed products are supported. Other products, product-specific restrictions and remaining space require organizer review.',app,digest,', '.join(choices),source_terms=choices)
    if venue is VENUES['transfer']:
     faq,faq_hash=fetcher.get('https://grlmarket.com/faq')
     if re.search(r'Transfer Food Hall.{0,100}No food vendors',visible_text(faq.root),re.I):

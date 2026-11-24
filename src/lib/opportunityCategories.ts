@@ -5,12 +5,14 @@ export type CategoryEvidence = {
   note: string;
   source_url: string;
   checked_at: string;
+  /** Exact, source-backed product choices or phrases, never our search labels. */
+  source_terms?: string[];
   application_state?: "open" | "limited" | "waitlist" | "closed" | "unknown";
   application_deadline?: string;
 };
 
 export const categoryStatusLabel = {
-  eligible: "Organizer lists this category",
+  eligible: "Related products mentioned",
   excluded: "Not accepted for this application",
   unavailable: "Category option unavailable",
   separate_application: "Separate application — confirm availability",
@@ -52,10 +54,44 @@ export function categoryEvidenceLabel(entry: CategoryEvidence) {
     closed: "Separate application — closed",
     unknown: "Separate application — confirm availability",
   }[entry.application_state];
-  return categoryStatusLabel[entry.status];
+  const terms = categorySourceTerms(entry);
+  if (entry.status === "eligible" && terms.length === 1 && terms[0].toLocaleLowerCase() === "other") return "Organizer provides an Other option";
+  return entry.status === "eligible" && terms.length ? "Organizer lists these products" : categoryStatusLabel[entry.status];
+}
+
+export function categorySourceTerms(entry?: CategoryEvidence): string[] {
+  return [...new Set((Array.isArray(entry?.source_terms) ? entry.source_terms : [])
+    .filter((term): term is string => typeof term === "string" && term.trim().length > 0 && term.length <= 180))].slice(0, 10);
+}
+
+/** Group membership is useful for discovery; it never approves every product. */
+export function categoryScopeNote(category: string, entry?: CategoryEvidence): string {
+  if (entry && entry.status !== "eligible") return "";
+  const terms = categorySourceTerms(entry);
+  if (!terms.length) return "Exact organizer wording has not been captured. Product eligibility is unconfirmed.";
+  if (category === "Other") return "An Other option invites a description; it does not confirm eligibility for an unlisted product.";
+  if (category === "Food & Beverages") {
+    if (terms.some(term => /\b(?:no|not accepting|do not accept)\s+(?:beverages?|drinks?)\b|\b(?:beverages?|drinks?)\s+(?:are |is )?(?:not allowed|not accepted)\b/i.test(term))) {
+      return "Beverage restrictions are listed. Only the source-listed products and setups are supported.";
+    }
+    const drinks = terms.some(term => /\b(?:beverages?|drinks?|lemonade|coffee|tea|matcha|smoothies|juices?)\b/i.test(term));
+    return drinks
+      ? "Only the listed food and drink types are supported. Other products and setups are unconfirmed."
+      : "Beverage vendors are not explicitly listed. Other food types and food trucks are not confirmed by these options.";
+  }
+  return "Only the listed product types are supported. Other products in this search group are unconfirmed.";
+}
+
+export function categoryMatchLabel(category: string, entry?: CategoryEvidence): string {
+  if (category === "Other") return "Product description required; eligibility unconfirmed";
+  if (!categorySourceTerms(entry).length) return "Related products mentioned; check requirements";
+  if (category === "Food & Beverages" && categoryScopeNote(category, entry).startsWith("Beverage vendors")) {
+    return "Food options listed; beverages unconfirmed";
+  }
+  return "Specific products listed; check requirements";
 }
 
 export function categoryHighlights(item: Opportunity, now = Date.now()) {
-  return Object.entries(activeCategoryEvidence(item, now)).filter(([, entry]) =>
-    entry.status !== "eligible" || /prior organizer discussion|prior approval|ask about freshly prepared/i.test(entry.note));
+  return Object.entries(activeCategoryEvidence(item, now)).filter(([category, entry]) =>
+    entry.status !== "eligible" || category === "Food & Beverages" || /prior organizer discussion|prior approval|ask about freshly prepared/i.test(entry.note));
 }

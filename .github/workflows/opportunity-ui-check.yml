@@ -11,6 +11,8 @@ on:
       - 'src/components/OpportunityCard.tsx'
       - 'src/components/OpportunityDetailsDialog.tsx'
       - 'scripts/test_opportunity_facts.mjs'
+      - 'scripts/test_category_product_scope.mjs'
+      - 'supabase/migrations/*category_product_scope.sql'
       - '.github/workflows/opportunity-ui-check.yml'
   push:
     paths:
@@ -23,6 +25,8 @@ on:
       - 'src/components/OpportunityCard.tsx'
       - 'src/components/OpportunityDetailsDialog.tsx'
       - 'scripts/test_opportunity_facts.mjs'
+      - 'scripts/test_category_product_scope.mjs'
+      - 'supabase/migrations/*category_product_scope.sql'
       - '.github/workflows/opportunity-ui-check.yml'
 permissions:
   contents: read
@@ -42,3 +46,4 @@ jobs:
       - run: npx next typegen
       - run: npx tsc --noEmit
       - run: node --test scripts/test_opportunity_facts.mjs
+      - run: node --test scripts/test_category_product_scope.mjs

@@ -1,7 +1,7 @@
 "use client";
 import ExternalLinkIcon from "./ExternalLinkIcon";
 import Link from "next/link";
-import { categoryEvidenceLabel, categoryHighlights, activeCategoryEvidence, listedOpportunityCategories, opportunityCategoryStatus } from "../lib/opportunityCategories";
+import { categoryEvidenceLabel, categoryMatchLabel, categoryHighlights, activeCategoryEvidence, listedOpportunityCategories, opportunityCategoryStatus } from "../lib/opportunityCategories";
 import { opportunityDeadline, opportunityBoothPrice } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
 import { isNewlyPosted } from "../lib/opportunityRecency";
@@ -25,7 +25,7 @@ export default function OpportunityCard({
  const evidence=activeCategoryEvidence(item);
  const selected=categoryFilter ? evidence[categoryFilter] : undefined;
  const categoryText=categoryFilter
-   ? opportunityCategoryStatus(item,categoryFilter)==="eligible" ? `${categoryFilter} — listed by organizer` : `${categoryFilter} — unconfirmed`
+   ? opportunityCategoryStatus(item,categoryFilter)==="eligible" ? `${categoryFilter} — ${categoryMatchLabel(categoryFilter, selected)}` : `${categoryFilter} — unconfirmed`
    : listed.length ? `${listed.slice(0,3).join(", ")}${listed.length>3?` +${listed.length-3} more`:""}` : "Not confirmed for specific categories";
  const displayTitle=item.schedule_type==="rolling_market"
    ? item.title.replace(/\s*[—–-]\s*Rolling Vendor Applications$/i,"") : item.title;
@@ -68,9 +68,9 @@ export default function OpportunityCard({
      {item.deposit!==null&&<div className="col-span-full text-xs text-[#55554E]">Deposit: <span className="font-semibold">{fee(item.deposit)}</span></div>}
      {booth.note&&<p className="col-span-full text-xs leading-snug text-[#07472B]">{booth.note}</p>}
    </dl>
-   <p className="mt-2.5 text-xs leading-snug text-[#55554E]"><span className="font-semibold text-[#252521]">Vendor categories:</span> {categoryText}</p>
+   <p className="mt-2.5 text-xs leading-snug text-[#55554E]"><span className="font-semibold text-[#252521]">Search groups:</span> {categoryText}</p>
    {item.field_facts?.restrictions?.map((restriction,index)=><p key={index} className="mt-2 border-l-2 border-[#AD573B] pl-2.5 text-xs font-semibold leading-snug text-[#55554E]">{restriction}</p>)}
-   {highlights.length>0&&<p className="mt-2 border-l-2 border-[#AD573B] pl-2.5 text-xs leading-snug text-[#55554E]"><strong>{highlights[0][0]}:</strong> {categoryEvidenceLabel(highlights[0][1])}{highlights.length>1?` · +${highlights.length-1} more notes`:""}</p>}
+   {highlights.length>0&&<p className="mt-2 border-l-2 border-[#AD573B] pl-2.5 text-xs leading-snug text-[#55554E]"><strong>{highlights[0][0]}:</strong> {highlights[0][1].status==="eligible"?categoryMatchLabel(highlights[0][0],highlights[0][1]):categoryEvidenceLabel(highlights[0][1])}{highlights.length>1?` · +${highlights.length-1} more notes`:""}</p>}
    {selected?.note&&!highlights.some(([category])=>category===categoryFilter)&&<p className="mt-1.5 line-clamp-2 text-xs leading-snug text-[#626C57]">{selected.note}</p>}
    <p className="mt-2 text-xs leading-snug text-[#626C57]">{item.history.review_count>0?`${item.history.overall?.toFixed(1)??"—"}/5 · ${item.history.review_count} vendor ${item.history.review_count===1?"review":"reviews"}`:"No vendor reviews yet"}</p>
    <div className="mt-auto pt-4">

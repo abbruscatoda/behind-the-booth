@@ -15,13 +15,38 @@ class CategoryRulesTests(unittest.TestCase):
   self.assertEqual(r['categories']['Food & Beverages']['status'],'eligible')
   self.assertNotIn('Food Trucks',r['categories'])
   self.assertEqual(r['application_url'],APP);self.assertTrue(r['checked_at'])
+  self.assertEqual(r['categories']['Food & Beverages']['source_terms'],['food and art vendors'])
+  self.assertNotIn('Beverages',r['categories']['Food & Beverages']['excerpt'])
+ def test_exact_food_options_are_combined_without_inventing_beverages(self):
+  options=['Baked Goods / Savory Food Items','Prepackaged Items (Honey, Hot Sauce, etc.)']
+  r,c=self.facts(app='<fieldset><legend>Which category best fits your work?</legend>'+''.join('<label>'+term+'</label>' for term in options)+'</fieldset>')
+  fact=r['categories']['Food & Beverages']
+  self.assertEqual(fact['source_terms'],options)
+  self.assertTrue(all(term in fact['excerpt'] for term in options))
+  self.assertNotIn('Food & Beverages',fact['excerpt']);self.assertNotIn('Food Trucks',r['categories'])
+ def test_drink_only_options_remain_exact_and_do_not_invent_food(self):
+  r,c=self.facts(app='<fieldset><legend>Which category best fits your work?</legend><label>Lemonade</label><label>Coffee &amp; Tea products</label></fieldset>')
+  self.assertEqual(r['categories']['Food & Beverages']['source_terms'],['Lemonade','Coffee & Tea products'])
+  self.assertNotIn('Food Trucks',r['categories'])
+ def test_disabled_drinks_and_venue_drinks_do_not_expand_food_scope(self):
+  r,c=self.facts('<h2>About the event</h2><p>Local food and art vendors. Beer from the venue.</p>', '<fieldset><legend>Which category best fits your work?</legend><label>Baked goods</label><label hidden>Lemonade</label><input type="radio" disabled value="Coffee"></fieldset>')
+  self.assertEqual(r['categories']['Food & Beverages']['source_terms'],['Baked goods'])
+ def test_other_search_groups_keep_each_actual_product_choice(self):
+  choices=['Original artwork including painters and photographers','Art vendors','Handmade soaps']
+  r,c=self.facts(app='<fieldset><legend>Which category best fits your work?</legend>'+''.join('<label>'+term+'</label>' for term in choices)+'</fieldset>')
+  self.assertEqual(r['categories']['Art & Photography']['source_terms'],choices[:2])
+  self.assertEqual(r['categories']['Bath, Body & Beauty']['source_terms'],choices[2:])
+ def test_negative_drink_choice_never_creates_positive_drink_evidence(self):
+  for term in ('No beverages','Coffee is not allowed'):
+   r,c=self.facts(app='<fieldset><legend>Which category best fits your work?</legend><label>'+term+'</label></fieldset>')
+   self.assertNotIn('Food & Beverages',r['categories'])
  def test_partial_list_does_not_exclude_food(self):
   r,c=self.facts(app='<h2>About the application</h2><p>Handmade craft vendors.</p>')
   self.assertIn('Handmade Crafts',r['categories']);self.assertNotIn('Food & Beverages',r['categories'])
  def test_form_options_are_scoped_and_disabled_ignored(self):
   r,c=self.facts(app='<fieldset><legend>Which category best fits your work?</legend><select><option>Baked goods</option><option>Soap</option><option disabled>Pet products</option><option>Other</option></select></fieldset><label>Jewelry</label>')
   self.assertEqual(set(r['categories']),{'Food & Beverages','Bath, Body & Beauty','Other'})
-  self.assertIn('freshly prepared drinks',r['categories']['Food & Beverages']['note'])
+  self.assertIn('freshly prepared drinks',r['categories']['Food & Beverages']['note'].lower())
  def test_jotform_span_question_and_enabled_radio_values(self):
   r,c=self.facts(app='<li class="form-line"><span class="form-label">Which category best fits your work? *</span><input type="radio" value="Baked Goods"><label aria-hidden="true">Baked Goods</label><input type="radio" value="Food Trucks or Trailers"><input type="radio" disabled value="Pet Products"></li>')
   self.assertEqual(set(r['categories']),{'Food & Beverages','Food Trucks'})

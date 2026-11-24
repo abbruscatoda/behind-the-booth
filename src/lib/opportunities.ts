@@ -1,5 +1,5 @@
 import type { ResearchCoverage } from "./researchCoverage";
-import { opportunityCategoryStatus, type CategoryEvidence } from "./opportunityCategories";
+import { activeCategoryEvidence, categorySourceTerms, opportunityCategoryStatus, type CategoryEvidence } from "./opportunityCategories";
 import { opportunityDeadline } from "./opportunityPresentation";
 import { deadlineForInput } from "./opportunityDeadline";
 import { firstPublishedTime, isNewlyPosted, isPostedSince } from "./opportunityRecency";
@@ -37,7 +37,9 @@ export function filterOpportunities(
  const query = filters.search.trim().toLocaleLowerCase();
  const max = filters.maxBoothFee?.trim() ? Number(filters.maxBoothFee) : null;
  return items.filter(item => {
-  if (query && ![item.title,item.organizer,item.city,item.venue].join(" ").toLocaleLowerCase().includes(query)) return false;
+  if (query && ![item.title,item.organizer,item.city,item.venue,
+    ...Object.values(activeCategoryEvidence(item,now)).flatMap(categorySourceTerms)]
+    .join(" ").toLocaleLowerCase().includes(query)) return false;
   if (filters.city && item.city !== filters.city) return false;
   if (filters.posted === "week" && !isNewlyPosted(item, now)) return false;
   if (filters.posted === "since" && !isPostedSince(item, lastVisit, now)) return false;
@@ -48,7 +50,8 @@ export function filterOpportunities(
    if (item.schedule_type !== "rolling_market" && (item.starts_on > `${filters.month}-${String(last).padStart(2,"0")}` || item.ends_on < `${filters.month}-01`)) return false;
   }
   if (filters.category) {
-   const categoryStatus = opportunityCategoryStatus(item,filters.category);
+   // A match is to related source-listed products, never blanket approval.
+   const categoryStatus = opportunityCategoryStatus(item,filters.category,now);
    if (categoryStatus !== "eligible" && !(filters.includeUnconfirmed === true && categoryStatus === "unknown")) return false;
   }
   if (filters.status !== "all" && (filters.status === "active"

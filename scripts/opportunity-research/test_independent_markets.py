@@ -28,6 +28,9 @@ class IndependentMarketTests(unittest.TestCase):
   c=results[0]['candidate'];self.assertEqual(c['booth_fee'],85)
   self.assertIsNone(c['deadline']);self.assertIsNone(c['application_fee']);self.assertIsNone(c['deposit'])
   self.assertIn('explicitly excluded',c['eligibility']);self.assertEqual(c['starts_on'],'2026-12-05')
+  terms=results[0]['category_evidence']['categories']['Food & Beverages']['source_terms']
+  self.assertIn('Baked Goods',terms);self.assertIn('Lemonade',terms)
+  self.assertTrue(any('not allowed' in term for term in terms))
  def test_historical_calendar_does_not_roll_forward_or_publish_from_new_year_guess(self):
   self.assertFalse(discover_independent(Pages(year=2025),NOW)[0])
   self.assertFalse(discover_independent(Pages(),datetime(2027,1,1,tzinfo=timezone.utc))[0])

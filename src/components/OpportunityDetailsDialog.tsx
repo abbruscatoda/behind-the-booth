@@ -2,7 +2,7 @@
 import ExternalLinkIcon from "./ExternalLinkIcon";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { activeCategoryEvidence, categoryEvidenceLabel, categoryHighlights, listedOpportunityCategories } from "../lib/opportunityCategories";
+import { activeCategoryEvidence, categoryEvidenceLabel, categoryScopeNote, categorySourceTerms, categoryHighlights, listedOpportunityCategories } from "../lib/opportunityCategories";
 import { currentCoverage, coverageWithFieldFacts, coverageLabels, coverageStatus } from "../lib/researchCoverage";
 import { opportunityDeadline, opportunityBoothPrice, opportunityDetailSections } from "../lib/opportunityPresentation";
 import { formatAttendanceDate } from "../lib/attendanceDate";
@@ -67,9 +67,12 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
    </section>}
    {item.field_facts?.requirements?.summary&&<section><h3 className="font-semibold">Application-specific requirements</h3><p className="mt-2 text-sm leading-relaxed">{item.field_facts.requirements.summary}</p></section>}
    {highlights.length>0&&<div className="border-l-2 border-[#AD573B] bg-[#F4F0E6] px-4 py-3">
-    <h3 className="font-semibold">Important category notes</h3>
+    <h3 className="font-semibold">Product eligibility notes</h3>
     <ul className="mt-2 list-disc space-y-2 pl-4 text-sm leading-relaxed">{highlights.map(([category,entry])=><li key={category}>
-      <strong>{category}: {categoryEvidenceLabel(entry)}.</strong> {entry.note}
+      <strong>{category}: {categoryEvidenceLabel(entry)}.</strong>
+      {entry.status==="eligible"&&categorySourceTerms(entry).length>0&&<p className="mt-1"><strong>Organizer’s wording:</strong> {categorySourceTerms(entry).map(term=>`“${term}”`).join("; ")}</p>}
+      {entry.note&&<p className="mt-1">{entry.note}</p>}
+      {entry.status==="eligible"&&<p className="mt-1 font-semibold">{categoryScopeNote(category,entry)}</p>}
       {entry.application_deadline&&Number.isFinite(Date.parse(entry.application_deadline))&&<span> Separate deadline: {new Date(entry.application_deadline).toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"})}.</span>}
       {entry.application_state&&safeExternalUrl(entry.source_url)&&<> <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#07472B] underline">View separate application <ExternalLinkIcon /></a></>}
     </li>)}</ul>
@@ -91,11 +94,14 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
          {(listed.length>0||Object.keys(evidence).length>0||coverage.length>0)&&<details className="border-t border-[#252521]/15 pt-1">
            <summary className="min-h-11 cursor-pointer py-3 font-semibold text-[#07472B]">Category evidence & source checks<span className="sr-only"> for {item.title}, {formatAttendanceDate(item.starts_on)}</span></summary>
            <div className="space-y-4 pb-2">
-         <div><h3 className="font-semibold text-[#252521]">Category eligibility</h3>
-           {listed.length>0&&<p className="mt-1">Listed categories: {listed.join(", ")}.</p>}
+         <div><h3 className="font-semibold text-[#252521]">Organizer wording by search group</h3>
+           {listed.length>0&&<p className="mt-1">Search groups: {listed.join(", ")}.</p>}
+           <p className="mt-1 text-xs">Behind the Booth groups related products for searching. These are not necessarily the organizer’s category names or approval of every product in a group.</p>
 
            {Object.entries(evidence).length>0&&<ul className="mt-3 space-y-3">{Object.entries(evidence).map(([category,entry])=><li key={category}>
              <p className="font-semibold">{category}: {categoryEvidenceLabel(entry)}</p><p className="mt-1">{entry.note}</p>
+             {entry.status==="eligible"&&categorySourceTerms(entry).length>0&&<p className="mt-1"><strong>Organizer’s wording:</strong> {categorySourceTerms(entry).map(term=>`“${term}”`).join("; ")}</p>}
+             {entry.status==="eligible"&&<p className="mt-1 text-xs">{categoryScopeNote(category,entry)}</p>}
              <p className="mt-1 text-xs text-[#626C57]">Category checked {new Date(entry.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(entry.source_url)&&<> · <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="underline">Category source <ExternalLinkIcon /></a></>}</p>
            </li>)}</ul>}
          </div>

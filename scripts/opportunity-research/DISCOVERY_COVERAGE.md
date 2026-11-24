@@ -1,5 +1,13 @@
 # Triangle discovery coverage
 
+## Product wording and category scope
+
+Every vendor opportunity uses Behind the Booth search groups, not presumed organizer category names. A match supports only the source-listed products. Never expand baked goods, packaged food, or general food-vendor wording into verified beverage or food-truck eligibility. Apply this to cards, details, search, filters, alerts and all future ingestion.
+
+For enabled application choices, keep the organizer's exact wording in `source_terms`; retain multiple choices that map into one group instead of overwriting earlier choices. For scoped organizer prose, preserve only the matched product phrase. Keep the source URL, hash, freshness and application identity checks. Do not quote a synthesized search label. The database accepts quoted terms only when they appear in the supporting excerpt. Disabled options, venue drink sales, attendee offerings, old editions and separate applications cannot broaden acceptance into the current application.
+
+Show “Organizer lists these products” only when exact source terms exist. Otherwise label the match as related products, with product eligibility unconfirmed. Food-only matches must state that beverage vendors are not explicitly listed. An Other option requests a description; it does not verify unlisted products. Keep product-specific limits and separate food-truck application rules visible. Missing information is unconfirmed, never proof of acceptance or exclusion.
+
 The scheduled worker now checks 54 curated organizer/application roots and 23 official event calendars. Regional search runs one query for each of the 24 communities in `verifier.CITIES`, rotates seasonal, artisan, food-truck, festival, and rolling-intake terms, and includes the current and following year.
 
 When RSS search supplies irrelevant geography pages or no vendor results, up to six community queries per run use an independent read-only HTML search fallback. The fallback selection rotates across runs. Both providers have bounded response sizes, timeouts and failure reporting; neither provider supplies publication evidence. Eventeny application hits can lead back to their own structured event metadata for normal verification.
