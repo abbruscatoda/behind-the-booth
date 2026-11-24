@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import HeaderNavLink from "./HeaderNavLink";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 
@@ -59,5 +59,5 @@ export default function AdminHeaderLink() {
   }, [userId, revision]);
 
   if (!userId || allowedUserId !== userId) return null;
-  return <Link href="/admin" prefetch={false} className="brand-nav-link">Admin</Link>;
+  return <HeaderNavLink href="/admin" prefetch={false} className="brand-nav-link">Admin</HeaderNavLink>;
 }

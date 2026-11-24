@@ -59,8 +59,9 @@ button:not(:disabled) { cursor: pointer; }
 .brand-wordmark { width: 232px; height: auto; display: block; }
 .brand-nav-links { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1.35rem; }
 .brand-menu-toggle { display: none; }
-.brand-nav-link { display: inline-flex; min-height: 2.75rem; align-items: center; color: #252521; font-size: .8125rem; font-weight: 550; transition: color .2s; }
+.brand-nav-link { display: inline-flex; min-height: 2.75rem; align-items: center; margin-inline: -.5rem; padding-inline: .5rem; border-radius: 6px; color: #252521; font-size: .8125rem; font-weight: 550; transition: color .2s, background-color .2s; }
 .brand-nav-link:hover { color: #07472B; }
+.brand-nav-link[aria-current], .brand-account-link[aria-current] { background: #E1E8D8; color: #07472B; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .45em; }
 .brand-account-link { display: inline-flex; min-height: 2.75rem; align-items: center; gap: .75rem; border: 1px solid #07472B80; border-radius: 8px; padding: .6rem 1rem; font-size: .8125rem; color: #07472B; font-weight: 600; transition: background .2s, color .2s; }
 .brand-account-link:hover { background: #07472B; color: #FFF; }
 .brand-footer { background: #063C27; color: #F4F0E6; padding: 2.75rem 1.5rem; }
@@ -103,7 +104,7 @@ button:not(:disabled) { cursor: pointer; }
   .brand-menu-toggle { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; gap: .6rem; border: 1px solid #07472B80; border-radius: 8px; padding: .5rem .75rem; color: #07472B; font-size: .875rem; font-weight: 600; }
   .brand-nav-links { display: none; width: 100%; }
   .brand-nav-links.is-open { display: grid; grid-template-columns: minmax(0, 1fr); gap: .25rem; border-top: 1px solid #25252126; padding: .5rem 0 .25rem; }
-  .brand-nav-link, .brand-account-link { display: flex; min-height: 2.75rem; align-items: center; padding: .5rem .75rem; font-size: .875rem; }
+  .brand-nav-link, .brand-account-link { display: flex; min-height: 2.75rem; align-items: center; margin-inline: 0; padding: .5rem .75rem; font-size: .875rem; }
   .brand-account-link { justify-content: space-between; }
   .brand-footer-links { gap: .25rem 1rem; }
   .brand-footer-links a { display: inline-flex; min-height: 2.75rem; align-items: center; }
