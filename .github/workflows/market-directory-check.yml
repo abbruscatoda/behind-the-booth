@@ -3,6 +3,10 @@ on:
   push:
     paths:
       - 'src/app/markets/page.tsx'
+      - 'src/app/markets/[id]/MarketProfileClient.tsx'
+      - 'src/lib/publicMarkets.ts'
+      - 'src/lib/opportunitySourceLink.ts'
+      - 'src/components/MarketWebsiteLink.tsx'
       - 'src/lib/marketReviewRecency.ts'
       - 'src/lib/attendanceDate.ts'
       - 'scripts/test_market_upcoming_events.mjs'
@@ -12,6 +16,10 @@ on:
   pull_request:
     paths:
       - 'src/app/markets/page.tsx'
+      - 'src/app/markets/[id]/MarketProfileClient.tsx'
+      - 'src/lib/publicMarkets.ts'
+      - 'src/lib/opportunitySourceLink.ts'
+      - 'src/components/MarketWebsiteLink.tsx'
       - 'src/lib/marketReviewRecency.ts'
       - 'src/lib/attendanceDate.ts'
       - 'scripts/test_market_upcoming_events.mjs'

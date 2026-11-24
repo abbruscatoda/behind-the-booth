@@ -2,7 +2,7 @@ import "server-only";
 import { connection } from "next/server";
 import { isIndexableMarket } from "./siteMetadata";
 
-export type PublicMarket = { id: string; slug: string; name: string; city: string; state: string; description: string; is_sample: boolean; organizer: string | null };
+export type PublicMarket = { id: string; slug: string; name: string; city: string; state: string; description: string; website_url: string | null; is_sample: boolean; organizer: string | null };
 
 async function requestMarkets(params: URLSearchParams): Promise<PublicMarket[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -18,7 +18,7 @@ async function requestMarkets(params: URLSearchParams): Promise<PublicMarket[]> 
   if (!response.ok) throw new Error(`Public market lookup failed (${response.status}).`);
   return response.json();
 }
-const fields = "id,slug,name,city,state,description,is_sample,organizer";
+const fields = "id,slug,name,city,state,description,website_url,is_sample,organizer";
 
 export async function getPublicMarket(slug: string): Promise<PublicMarket | null> {
   await connection();
