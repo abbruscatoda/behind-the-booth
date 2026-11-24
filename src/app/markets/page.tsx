@@ -269,53 +269,53 @@ function MarketDirectory() {
 
         {/* Market cards */}
         <div
-          className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-3"
+          className="mt-4 grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3"
           aria-busy={loading}
         >
           {filteredMarkets.map((market) => (
             <article
               key={market.id}
-              className="heritage-card market-card flex flex-col"
+              className="heritage-card market-card flex min-w-0 flex-col [overflow-wrap:anywhere]"
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="heritage-label">Market / Event</span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#07472B]">Market / Event</span>
 
                 <span className="text-xs font-semibold uppercase tracking-wider text-[#626C57]">
                   {market.is_sample ? "Demo" : "Listing"}
                 </span>
               </div>
 
-              <div className="my-3 h-px bg-[#252521]/20" />
+              <div className="my-2 h-px bg-[#252521]/20" />
 
               {(hasNewReviews(activity?.[market.id], "week", lastVisit, checkedAt) || hasNewReviews(activity?.[market.id], "since", lastVisit, checkedAt)) &&
-                <span className="mb-2 self-start border border-[#07472B]/25 bg-[#E9E7DA] px-2 py-0.5 text-xs font-bold text-[#07472B]">{hasNewReviews(activity?.[market.id], "since", lastVisit, checkedAt) ? "New reviews since last visit" : "New reviews"}</span>}
+                <span className="mb-1.5 self-start border border-[#07472B]/25 bg-[#E9E7DA] px-2 py-0.5 text-xs font-bold text-[#07472B]">{hasNewReviews(activity?.[market.id], "since", lastVisit, checkedAt) ? "New reviews since last visit" : "New reviews"}</span>}
 
-              <h2 className="font-serif text-3xl font-bold leading-tight">
+              <h2 className="font-serif text-[1.625rem] font-bold leading-[1.15]">
                 <Link href={`/markets/${market.slug}`} className="text-inherit hover:text-[#07472B] hover:underline underline-offset-4">{market.name}</Link>
               </h2>
 
-              <p className="mt-2 text-sm font-semibold uppercase tracking-wider text-[#626C57]">
+              <p className="mt-1.5 text-xs font-semibold uppercase tracking-[0.04em] text-[#626C57]">
                 {market.city},{" "}
                 {market.state === "NC" ? "North Carolina" : market.state}
               </p>
 
-              {market.organizer && <Link href={organizerHref(market.organizer)} className="mt-3 self-start rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-3 py-2 text-xs font-semibold text-[#07472B] hover:underline">Organizer: {market.organizer}</Link>}
+              {market.organizer && <Link href={organizerHref(market.organizer)} className="mt-2 self-start rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-2.5 py-2 text-xs font-semibold text-[#07472B] hover:underline">Organizer: {market.organizer}</Link>}
 
               {activity?.[market.id]?.count && activity[market.id].overall != null ? (
-                <div className="mt-4 border-y border-[#252521]/15 py-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#55554E]">Overall vendor rating</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <p className="shrink-0" style={{color: getRatingColor(activity[market.id].overall!)}}><span className="text-4xl font-bold tracking-tight">{activity[market.id].overall!.toFixed(1)}</span><span className="ml-1 text-base font-semibold">/ 5</span></p>
+                <div className="mt-2 border-y border-[#252521]/15 py-2">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#55554E]">Overall vendor rating</p>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    <p className="shrink-0" style={{color: getRatingColor(activity[market.id].overall!)}}><span className="text-[1.75rem] font-bold leading-none tracking-tight">{activity[market.id].overall!.toFixed(1)}</span><span className="ml-0.5 text-sm font-semibold">/ 5</span></p>
                     <div className="min-w-0 flex-1">
-                      <p className="text-base font-bold" style={{color: getRatingColor(activity[market.id].overall!)}} title="Rating scale: 1 Poor · 2 Below Average · 3 Average · 4 Good · 5 Exceptional">{getRatingDescriptor(activity[market.id].overall!)}</p>
+                      <p className="text-[13px] font-bold leading-snug" style={{color: getRatingColor(activity[market.id].overall!)}} title="Rating scale: 1 Poor · 2 Below Average · 3 Average · 4 Good · 5 Exceptional">{getRatingDescriptor(activity[market.id].overall!)}</p>
                       <p className="mt-0.5 text-xs leading-snug text-[#55554E]">Based on {activity[market.id].count} vendor {activity[market.id].count === 1 ? "review" : "reviews"}</p>
                     </div>
                   </div>
                 </div>
               ) : (
-                <p className="mt-3 text-sm font-semibold text-[#626C57]">{activity?.[market.id] ? "No reviews yet" : loading ? "Loading review activity…" : "Review activity unavailable"}</p>
+                <p className="mt-2 text-xs font-semibold text-[#626C57]">{activity?.[market.id] ? "No reviews yet" : loading ? "Loading review activity…" : "Review activity unavailable"}</p>
               )}
-              <p className="mt-2.5 flex-1 leading-normal text-[#55554E]">
+              <p className="mt-2 text-sm leading-snug text-[#55554E]">
                 {market.description}
               </p>
 
