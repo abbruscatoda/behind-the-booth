@@ -48,7 +48,7 @@ export default function OpportunityCard({
    </div>
    <div className="mt-2 h-px bg-[#252521]/15" />
    {item.access==="example"&&<p className="mt-2 text-xs font-semibold text-[#07472B]">Complete example · Real opportunity</p>}
-   <h2 className="mt-3 font-serif text-[1.45rem] font-bold leading-[1.13] tracking-[-0.015em]"><Link href={`/markets/${item.market_slug}`} className="text-inherit underline-offset-4 hover:text-[#07472B] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">{displayTitle}</Link></h2>
+   <h2 className="mt-3 font-serif text-[1.45rem] font-bold leading-[1.13] tracking-[-0.015em]"><button type="button" onClick={onViewDetails} aria-haspopup="dialog" className="block min-h-11 w-full text-left text-inherit underline-offset-4 hover:text-[#07472B] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">{displayTitle}</button></h2>
    {item.organizer && item.organizer.toLocaleLowerCase()!==displayTitle.toLocaleLowerCase()&&<p className="mt-1.5 line-clamp-2 text-xs font-semibold text-[#07472B]">By {item.organizer}</p>}
    <p className="mt-1.5 text-[13px] leading-snug text-[#55554E]"><span className="font-medium">{item.city}, {item.state}</span>{item.venue && item.venue.toLocaleLowerCase()!==`${item.city}, ${item.state}`.toLocaleLowerCase()&&<> <span aria-hidden="true">·</span> <span className="text-[#626C57]">{item.venue}</span></>}</p>
    <div className="mt-3 border-t border-[#252521]/15 pt-2.5">
@@ -72,8 +72,7 @@ export default function OpportunityCard({
      {available&&applicationUrl
        ? <a href={applicationUrl} target="_blank" rel="noopener noreferrer" className="heritage-button opportunity-application min-h-11 w-full text-center">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} <ExternalLinkIcon /></a>
        : <p className="flex min-h-11 items-center justify-center border border-[#252521]/20 bg-[#E9E7DA] px-3 py-2 text-center text-xs font-semibold text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Application not currently verified"}</p>}
-     <div className="mt-2 flex items-center justify-between gap-3 border-t border-[#252521]/15 pt-1">
-       <button type="button" onClick={onViewDetails} aria-haspopup="dialog" className="min-h-11 text-left text-sm font-semibold text-[#07472B] underline underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">View full details</button>
+     <div className="mt-2 flex items-center justify-end gap-3 border-t border-[#252521]/15 pt-1">
        <button type="button" disabled={saving} onClick={onSave} aria-label={saved?`Remove ${item.title} from saved opportunities`:`Save ${item.title}`} className="min-h-11 shrink-0 text-right text-xs font-semibold text-[#07472B] underline underline-offset-4 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">{saved?"Saved ✓":"Save"}</button>
      </div>
      {saveMessage&&<p id={`opportunity-save-message-${item.id}`} role="status" className="mt-2 border-l-2 border-[#07472B] bg-[#E9E7DA] px-3 pt-3 text-sm leading-relaxed">{saveMessage} <Link href="/login" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">My Account →</Link></p>}
