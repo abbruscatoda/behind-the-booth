@@ -39,12 +39,17 @@ export default function OpportunityCard({
      ? "border-[#AD573B]/30 bg-[#AD573B]/10 text-[#7A3A29]"
      : "border-[#252521]/20 bg-[#252521]/5 text-[#55554E]";
  return <article id={item.id} className="heritage-card opportunity-card flex h-full min-w-0 scroll-mt-8 flex-col [overflow-wrap:anywhere]">
-   <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-     <div className="flex flex-wrap items-center gap-1.5">
-      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#626C57]">{isRolling?"Ongoing market":item.schedule_type==="seasonal_application"?"Seasonal application":item.schedule_type==="recurring_season"?"Seasonal waitlist":"Vendor opportunity"}</p>
-      {isNewlyPosted(item)&&<span className="border border-[#AD573B]/35 bg-[#AD573B]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#7A3A29]" title="First published within the last 7 days">New</span>}
+   <div className="grid grid-cols-[minmax(0,1fr)_2.75rem] items-center gap-x-2">
+     <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+       <div className="flex flex-wrap items-center gap-1.5">
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#626C57]">{isRolling?"Ongoing market":item.schedule_type==="seasonal_application"?"Seasonal application":item.schedule_type==="recurring_season"?"Seasonal waitlist":"Vendor opportunity"}</p>
+        {isNewlyPosted(item)&&<span className="border border-[#AD573B]/35 bg-[#AD573B]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#7A3A29]" title="First published within the last 7 days">New</span>}
+       </div>
+       <span className={`rounded-sm border px-2 py-0.5 text-[11px] font-semibold leading-snug ${statusTone}`}>{statusLabel(item.effective_status)}</span>
      </div>
-     <span className={`rounded-sm border px-2 py-0.5 text-[11px] font-semibold leading-snug ${statusTone}`}>{statusLabel(item.effective_status)}</span>
+     <button type="button" disabled={saving} onClick={onSave} aria-pressed={saved} aria-label={saved?`Remove ${item.title} from saved opportunities`:`Save ${item.title}`} title={saved?"Remove from saved opportunities":"Save opportunity"} className={`inline-flex size-11 items-center justify-center rounded-sm border text-[#07472B] transition-colors hover:border-[#07472B]/30 hover:bg-[#E9E7DA] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B] ${saved?"border-[#07472B]/30 bg-[#E9E7DA]":"border-transparent"}`}>
+       <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" className="size-5" fill={saved?"currentColor":"none"} stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+     </button>
    </div>
    <div className="mt-2 h-px bg-[#252521]/15" />
    {item.access==="example"&&<p className="mt-2 text-xs font-semibold text-[#07472B]">Complete example · Real opportunity</p>}
@@ -72,9 +77,6 @@ export default function OpportunityCard({
      {available&&applicationUrl
        ? <a href={applicationUrl} target="_blank" rel="noopener noreferrer" className="heritage-button opportunity-application min-h-11 w-full text-center">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} <ExternalLinkIcon /></a>
        : <p className="flex min-h-11 items-center justify-center border border-[#252521]/20 bg-[#E9E7DA] px-3 py-2 text-center text-xs font-semibold text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Application not currently verified"}</p>}
-     <div className="mt-2 flex items-center justify-end gap-3 border-t border-[#252521]/15 pt-1">
-       <button type="button" disabled={saving} onClick={onSave} aria-label={saved?`Remove ${item.title} from saved opportunities`:`Save ${item.title}`} className="min-h-11 shrink-0 text-right text-xs font-semibold text-[#07472B] underline underline-offset-4 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">{saved?"Saved ✓":"Save"}</button>
-     </div>
      {saveMessage&&<p id={`opportunity-save-message-${item.id}`} role="status" className="mt-2 border-l-2 border-[#07472B] bg-[#E9E7DA] px-3 pt-3 text-sm leading-relaxed">{saveMessage} <Link href="/login" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">My Account →</Link></p>}
    </div>
  </article>;
