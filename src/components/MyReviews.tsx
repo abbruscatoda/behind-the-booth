@@ -11,6 +11,7 @@ type Review = { id: string; market_name: string | null; market_slug: string | nu
 type Result = { items: Review[]; total: number };
 
 export default function MyReviews() {
+  const [expanded, setExpanded] = useState(false);
   const [data, setData] = useState<Result>({ items: [], total: 0 });
   const [offset, setOffset] = useState(0);
   const [refresh, setRefresh] = useState(0);
@@ -31,8 +32,20 @@ export default function MyReviews() {
     return () => { active = false; };
   }, [offset, refresh]);
   return <section className="border border-[#252521]/20 bg-[#FFFCF6] p-5 sm:p-6" aria-labelledby="my-reviews-heading">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <h2 id="my-reviews-heading" className="font-serif text-2xl font-bold">My Reviews</h2>
+    <h2 id="my-reviews-heading">
+      <button type="button" aria-expanded={expanded} aria-controls="my-reviews-content" onClick={() => setExpanded(value => !value)} className="flex min-h-11 w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#07472B]">
+        <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="font-serif text-2xl font-bold">My Reviews</span>
+          {!loading && !error && <span className="text-xs font-normal text-[#626C57]">{data.total} {data.total === 1 ? "review" : "reviews"}</span>}
+        </span>
+        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#07472B]">
+          {expanded ? "Hide reviews" : "Show reviews"}
+          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className={`h-4 w-4 ${expanded ? "rotate-180" : ""}`}><path d="m5 7.5 5 5 5-5" /></svg>
+        </span>
+      </button>
+    </h2>
+    <div id="my-reviews-content" hidden={!expanded}>
+    <div className="mt-2 flex justify-end">
       <button type="button" disabled={loading} onClick={() => setRefresh(value => value + 1)} className="min-h-11 text-sm font-semibold text-[#07472B] underline underline-offset-4 disabled:opacity-50">Refresh reviews</button>
     </div>
     <p className="mt-3 text-sm leading-relaxed text-[#55554E]">Track your submissions here. Only approved reviews appear in market reports; your account name and email are not shown with public reviews.</p>
@@ -50,5 +63,6 @@ export default function MyReviews() {
       </article>)}</div>
       {data.total > 20 && <div className="mt-5 flex items-center justify-between gap-4"><button type="button" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - 20))} className="min-h-11 text-sm font-semibold text-[#07472B] underline disabled:opacity-40">Previous</button><button type="button" disabled={offset + 20 >= data.total} onClick={() => setOffset(value => value + 20)} className="min-h-11 text-sm font-semibold text-[#07472B] underline disabled:opacity-40">Next</button></div>}
     </>}
+    </div>
   </section>;
 }
