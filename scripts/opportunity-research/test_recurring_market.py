@@ -121,6 +121,8 @@ class RecurringWaitlistTests(unittest.TestCase):
   class DB:
    def rpc(self,name,body=None):
     called.append(name)
+    if name=='btb_research_community_sync':return {'sources':len(body['p_sources'])}
+    if name=='btb_research_community_context':return {'leads':[]}
     if name=='btb_research_context':return {'enabled':True,'items':[]}
     if name=='btb_research_run':return 'test-run'
     if name=='btb_research_discovery_backlog':return []

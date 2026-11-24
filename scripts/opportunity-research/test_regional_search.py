@@ -39,7 +39,7 @@ class RegionalTests(unittest.TestCase):
  def test_rss_search_is_not_limited_to_eventeny(self):
   feed=Search(('<rss><channel><item><title>Holiday market</title><link>'+EVENT+'</link></item></channel></rss>').encode())
   hits,stats=regional.search_results(NOW,feed)
-  self.assertIn(EVENT,hits);self.assertEqual(stats['queries_succeeded'],24)
+  self.assertIn(EVENT,hits);self.assertEqual(stats['queries_succeeded'],32)
   self.assertTrue(all('site:eventeny' not in parse_qs(urlparse(url).query)['q'][0] for url in feed.calls))
  def test_generic_tourism_search_result_is_not_an_actionable_lead(self):
   hits,_=regional.search_results(NOW,Search(b'<rss><channel><item><title>Raleigh Wikipedia</title><description>Capital city of North Carolina</description><link>https://en.wikipedia.org/wiki/Raleigh</link></item></channel></rss>'))
@@ -68,7 +68,7 @@ class RegionalTests(unittest.TestCase):
   self.assertFalse(regional.html_search('Raleigh',Engine()))
  def test_feed_errors_are_reported_not_silently_empty(self):
   hits,stats=regional.search_results(NOW,Search(b'<html>blocked</html>'))
-  self.assertFalse(hits);self.assertEqual(len(stats['query_failures']),24)
+  self.assertFalse(hits);self.assertEqual(len(stats['query_failures']),32)
  def test_search_snippet_cannot_publish_or_authorize_an_unknown_host(self):
   pages=Pages({})
   with patch.object(regional,'search_results',return_value=({'https://unknown-organizer.example/market':'Open $10 booths'},{})):

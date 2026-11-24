@@ -95,7 +95,7 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
  useEffect(()=>{if(loading||!member)return;const url=new URL(window.location.href);const requested=url.searchParams.get("details");const found=items.find(item=>item.id===requested&&item.access!=="preview");if(found){setSelectedOpportunity(found);url.searchParams.delete("details");window.history.replaceState(window.history.state,"",url.href);}},[items,loading,member]);
  const visible=sortOpportunities(filterOpportunities(items,member?filters:{...filters,deadlineBefore:""},lastVisit,reviewedAt),!member&&sort==="deadline"?"date":sort);
  const cards=compact?visible.slice(0,3):visible;
- const activeItems=items.filter(item=>["open","limited","waitlist"].includes(item.effective_status));
+ const activeItems=items.filter(item=>["open","limited","waitlist","announced"].includes(item.effective_status));
  const recentCount=activeItems.filter(item=>isNewlyPosted(item,reviewedAt)).length;
  const sinceCount=lastVisit?activeItems.filter(item=>isPostedSince(item,lastVisit,reviewedAt)).length:0;
  const selectPosted=(mode:"week"|"since")=>{
@@ -175,8 +175,8 @@ export default function OpportunityBoard({ marketId, compact = false }: { market
   <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-3">
    <label className={controlLabel+" min-w-[175px] flex-[1_1_190px] sm:max-w-[290px]"}>Application status
     <select className={input} value={filters.status} onChange={event=>setFilters({...filters,status:event.target.value})}>
-     <option value="active">Open, limited or waitlisted</option>
-     {["all","open","limited","waitlist","needs_recheck","closed"].map(status=><option key={status} value={status}>{status==="all"?"All statuses":statusLabel(status)}</option>)}
+     <option value="active">Open, waitlisted or opening soon</option>
+     {["all","open","announced","limited","waitlist","needs_recheck","closed"].map(status=><option key={status} value={status}>{status==="all"?"All statuses":statusLabel(status)}</option>)}
     </select>
    </label>
    <label className={controlLabel+" min-w-[175px] flex-[1_1_190px] sm:max-w-[290px]"}>Sort by

@@ -7,7 +7,7 @@ export const defaultOpportunityFilters: OpportunityFilters = {
 export const defaultOpportunitySort: OpportunitySort = "date";
 
 const keys = ["q", "city", "month", "category", "status", "unconfirmed", "price", "maxFee", "deadline", "sort", "schedule", "posted"] as const;
-const statuses = new Set(["active", "all", "open", "limited", "waitlist", "needs_recheck", "closed"]);
+const statuses = new Set(["active", "all", "open", "announced", "limited", "waitlist", "needs_recheck", "closed"]);
 const sorts = new Set<OpportunitySort>(["date", "deadline", "fee_asc", "rating_desc", "posted_desc"]);
 const prices = new Set(["all", "published", "unpublished"]);
 const schedules = new Set(["all", "dated", "seasonal", "ongoing"]);

@@ -267,6 +267,8 @@ class SeasonalTests(unittest.TestCase):
   class DB:
    def rpc(self,name,body=None):
     calls.append(name)
+    if name=='btb_research_community_sync':return {'sources':len(body['p_sources'])}
+    if name=='btb_research_community_context':return {'leads':[]}
     if name=='btb_research_context':return {'enabled':True,'items':[]}
     if name=='btb_research_discovery_backlog':return []
     if name=='btb_research_market_gaps':return {'markets':[],'count':0}

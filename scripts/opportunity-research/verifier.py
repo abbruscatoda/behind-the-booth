@@ -51,19 +51,24 @@ HOSTS={'forms.monday.com','linktr.ee','grlmarket.com','www.grlmarket.com','www.d
  'rolesvillenc.gov','www.rolesvillenc.gov','wendellchamber.com','www.wendellchamber.com',
  'sweetwaterapex.com','www.sweetwaterapex.com','triangleartworks.org','www.triangleartworks.org',
  'garnernc.gov','www.garnernc.gov','knightdalenc.gov','www.knightdalenc.gov','ncagr.gov','www.ncagr.gov'}
+HOSTS.update({'www.theoptimistraleigh.com','www.songbird.bar','www.nomadascoffee.com',
+ 'www.frontpaigemedia.org','raleighironworks.com','downtowndurham.com','www.ncarts.org',
+ 'www.zapplication.org'})
 MAX_SOURCE_BYTES=4_000_000
 VOID={'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
 def norm(value):return re.sub(r'[^a-z0-9]','',value.lower())
 def clean(value):return ' '.join(unescape(value).split())
 def valid_url(url):
  p=urlparse(url)
- if p.hostname=='linktr.ee' and (p.path.rstrip('/')!='/Grlmarket' or p.query):return False
+ if p.hostname=='linktr.ee' and (p.path.rstrip('/') not in {'/Grlmarket','/oakandinknc','/frontpaigemedia'} or p.query):return False
  if p.hostname=='forms.monday.com' and (not re.fullmatch(r'/forms/[a-f0-9]{32}',p.path) or p.query not in ('','r=use1')):return False
  if p.hostname=='downtownraleigh.org' and (p.path.rstrip('/')!='/do/fairy-lights-bazaar' or p.query):return False
  if p.hostname=='www.cognitoforms.com' and (p.query or p.path!='/TownOfWakeForestPRCR1/_2027TownOfWakeForestParksRecreationCulturalResourcesSpecialEventFoodVendingOpportun'):return False
  if p.hostname=='managemymarket.com' and (p.path!='/VendorRegister.aspx' or p.query!='orgID=933'):return False
  if p.hostname=='www.eventbrite.com' and (p.query or not (p.path.rstrip('/')=='/o/nc-vintage-market-121068658483' or re.fullmatch(r'/e/[A-Za-z0-9-]+-[0-9]+/?',p.path))):return False
- if p.hostname=='www.artsplosure.org' and (p.path.rstrip('/')!='/first-night-raleigh' or p.query):return False
+ if p.hostname=='www.artsplosure.org' and (p.path.rstrip('/') not in {'/first-night-raleigh','/artsplosuretheraleighartsfestival-1'} or p.query):return False
+ if p.hostname=='www.zapplication.org' and (p.path!='/event-info.php' or not re.fullmatch(r'ID=[0-9]{1,8}',p.query)):return False
+ if p.hostname=='downtowndurham.com' and (p.path.rstrip('/')!='/organizer/bull-city-treasure-hunt' or p.query):return False
  # Form IDs may vary, but the path stays scoped to a real hosted application.
  # Google Docs/Forms must not be used to fetch documents, sign-in, prefill,
  # entry values, or arbitrary query paths.

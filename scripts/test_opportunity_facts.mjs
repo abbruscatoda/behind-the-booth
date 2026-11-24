@@ -25,6 +25,7 @@ test("source labels distinguish organizer sites, hosted listings, applications a
     ["https://form.jotform.com/252944311617153","View application form"],
     ["https://docs.google.com/forms/d/e/example/viewform","View Google Form"],
     ["https://forms.gle/example","View Google Form"],
+    ["https://www.zapplication.org/event-info.php?ID=14901","View application on ZAPP"],
     ["https://example.org/fees.PDF?download=1","View organizer PDF"],
     ["https://docs.google.com/document/d/example/edit","View organizer document"],
   ]) {

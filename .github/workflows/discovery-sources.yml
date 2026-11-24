@@ -4,6 +4,10 @@ on:
     branches: [main]
     paths:
       - 'scripts/opportunity-research/discovery.py'
+      - 'scripts/opportunity-research/community_discovery.py'
+      - 'scripts/opportunity-research/community_sources.json'
+      - 'scripts/test_community_discovery.mjs'
+      - 'supabase/migrations/*community_vendor_discovery.sql'
       - 'scripts/opportunity-research/run.py'
       - 'scripts/opportunity-research/sync_sources.py'
       - 'scripts/opportunity-research/independent_markets.py'
@@ -33,7 +37,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Check database publication guards
-        run: node --test scripts/test_independent_market_publication.mjs
+        run: node --test scripts/test_independent_market_publication.mjs scripts/test_community_discovery.mjs
       - name: Synchronize reviewed sources
         env:
           BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}

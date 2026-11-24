@@ -24,6 +24,7 @@ export default function OpportunityPreviewCard({item,joinHref}:{item:Opportunity
     <div className="my-2 border-y border-[#252521]/15 py-2 text-sm leading-snug">
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#626C57]">{rolling ? "Ongoing market" : program ? "Application / program season" : "Market dates"}</p>
       <p className="mt-0.5 font-semibold">{rolling ? "Rolling vendor applications" : formatAttendanceDate(item.starts_on) + (item.ends_on !== item.starts_on ? ` – ${formatAttendanceDate(item.ends_on)}` : "")}</p>
+      {item.effective_status==="announced"&&item.opens_on&&<p className="mt-1 text-xs font-semibold text-[#07472B]">Applications open {formatAttendanceDate(item.opens_on)}</p>}
       {program && <p className="mt-1 text-xs text-[#626C57]">Individual dates and booths require organizer approval.</p>}
       <p className="mt-2 text-[11px] text-[#626C57]">{booth.label}</p>
       <p className="mt-0.5 text-base font-bold">{booth.value}</p>

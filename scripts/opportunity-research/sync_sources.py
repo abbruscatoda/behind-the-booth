@@ -9,6 +9,13 @@ def main():
   print('Automatic research is paused; source synchronization skipped.')
  else:
   print('Reviewed discovery sources synchronized:',result['approved_sources'])
+  from community_discovery import WATCHLIST,research_inbox
+  synced=db.rpc('btb_research_community_sync',{'p_sources':WATCHLIST})
+  if synced.get('sources')!=len(WATCHLIST):raise RuntimeError('Community source synchronization failed.')
+  community,community_stats=research_inbox(db)
+  for candidate in community:
+   db.rpc('btb_research_publish_community_call',{'p_result':candidate})
+  print('Community sources synchronized:',synced['sources'],'Verified calls:',len(community))
   from verifier import Fetcher
   from market_catalog import discover_catalog
   from official_vendor_programs import verify_program

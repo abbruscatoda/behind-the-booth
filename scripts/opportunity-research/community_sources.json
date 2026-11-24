@@ -1,0 +1,222 @@
+[
+  {
+    "key": "optimist-raleigh",
+    "organizer": "The Optimist Raleigh",
+    "city": "Raleigh",
+    "market_name": "The Optimist Pop-Ups",
+    "slug": "the-optimist-pop-ups",
+    "sources": [
+      "https://www.theoptimistraleigh.com/"
+    ],
+    "instagram": [
+      "theoptimistraleigh"
+    ],
+    "venue_terms": [],
+    "publish": false
+  },
+  {
+    "key": "songbird-raleigh",
+    "organizer": "Songbird",
+    "city": "Raleigh",
+    "market_name": "East End: THE Market at Songbird",
+    "slug": "east-end-the-market-at-songbird",
+    "sources": [
+      "https://www.songbird.bar/calendar",
+      "https://www.ncarts.org/grants-resources/resources/artists/artist-opportunities"
+    ],
+    "instagram": [
+      "songbird.nc"
+    ],
+    "venue_terms": [
+      "1020",
+      "Whitaker"
+    ],
+    "publish": true
+  },
+  {
+    "key": "bull-city-treasure-hunt",
+    "organizer": "Bull City Treasure Hunt",
+    "city": "Durham",
+    "market_name": "Bull City Treasure Hunt at Durham Central Park",
+    "slug": "bull-city-treasure-hunt-durham-central-park",
+    "sources": [
+      "https://downtowndurham.com/organizer/bull-city-treasure-hunt/"
+    ],
+    "instagram": [
+      "bullcitytreasurehunt"
+    ],
+    "venue_terms": [
+      "Durham Central Park"
+    ],
+    "publish": true
+  },
+  {
+    "key": "nomadas-durham",
+    "organizer": "Nomadas Coffee",
+    "city": "Durham",
+    "market_name": "Nomadas Coffee Markets",
+    "slug": "nomadas-coffee-markets",
+    "sources": [
+      "https://www.nomadascoffee.com/"
+    ],
+    "instagram": [
+      "nomadascoffeedurham"
+    ],
+    "venue_terms": [
+      "Roxboro"
+    ],
+    "publish": true
+  },
+  {
+    "key": "oak-ink-durham",
+    "organizer": "Oak & Ink Bookish Boutiques",
+    "city": "Durham",
+    "market_name": "Oak & Ink Book Fair at Durham Bottling Company",
+    "slug": "oak-and-ink-durham-bottling-book-fair",
+    "sources": [
+      "https://linktr.ee/oakandinknc"
+    ],
+    "instagram": [
+      "oakandink_bookish"
+    ],
+    "venue_terms": [
+      "Durham Bottling"
+    ],
+    "publish": true
+  },
+  {
+    "key": "front-paige-iron-works",
+    "organizer": "Front Paige Media",
+    "city": "Raleigh",
+    "market_name": "Front Paige Media Markets at Raleigh Iron Works",
+    "slug": "front-paige-media-raleigh-iron-works",
+    "sources": [
+      "https://www.frontpaigemedia.org/",
+      "https://raleighironworks.com/organizer/front-paige-media/"
+    ],
+    "instagram": [
+      "frontpaigemedia"
+    ],
+    "venue_terms": [
+      "Raleigh Iron Works"
+    ],
+    "publish": true
+  },
+  {
+    "key": "lazy-daze-cary",
+    "organizer": "Town of Cary",
+    "city": "Cary",
+    "market_name": "Lazy Daze Arts & Crafts Festival",
+    "slug": "lazy-daze-arts-and-crafts-festival",
+    "sources": [
+      "https://www.carync.gov/recreation-enjoyment/events/festivals/lazy-daze-arts-and-crafts-festival",
+      "https://www.zapplication.org/event-info.php?ID=14901"
+    ],
+    "instagram": [
+      "caryartdaze"
+    ],
+    "venue_terms": [
+      "Cary"
+    ],
+    "publish": true
+  },
+  {
+    "key": "artsplosure-raleigh",
+    "organizer": "Artsplosure",
+    "city": "Raleigh",
+    "market_name": "Artsplosure Art Market",
+    "slug": "artsplosure-art-market",
+    "sources": [
+      "https://www.artsplosure.org/artsplosuretheraleighartsfestival-1",
+      "https://www.zapplication.org/event-info.php?ID=15072"
+    ],
+    "instagram": [
+      "artsplosure"
+    ],
+    "venue_terms": [
+      "Raleigh"
+    ],
+    "publish": true
+  },
+  {
+    "key": "triangle-pop-up",
+    "organizer": "Triangle Pop-Up",
+    "city": "Raleigh",
+    "market_name": "Triangle Pop-Up Markets",
+    "slug": "triangle-pop-up-markets",
+    "sources": [
+      "https://www.trianglepopup.com/applications",
+      "https://www.trianglepopup.com/events"
+    ],
+    "instagram": [
+      "trianglepopup"
+    ],
+    "venue_terms": [],
+    "publish": false
+  },
+  {
+    "key": "hartwell-raleigh",
+    "organizer": "Hartwell",
+    "city": "Raleigh",
+    "market_name": "Hartwell Makers Markets",
+    "slug": "hartwell-makers-markets",
+    "sources": [
+      "https://www.hartwellraleigh.com/retail-markets"
+    ],
+    "instagram": [
+      "hartwellraleigh"
+    ],
+    "venue_terms": [
+      "Hartwell"
+    ],
+    "publish": true
+  },
+  {
+    "key": "bazaar-carrboro",
+    "organizer": "The Bazaar",
+    "city": "Carrboro",
+    "market_name": "The Bazaar",
+    "slug": "the-bazaar",
+    "sources": [
+      "https://www.takethehighstreet.com/thebazaar"
+    ],
+    "instagram": [
+      "thebazaarus"
+    ],
+    "venue_terms": [
+      "Carrboro"
+    ],
+    "publish": true
+  },
+  {
+    "key": "meow-city",
+    "organizer": "Meow City",
+    "city": "Raleigh",
+    "market_name": "Happy Pawlidays Market",
+    "slug": "happy-pawlidays-market",
+    "sources": [
+      "https://www.eventeny.com/events/happypawlidays-34464/"
+    ],
+    "instagram": [
+      "carolinakittycon"
+    ],
+    "venue_terms": [
+      "Perry"
+    ],
+    "publish": false
+  },
+  {
+    "key": "vendor-reposts",
+    "organizer": "Vendor repost discovery",
+    "city": "Raleigh",
+    "market_name": "Vendor repost discovery",
+    "slug": "vendor-repost-discovery",
+    "sources": [],
+    "instagram": [
+      "theshopkiki",
+      "hangingholly"
+    ],
+    "venue_terms": [],
+    "publish": false
+  }
+]

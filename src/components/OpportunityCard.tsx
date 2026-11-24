@@ -7,8 +7,9 @@ import { opportunityDeadline, opportunityBoothPrice } from "../lib/opportunityPr
 import { formatAttendanceDate } from "../lib/attendanceDate";
 import { isNewlyPosted } from "../lib/opportunityRecency";
 import { applicationFeePresentation, hasPublishedApplicationFee } from "../lib/opportunityFacts";
-import { fee, safeExternalUrl, statusLabel, type Opportunity } from "../lib/opportunities";
+import { fee, statusLabel, type Opportunity } from "../lib/opportunities";
 import { hasVendorRating } from "../lib/ratingColors";
+import { opportunityApplication } from "../lib/opportunityApplication";
 
 /** Quick comparison card: verified facts first; detailed evidence lives in a modal. */
 export default function OpportunityCard({
@@ -33,8 +34,7 @@ export default function OpportunityCard({
    ? item.title.replace(/\s*[—–-]\s*Rolling Vendor Applications$/i,"") : item.title;
  const isRolling=item.schedule_type==="rolling_market";
  const isProgram=item.schedule_type==="seasonal_application"||item.schedule_type==="recurring_season";
- const available=["open","limited","waitlist"].includes(item.effective_status);
- const applicationUrl=safeExternalUrl(item.application_url);
+ const application=opportunityApplication(item);
  const hasRatedReviews=hasVendorRating(item.history.review_count,item.history.overall);
  const statusTone=item.effective_status==="open"
    ? "border-[#07472B]/25 bg-[#E9E7DA] text-[#07472B]"
@@ -64,6 +64,7 @@ export default function OpportunityCard({
      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#626C57]">{isRolling?"When to apply":isProgram?"Application / program season":"Market dates"}</p>
      <p className="mt-0.5 text-sm font-semibold leading-snug">{isRolling?"Ongoing · rolling applications":formatAttendanceDate(item.starts_on)+(item.ends_on!==item.starts_on?" – "+formatAttendanceDate(item.ends_on):"")}</p>
      {!isRolling&&<p className="mt-1 text-xs leading-snug text-[#55554E]"><span className="font-semibold">{deadline.label}:</span> {deadline.value}</p>}
+     {item.effective_status==="announced"&&item.opens_on&&<p className="mt-1 text-xs font-semibold text-[#07472B]">Applications open {formatAttendanceDate(item.opens_on)}</p>}
      {(isRolling||isProgram)&&<p className="mt-1 text-xs leading-snug text-[#626C57]">Individual market dates and booths are subject to organizer approval.</p>}
    </div>
    <dl className={`mt-2 grid ${showApplicationFee ? "grid-cols-2" : "grid-cols-1"} gap-x-3 gap-y-1.5 border-y border-[#252521]/15 py-2`}>
@@ -78,9 +79,10 @@ export default function OpportunityCard({
    {selected?.note&&!highlights.some(([category])=>category===categoryFilter)&&<p className="mt-1.5 line-clamp-2 text-xs leading-snug text-[#626C57]">{selected.note}</p>}
    {!hasRatedReviews&&<p className="mt-1.5 text-xs leading-snug text-[#626C57]">{item.history.review_count>0?`${item.history.review_count} vendor ${item.history.review_count===1?"review":"reviews"} · Rating unavailable`:"No vendor reviews yet"}</p>}
    <div className="mt-3">
-     {available&&applicationUrl
-       ? <a href={applicationUrl} target="_blank" rel="noopener noreferrer" className="heritage-button opportunity-application min-h-11 w-full text-center">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} <ExternalLinkIcon /></a>
-       : <p className="flex min-h-11 items-center justify-center border border-[#252521]/20 bg-[#E9E7DA] px-3 py-2 text-center text-xs font-semibold text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Application not currently verified"}</p>}
+     {application.href
+       ? <a href={application.href} target={application.external?"_blank":undefined} rel={application.external?"noopener noreferrer":undefined} className="heritage-button opportunity-application min-h-11 w-full text-center">{application.label} {application.external&&<ExternalLinkIcon />}</a>
+       : <p className="flex min-h-11 items-center justify-center border border-[#252521]/20 bg-[#E9E7DA] px-3 py-2 text-center text-xs font-semibold text-[#626C57]">{application.label}</p>}
+     {item.application_method&&item.application_method!=="form"&&application.note&&<p className="mt-1.5 text-xs leading-snug text-[#626C57]">{application.note}</p>}
      {saveMessage&&<p id={`opportunity-save-message-${item.id}`} role="status" className="mt-2 border-l-2 border-[#07472B] bg-[#E9E7DA] px-3 pt-3 text-sm leading-relaxed">{saveMessage} <Link href="/login" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">My Account →</Link></p>}
    </div>
  </article>;

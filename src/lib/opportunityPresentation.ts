@@ -5,12 +5,20 @@ type DeadlineDetails = {
  starts_on: string;
  schedule_type?: string;
  deadline: string | null;
+ deadline_date?: string | null;
  fee_notes?: string;
  research_coverage?: {deadline?: {status?: string}};
  field_facts?: OpportunityFieldFacts;
 };
 
 export function opportunityDeadline(item: DeadlineDetails) {
+  if(item.deadline===null&&item.deadline_date&&/^20\d{2}-\d{2}-\d{2}$/.test(item.deadline_date)) {
+    const date=new Date(`${item.deadline_date}T00:00:00Z`);
+    if(Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===item.deadline_date)return {
+      label:"Application deadline",value:`${date.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"})} · time not specified`,
+      note:"The organizer published a date without a submission time.",calendarDate:item.deadline_date,sortAt:date.getTime(),
+    };
+  }
   const field = item.field_facts?.deadline;
   if (item.deadline === null && field?.status === "rolling") return {
     label:"Application window",value:"Applications accepted year-round",note:field.summary,sortAt:Infinity,

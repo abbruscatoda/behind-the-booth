@@ -38,6 +38,8 @@ class SourceRegistryTests(unittest.TestCase):
   class FakeDB:
    def rpc(self,name,body=None):
     calls.append((name,body))
+    if name=='btb_research_community_sync':return {'sources':len(body['p_sources'])}
+    if name=='btb_research_community_context':return {'leads':[]}
     if name=='btb_research_context':return {'enabled':True,'items':[]}
     if name=='btb_research_run':
      return 'test-run'

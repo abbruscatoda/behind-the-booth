@@ -5,6 +5,11 @@ on:
       - 'src/components/OpportunityBoard.tsx'
       - 'src/app/admin/opportunities/page.tsx'
       - 'src/lib/opportunities.ts'
+      - 'src/lib/opportunityApplication.ts'
+      - 'src/components/CommunityDiscoveryPanel.tsx'
+      - 'scripts/test_community_discovery.mjs'
+      - 'scripts/test_opportunity_application.mjs'
+      - 'supabase/migrations/*community_vendor_discovery.sql'
       - 'src/lib/opportunityPresentation.ts'
       - 'src/lib/opportunityFacts.ts'
       - 'src/lib/opportunityCategories.ts'
@@ -24,6 +29,11 @@ on:
       - 'src/components/OpportunityBoard.tsx'
       - 'src/app/admin/opportunities/page.tsx'
       - 'src/lib/opportunities.ts'
+      - 'src/lib/opportunityApplication.ts'
+      - 'src/components/CommunityDiscoveryPanel.tsx'
+      - 'scripts/test_community_discovery.mjs'
+      - 'scripts/test_opportunity_application.mjs'
+      - 'supabase/migrations/*community_vendor_discovery.sql'
       - 'src/lib/opportunityPresentation.ts'
       - 'src/lib/opportunityFacts.ts'
       - 'src/lib/opportunityCategories.ts'
@@ -57,3 +67,4 @@ jobs:
       - run: npx tsc --noEmit
       - run: node --test scripts/test_opportunity_facts.mjs
       - run: node --test scripts/test_category_product_scope.mjs
+      - run: node --test scripts/test_opportunity_application.mjs scripts/test_community_discovery.mjs

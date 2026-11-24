@@ -15,6 +15,7 @@ export function opportunitySourceLink(value: string, applicationUrl?: string, su
     else if (host === "docs.google.com" && path.startsWith("/spreadsheets/")) label = `View ${subject} spreadsheet`;
     else if (on("jotform.com") || on("cognitoforms.com") || on("typeform.com") || host === "forms.monday.com") label = "View application form";
     else if (on("eventbrite.com")) label = "View listing on Eventbrite";
+    else if (on("zapplication.org")) label = "View application on ZAPP";
     else if (on("instagram.com")) label = `View ${subject} on Instagram`;
     else if (on("facebook.com")) label = `View ${subject} on Facebook`;
     else if (host === "linktr.ee") label = `View ${subject} links`;

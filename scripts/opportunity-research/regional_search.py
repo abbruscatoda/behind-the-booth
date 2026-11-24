@@ -19,6 +19,16 @@ MAX_RESULTS_PER_QUERY=10
 MAX_SEARCH_PAGES=12
 MAX_FALLBACK_QUERIES=6
 
+def social_queries(now):
+ from community_discovery import WATCHLIST
+ profiles=[(entry['city'],handle) for entry in WATCHLIST for handle in entry['instagram']]
+ # Search public, indexed posts. This is never a logged-in Instagram feed,
+ # never makes a snippet publication evidence, and retains search failures.
+ selected=rotate(profiles,now,4)
+ return [f'"{city}" site:instagram.com "{handle}" vendors market' for city,handle in selected]+[
+  f'"{city}" site:instagram.com "{intent}"' for city,intent in
+  [('Raleigh','vendor call'),('Durham','vendors wanted'),('Cary','pop up'),('Carrboro','holiday market')]]
+
 def rotate(items,now,limit):
  items=list(items)
  if not items:return []
@@ -72,7 +82,8 @@ def search_results(now,opener=None):
  from discovery import NoSearchRedirect,MAX_FEED_BYTES,is_safe_lead_url
  opener=opener or build_opener(NoSearchRedirect())
  hits={};failures=[];succeeded=0;empty_queries=[]
- for query in queries(now)[:MAX_QUERIES]:
+ run_queries=queries(now)[:MAX_QUERIES]+social_queries(now)
+ for query in run_queries:
   relevant=0
   endpoint='https://www.bing.com/search?'+urlencode({'q':query,'format':'rss'})
   try:
@@ -102,7 +113,7 @@ def search_results(now,opener=None):
   except (OSError,ValueError):fallback_failures+=1
  return hits,{'fallback_queries_attempted':fallback_attempts,'fallback_queries_with_results':fallback_success,
               'fallback_queries_inconclusive':fallback_failures,'queries_without_relevant_rss_results':len(empty_queries),
-              'queries_attempted':len(queries(now)[:MAX_QUERIES]),'queries_succeeded':succeeded,
+              'queries_attempted':len(run_queries),'public_instagram_queries':len(social_queries(now)),'queries_succeeded':succeeded,
               'query_failures':failures,'result_urls':len(hits)}
 
 def discover_regional(fetcher,now,sources,root_docs,opener=None):

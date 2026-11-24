@@ -9,6 +9,7 @@ import { opportunityDeadline, opportunityBoothPrice, opportunityDetailSections }
 import { formatAttendanceDate } from "../lib/attendanceDate";
 import { fee, safeExternalUrl, statusLabel, type Opportunity } from "../lib/opportunities";
 import { applicationFeePresentation, moneyAmount } from "../lib/opportunityFacts";
+import { opportunityApplication } from "../lib/opportunityApplication";
 
 /** A native modal allows in-depth research without changing neighboring card heights. */
 export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunity;onClose:()=>void}) {
@@ -30,9 +31,8 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
  const listed=listedOpportunityCategories(item);
  const highlights=categoryHighlights(item);
  const coverage=currentCoverage(coverageWithFieldFacts(item.research_coverage,item.field_facts));
- const actionUrl=safeExternalUrl(item.application_url);
+ const application=opportunityApplication(item);
  const sourceUrl=safeExternalUrl(item.source_url);
- const available=["open","limited","waitlist"].includes(item.effective_status);
  return <dialog ref={dialogRef}
   aria-labelledby={`opportunity-dialog-title-${item.id}`}
   onClose={onClose}
@@ -51,6 +51,7 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">{item.schedule_type==="rolling_market"?"Application window":item.schedule_type==="seasonal_application"||item.schedule_type==="recurring_season"?"Application / program season":"Market dates"}</p>
      <p className="mt-1 font-semibold">{item.schedule_type==="rolling_market"?"Ongoing — rolling vendor applications":formatAttendanceDate(item.starts_on)+(item.ends_on!==item.starts_on?" – "+formatAttendanceDate(item.ends_on):"")}</p>
      <p className="mt-1"><strong>{deadline.label}:</strong> {deadline.value}</p>
+     {application.note&&<p className="mt-2 text-xs font-semibold text-[#07472B]">{application.note}</p>}
      {(item.schedule_type==="seasonal_application"||item.schedule_type==="recurring_season")&&<p className="mt-1 text-xs text-[#626C57]">Program coverage does not guarantee individual vending dates or booths.</p>}
     </div>
     <div><p className="text-xs font-semibold uppercase tracking-wide text-[#626C57]">{booth.label}</p><p className="mt-1 font-semibold">{booth.value}</p>{booth.note&&<p className="mt-1 text-xs">{booth.note}</p>}</div>
@@ -121,7 +122,7 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
        </div>
   </div>
   <div className="opportunity-dialog-footer grid shrink-0 grid-cols-2 items-center gap-x-3 gap-y-2 border-t border-[#252521]/20 bg-[#FFFCF6] px-4 py-3 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-3 sm:px-7 sm:py-4">
-   {available&&actionUrl?<a href={actionUrl} target="_blank" rel="noopener noreferrer" className="heritage-button col-span-2 min-h-11 sm:w-auto">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} <ExternalLinkIcon /></a>:<p className="col-span-2 text-sm font-semibold text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Application availability not verified"}</p>}
+   {application.href?<a href={application.href} target={application.external?"_blank":undefined} rel={application.external?"noopener noreferrer":undefined} className="heritage-button col-span-2 min-h-11 sm:w-auto">{application.label} {application.external&&<ExternalLinkIcon />}</a>:<p className="col-span-2 text-sm font-semibold text-[#626C57]">{application.label}</p>}
    <Link href={`/markets/${item.market_slug}`} className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline underline-offset-4 sm:text-sm">View market profile</Link>
    {sourceUrl&&<OpportunitySourceLink href={sourceUrl} applicationUrl={item.application_url} className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline sm:text-sm" />}
   </div>

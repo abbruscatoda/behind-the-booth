@@ -11,6 +11,7 @@ export type Opportunity = {
  id: string; title: string; organizer: string; city: string; state: string; venue: string;
  starts_on: string; ends_on: string; schedule_type?: 'dated_event' | 'recurring_season' | 'seasonal_application' | 'rolling_market'; deadline: string | null; application_url: string; source_url: string;
  research_coverage?: ResearchCoverage;
+ application_method?: "form" | "email" | "instagram"; application_contact?: string; opens_on?: string | null; deadline_date?: string | null;
  field_facts?: OpportunityFieldFacts;
  category_evidence?: Record<string, CategoryEvidence>;
  categories: string[]; booth_fee: number | null; application_fee: number | null; deposit: number | null;
@@ -18,7 +19,7 @@ export type Opportunity = {
  occurrence_id: string; market_id: string; market_slug: string;
  history: { review_count: number; reviewer_count: number; overall: number | null };
 };
-export const statusLabel = (value: string) => ({ open: "Applications open", limited: "Limited options", waitlist: "Waitlist only", closed: "Closed", needs_recheck: "Needs rechecking", unavailable: "Unavailable" }[value] ?? value);
+export const statusLabel = (value: string) => ({ open: "Applications open", announced: "Opening soon", limited: "Limited options", waitlist: "Waitlist only", closed: "Closed", needs_recheck: "Needs rechecking", unavailable: "Unavailable" }[value] ?? value);
 export function safeExternalUrl(value: string): string | null {
  try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password ? url.href : null; } catch { return null; }
 }
@@ -55,7 +56,7 @@ export function filterOpportunities(
    if (categoryStatus !== "eligible" && !(filters.includeUnconfirmed === true && categoryStatus === "unknown")) return false;
   }
   if (filters.status !== "all" && (filters.status === "active"
-   ? !["open","limited","waitlist"].includes(item.effective_status) : filters.status !== item.effective_status)) return false;
+   ? !["open","limited","waitlist","announced"].includes(item.effective_status) : filters.status !== item.effective_status)) return false;
   if (filters.schedule === "ongoing" && item.schedule_type !== "rolling_market") return false;
   if (filters.schedule === "seasonal" && !["recurring_season","seasonal_application"].includes(item.schedule_type ?? "")) return false;
   if (filters.schedule === "dated" && item.schedule_type !== "dated_event" && item.schedule_type !== undefined) return false;
