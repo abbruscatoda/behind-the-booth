@@ -6,6 +6,8 @@ The companion **Find Triangle vendor calls** research automation uses public web
 
 The worker adds eight targeted indexed-Instagram queries per run to the 24 community queries. This is public search, not a signed-in feed or Stories crawler. Reviewed venue checks use a separate 48-request Fetcher budget; they include bounded image alt captions embedded by organizers on their own sites. Those captions can reveal explicit closures. Empty or inaccessible pages never prove there are no openings.
 
+The hosted RPC layer rejects bulk registry resets with SQLSTATE 21000. Community source resets and inbox reconciliation update one primary key at a time, matching the established official-source registry workaround. A local Postgres test alone does not reproduce this platform behavior; deployment verification must include a successful live worker/source-sync run.
+
 ## Receipt contract
 
 A lead has `source_key`, canonical HTTPS `target_url`, `title`, `notes`, `proposal` and `receipts`. Unknown organizers use a null `source_key` and remain private discoveries. Never change the reviewed watchlist, authorization, moderation holds or public opportunity rows from a research sweep.

@@ -50,12 +50,16 @@ REVOKE ALL ON FUNCTION btb_private.public_community_facts(uuid) FROM PUBLIC,anon
 
 CREATE FUNCTION public.btb_research_community_sync(p_sources jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE item jsonb;root text;n integer:=0;
+DECLARE item jsonb;root text;existing_key text;n integer:=0;
 BEGIN
  PERFORM public.btb_research_authorize();
  IF NOT coalesce((SELECT enabled FROM public.btb_research_settings WHERE id),false) THEN RETURN jsonb_build_object('paused',true);END IF;
  IF jsonb_typeof(p_sources) IS DISTINCT FROM 'array' OR jsonb_array_length(p_sources) NOT BETWEEN 1 AND 60 OR octet_length(p_sources::text)>60000 THEN RAISE EXCEPTION 'Invalid community watchlist' USING errcode='22023';END IF;
- UPDATE btb_private.community_sources SET active=false;
+ -- The hosted database rejects multi-row registry resets with SQLSTATE 21000.
+ -- Match the established discovery registry's primary-key-at-a-time reset.
+ FOR existing_key IN SELECT source_key FROM btb_private.community_sources ORDER BY source_key LOOP
+  UPDATE btb_private.community_sources SET active=false WHERE source_key=existing_key;
+ END LOOP;
  FOR item IN SELECT value FROM jsonb_array_elements(p_sources) LOOP
   IF coalesce(item->>'key','') !~ '^[a-z0-9-]{3,80}$' OR coalesce(item->>'slug','') !~ '^[a-z0-9-]{3,160}$'
   OR length(coalesce(item->>'market_name','')) NOT BETWEEN 3 AND 160 OR length(coalesce(item->>'organizer','')) NOT BETWEEN 3 AND 120
@@ -108,7 +112,7 @@ END; $$;
 CREATE FUNCTION public.btb_research_publish_community_call(p_result jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE c jsonb:=p_result->'candidate';cfg jsonb;checked timestamptz;day date;last_day date;opening date;cutoff date;
- m public.markets;old public.vendor_opportunities;opp uuid;occurrence uuid;receipt jsonb;source_ok boolean:=false;root text;event_url text;
+ m public.markets;old public.vendor_opportunities;opp uuid;occurrence uuid;receipt jsonb;source_ok boolean:=false;root text;event_url text;inbox_id uuid;
 BEGIN
  PERFORM public.btb_research_authorize();
  IF NOT coalesce((SELECT enabled FROM public.btb_research_settings WHERE id),false) THEN RETURN jsonb_build_object('action','skipped','reason','Research disabled');END IF;
@@ -178,7 +182,9 @@ BEGIN
   VALUES(opp,c->>'application_url',event_url,checked,jsonb_build_object('pricing_options',c->'pricing_options','pricing',jsonb_build_object('status','options','summary','Published options have different size or eligibility conditions. Read each option before applying.','source_url',c->>'application_url')))
   ON CONFLICT(opportunity_id) DO UPDATE SET application_url=excluded.application_url,source_url=excluded.source_url,checked_at=excluded.checked_at,fields=excluded.fields;
  END IF;
- UPDATE btb_private.community_discovery_inbox SET state=CASE WHEN c->>'availability'='closed' THEN 'closed' ELSE 'published' END,opportunity_id=opp,last_checked_at=now(),reason='Verified reviewed organizer, dated event and vendor intake.' WHERE source_key=p_result->>'source_key' AND proposal->>'starts_on'=c->>'starts_on' AND proposal->>'application_url'=c->>'application_url';
+ FOR inbox_id IN SELECT id FROM btb_private.community_discovery_inbox WHERE source_key=p_result->>'source_key' AND proposal->>'starts_on'=c->>'starts_on' AND proposal->>'application_url'=c->>'application_url' ORDER BY id LOOP
+  UPDATE btb_private.community_discovery_inbox SET state=CASE WHEN c->>'availability'='closed' THEN 'closed' ELSE 'published' END,opportunity_id=opp,last_checked_at=now(),reason='Verified reviewed organizer, dated event and vendor intake.' WHERE id=inbox_id;
+ END LOOP;
  INSERT INTO public.btb_research_audit(opportunity_id,action,reason,evidence) VALUES(opp,'publish','Verified community vendor call',jsonb_build_object('source_key',p_result->>'source_key','source_url',event_url,'checked_at',checked,'method',c->>'application_method','availability',c->>'availability'));
  RETURN jsonb_build_object('action','publish','id',opp);
 END; $$;

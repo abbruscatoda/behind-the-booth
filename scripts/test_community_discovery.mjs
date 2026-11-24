@@ -33,6 +33,7 @@ test('community calls preserve evidence, membership, expiry and moderation bound
   await assert.rejects(publish(),/authorization required/);
   await db.query("select set_config('request.headers',$1,false)",[JSON.stringify({'x-btb-research-secret':'f'.repeat(64)})]);
   assert.equal((await query('select public.btb_research_community_sync($1) as result',[sources])).sources,sources.length);
+  assert.equal((await query('select public.btb_research_community_sync($1) as result',[sources])).sources,sources.length);
  });
  let id;
  await t.test('verified email calls publish once with unknown fees preserved',async()=>{
