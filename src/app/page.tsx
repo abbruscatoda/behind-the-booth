@@ -98,7 +98,6 @@ export default function Home() {
               className="brand-hero-photo"
               preload
             />
-            <figcaption className="brand-photo-credit">Market photography by <a href="https://www.pexels.com/photo/market-stall-tents-15807347/" target="_blank" rel="noopener noreferrer">Connor Scott McManus / Pexels<span className="sr-only"> (opens in a new tab)</span></a></figcaption>
           </figure>
         </div>
 

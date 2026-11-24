@@ -44,5 +44,5 @@ not evidence of a particular Raleigh venue or an endorsement.
 
 - Source: https://www.pexels.com/photo/market-stall-tents-15807347/
 - License: https://www.pexels.com/license/
-- The image is displayed with a photographer credit. The Pexels license permits
-  website use; attribution is appreciated but not required.
+- The source and photographer are recorded here. The Pexels license permits
+  website use without an on-page credit; attribution is appreciated but not required.

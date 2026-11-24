@@ -82,8 +82,6 @@ button:not(:disabled) { cursor: pointer; }
 .brand-hero-emphasis { color: #07472B; font-style: normal; }
 .brand-eyebrow { display: inline-block; border-radius: 999px; background: var(--color-peach); padding: .35rem .85rem; font-size: .75rem; font-weight: 600; color: #344338; }
 .brand-hero-photo { display: block; width: 100%; height: auto; aspect-ratio: 1.12; object-fit: cover; object-position: 35% 50%; border-radius: 16px; }
-.brand-photo-credit { margin-top: .5rem; color: #626C57; font-size: .625rem; text-align: right; }
-.brand-photo-credit a { text-decoration: underline; text-underline-offset: 2px; }
 .brand-secondary-button { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; border: 1px solid #07472B80; border-radius: 8px; padding: .75rem 1.1rem; color: #07472B; font-size: .875rem; font-weight: 600; }
 .brand-secondary-button:hover { background: #E9E7DA; }
 .brand-feature-section { padding: 2.5rem 1.5rem 3.5rem; }
