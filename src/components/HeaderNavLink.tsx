@@ -16,7 +16,7 @@ function CurrentHeaderLink({ href, className, children, prefetch }: Props) {
     const sync = () => setHash(window.location.hash);
     const followLink = (event: MouseEvent) => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey || !(event.target instanceof Element)) return;
-      const anchor = event.target.closest("a");
+      const anchor = event.target.closest<HTMLAnchorElement>("a[href]");
       if (!anchor || (anchor.target && anchor.target !== "_self")) return;
       const destination = new URL(anchor.href);
       if (destination.origin === window.location.origin) setHash(destination.hash);
@@ -38,13 +38,20 @@ function CurrentHeaderLink({ href, className, children, prefetch }: Props) {
     ? exact && hash === `#${targetHash}`
     : exact || pathname.startsWith(`${targetPath}/`);
 
-  return <Link href={href} prefetch={prefetch} className={className}
-    aria-current={active ? (exact && !targetHash ? "page" : "location") : undefined}>
+  const current = active ? (exact && !targetHash ? "page" : "location") : undefined;
+
+  // Let the browser handle fragments, including repeated visits to Our Mission.
+  if (targetHash) return <a href={href} className={className} aria-current={current}>{children}</a>;
+
+  return <Link href={href} prefetch={prefetch} className={className} aria-current={current}>
     {children}
   </Link>;
 }
 
 /** Unknown dynamic market slugs must not suspend the rest of the header. */
 export default function HeaderNavLink(props: Props) {
-  return <Suspense fallback={<Link {...props} />}><CurrentHeaderLink {...props} /></Suspense>;
+  const fallback = props.href.includes("#")
+    ? <a href={props.href} className={props.className}>{props.children}</a>
+    : <Link {...props} />;
+  return <Suspense fallback={fallback}><CurrentHeaderLink {...props} /></Suspense>;
 }
