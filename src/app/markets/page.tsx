@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import MarketWebsiteLink from "../../components/MarketWebsiteLink";
 import { useRouter, useSearchParams } from "next/navigation";
 import { organizerHref, organizerKey, organizerOptions } from "../../lib/marketOrganizers";
 import { getRatingColor, getRatingDescriptor } from "../../lib/ratingColors";
@@ -17,7 +16,6 @@ type Market = {
   city: string;
   state: string;
   description: string;
-  website_url: string | null;
   is_sample: boolean;
   organizer: string | null;
 };
@@ -57,7 +55,7 @@ function MarketDirectory() {
         const requestStartedAt = Date.now();
         const [marketResponse, activityResponse] = await Promise.all([
           supabase.from("markets")
-            .select("id, slug, name, city, state, description, website_url, is_sample, organizer")
+            .select("id, slug, name, city, state, description, is_sample, organizer")
             .eq("is_hidden", false).order("name"),
           Promise.resolve(supabase.rpc("btb_public_market_review_activity_v2"))
             .catch(() => ({ data: null, error: { message: "Review activity unavailable" } })),
@@ -321,14 +319,13 @@ function MarketDirectory() {
                 {market.description}
               </p>
 
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 border-t border-[#252521]/20 pt-1">
+              <div className="mt-2 border-t border-[#252521]/20 pt-1">
                 <Link
                   href={`/markets/${market.slug}`}
                   className="inline-flex min-h-11 items-center text-sm font-semibold text-[#07472B] hover:underline"
                 >
                   View market details →
                 </Link>
-                {!market.is_sample && <MarketWebsiteLink href={market.website_url} className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline underline-offset-4 hover:decoration-2" />}
               </div>
             </article>
           ))}
