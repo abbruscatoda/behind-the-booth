@@ -157,11 +157,11 @@ function MarketDirectory() {
     ...(lastVisit ? [{value: "since" as const, label: `New reviews since last visit (${sinceCount})`}] : []),
   ];
   const hasFilters = Boolean(search || organizer || hasReviewsOnly || hasUpcomingOnly || reviewWindow !== "all" || sort !== "name");
-  const toggleClass = (selected: boolean) => `min-h-11 border px-3 py-2 text-sm font-semibold disabled:opacity-50 ${selected ? "border-[#07472B] bg-[#07472B] text-[#F4F0E6]" : "border-[#07472B]/30 text-[#07472B] hover:bg-[#E9E7DA]"}`;
+  const toggleClass = (selected: boolean) => `min-h-11 rounded-full border px-3 py-2 text-sm font-medium disabled:opacity-50 ${selected ? "border-[#07472B] bg-[#07472B] text-[#F4F0E6]" : "border-[#07472B]/20 bg-[#E8ECDD] text-[#07472B] hover:bg-[#DDE5D5]"}`;
   function clearFilters() { setSearch(""); selectOrganizer(""); setHasReviewsOnly(false); setHasUpcomingOnly(false); setReviewWindow("all"); setSort("name"); }
 
   return (
-    <main className="flex-1 bg-[#F4F0E6] text-[#252521]">
+    <main className="directory-page flex-1 bg-[#F4F0E6] text-[#252521]">
 
 
 
@@ -171,14 +171,13 @@ function MarketDirectory() {
       {/* Directory */}
       <section className="mx-auto max-w-6xl px-6 pb-16 pt-8 md:pt-10">
         <div className="mb-4 flex items-center gap-4">
-          <span className="h-px w-12 bg-[#07472B]" />
-          <p className="heritage-label">The Market Directory</p>
+          <p className="heritage-label directory-eyebrow">The Market Directory</p>
         </div>
 
         <h1 className="heritage-heading max-w-4xl text-4xl md:text-5xl">
           Find your next
           {" "}
-          <span className="italic text-[#07472B]">great market.</span>
+          <span className="text-[#07472B]">great market.</span>
         </h1>
 
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-[#55554E]">
@@ -302,7 +301,7 @@ function MarketDirectory() {
               {market.organizer && <Link href={organizerHref(market.organizer)} className="mt-2 self-start rounded-sm border border-[#07472B]/25 bg-[#E9E7DA] px-2.5 py-2 text-xs font-semibold text-[#07472B] hover:underline">Organizer: {market.organizer}</Link>}
 
               {activity?.[market.id]?.count && activity[market.id].overall != null ? (
-                <div className="mt-2 border-y border-[#252521]/15 py-2">
+                <div className="market-rating mt-2 border-y border-[#252521]/15 py-2">
                   <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#55554E]">Overall vendor rating</p>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
                     <p className="shrink-0" style={{color: getRatingColor(activity[market.id].overall!)}}><span className="text-[1.75rem] font-bold leading-none tracking-tight">{activity[market.id].overall!.toFixed(1)}</span><span className="ml-0.5 text-sm font-semibold">/ 5</span></p>

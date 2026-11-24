@@ -7,7 +7,7 @@ export default function OpportunityVendorRating({score,reviewCount,marketSlug,ma
   const reviews=`${reviewCount} vendor ${reviewCount===1?"review":"reviews"}`;
   return <Link href={`/markets/${marketSlug}#vendor-reviews`}
     aria-label={`Read ${reviews} for ${marketTitle}. Overall vendor rating: ${score.toFixed(1)} out of 5, ${descriptor}.`}
-    className="group mt-2 flex min-h-11 items-center gap-2.5 rounded-sm border-l-2 bg-[#FFFCF6] px-2.5 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]"
+    className="opportunity-rating group mt-2 flex min-h-11 items-center gap-2.5 rounded-sm border-l-2 bg-[#FFFCF6] px-2.5 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]"
     style={{borderLeftColor:color}}>
     <span className="shrink-0 text-xl font-bold leading-none tracking-tight" style={{color}}>{score.toFixed(1)}<span className="ml-0.5 text-xs font-semibold">/5</span></span>
     <span className="min-w-0">
