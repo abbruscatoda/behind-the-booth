@@ -7,14 +7,35 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 const require=createRequire(import.meta.url), output=mkdtempSync(join(tmpdir(),"btb-fact-tests-"));
-execFileSync(process.execPath,[require.resolve("typescript/bin/tsc"),"src/lib/opportunities.ts","--outDir",output,"--module","commonjs","--target","es2022","--skipLibCheck","--esModuleInterop"]);
+execFileSync(process.execPath,[require.resolve("typescript/bin/tsc"),"src/lib/opportunities.ts","src/lib/opportunitySourceLink.ts","--outDir",output,"--module","commonjs","--target","es2022","--skipLibCheck","--esModuleInterop"]);
 const {applicationFeePresentation,hasPublishedApplicationFee,comparableBoothFee}=require(join(output,"opportunityFacts.js"));
 const {opportunityBoothPrice,opportunityDeadline,opportunityDetailSections}=require(join(output,"opportunityPresentation.js"));
 const {filterOpportunities}=require(join(output,"opportunities.js"));
 const {listedOpportunityCategories,categorySourceTerms,categoryEvidenceLabel,categoryScopeNote,categoryMatchLabel}=require(join(output,"opportunityCategories.js"));
+const {opportunitySourceLink}=require(join(output,"opportunitySourceLink.js"));
 after(()=>rmSync(output,{recursive:true,force:true}));
 const option=(label,amount,unit,kind="booth",applicable=true)=>({label,amount,unit,kind,applicable,conditions:"Source conditions",source_url:"https://example.org/fees"});
 const base={id:"a",title:"Market",city:"Raleigh",organizer:"Organizer",venue:"Venue",starts_on:"2027-01-01",ends_on:"2027-12-31",deadline:null,booth_fee:null,application_fee:null,fee_notes:"",categories:[],effective_status:"open",schedule_type:"seasonal_application"};
+test("source labels distinguish organizer sites, hosted listings, applications and documents",()=>{
+  for (const [url,label] of [
+    ["https://grlmarket.com/","Visit organizer website"],
+    ["https://artspacenc.org/calls-for-art/","Visit organizer website"],
+    ["https://www.eventeny.com/events/market-123/","View listing on Eventeny"],
+    ["https://www.eventeny.com/events/vendor/?id=38737","View application on Eventeny"],
+    ["https://form.jotform.com/252944311617153","View application form"],
+    ["https://docs.google.com/forms/d/e/example/viewform","View Google Form"],
+    ["https://forms.gle/example","View Google Form"],
+    ["https://example.org/fees.PDF?download=1","View organizer PDF"],
+    ["https://docs.google.com/document/d/example/edit","View organizer document"],
+  ]) {
+    const result=opportunitySourceLink(url);assert.equal(result.label,label);assert.equal(result.href,new URL(url).href);
+    assert.match(result.title,/in a new tab$/);
+  }
+  assert.equal(opportunitySourceLink("https://example.org/apply","https://example.org/apply").label,"View application information");
+  assert.equal(opportunitySourceLink("https://example.org/","invalid").label,"Visit organizer website");
+  assert.equal(opportunitySourceLink("https://eventeny.com.example.org/events/123").label,"Visit organizer website");
+  for(const url of ["javascript:alert(1)","http://example.org","https://user:password@example.org/","invalid"]){assert.equal(opportunitySourceLink(url),null);}
+});
 test("guest-day and season charges stay separate in cards and budget filters",()=>{
   const item={...base,field_facts:{pricing_options:[option("Guest",30,"day"),option("Full season",260,"season"),option("Part season",180,"season")]}};
   const display=opportunityBoothPrice(item);

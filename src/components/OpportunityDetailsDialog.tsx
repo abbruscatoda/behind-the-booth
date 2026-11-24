@@ -1,5 +1,6 @@
 "use client";
 import ExternalLinkIcon from "./ExternalLinkIcon";
+import OpportunitySourceLink from "./OpportunitySourceLink";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { activeCategoryEvidence, categoryEvidenceLabel, categoryScopeNote, categorySourceTerms, categoryHighlights, listedOpportunityCategories } from "../lib/opportunityCategories";
@@ -62,7 +63,7 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
      <ul className="mt-3 space-y-3 text-sm">{priceOptions.map((option,index)=><li key={`${option.label}-${index}`} className="border-l-2 border-[#07472B]/30 pl-3">
        <p><strong>{option.label}: {moneyAmount(option.amount)}</strong>{option.unit==="day"?" / day":option.unit==="event"?" / event":option.unit==="season"?" / season":option.unit==="application"?" to apply":""}{!option.applicable&&<strong> · {option.unavailable ? "Unavailable at source" : "Reference only"}</strong>}</p>
        {option.conditions&&<p className="mt-1 text-xs text-[#55554E]">{option.conditions}</p>}
-       {safeExternalUrl(option.source_url)&&<a href={safeExternalUrl(option.source_url)!} target="_blank" rel="noopener noreferrer" className="text-xs text-[#07472B] underline">Official price source <ExternalLinkIcon /></a>}
+       <OpportunitySourceLink href={option.source_url} applicationUrl={item.application_url} className="text-xs text-[#07472B] underline" />
      </li>)}</ul>
    </section>}
    {item.field_facts?.requirements?.summary&&<section><h3 className="font-semibold">Application-specific requirements</h3><p className="mt-2 text-sm leading-relaxed">{item.field_facts.requirements.summary}</p></section>}
@@ -102,7 +103,7 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
              <p className="font-semibold">{category}: {categoryEvidenceLabel(entry)}</p><p className="mt-1">{entry.note}</p>
              {entry.status==="eligible"&&categorySourceTerms(entry).length>0&&<p className="mt-1"><strong>Organizer’s wording:</strong> {categorySourceTerms(entry).map(term=>`“${term}”`).join("; ")}</p>}
              {entry.status==="eligible"&&<p className="mt-1 text-xs">{categoryScopeNote(category,entry)}</p>}
-             <p className="mt-1 text-xs text-[#626C57]">Category checked {new Date(entry.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(entry.source_url)&&<> · <a href={safeExternalUrl(entry.source_url)!} target="_blank" rel="noopener noreferrer" className="underline">Category source <ExternalLinkIcon /></a></>}</p>
+             <p className="mt-1 text-xs text-[#626C57]">Category checked {new Date(entry.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(entry.source_url)&&<> · <OpportunitySourceLink href={entry.source_url} applicationUrl={item.application_url} className="underline" /></>}</p>
            </li>)}</ul>}
          </div>
          {coverage.length>0&&<div><h3 className="font-semibold text-[#252521]">What the sources confirm</h3>
@@ -110,19 +111,19 @@ export default function OpportunityDetailsDialog({item,onClose}:{item:Opportunit
            <ul className="mt-3 grid gap-3 sm:grid-cols-2">{coverage.map(([key,fact])=><li key={key} className="border border-[#252521]/15 p-3">
              <p className="font-semibold">{coverageLabels[key]}: {coverageStatus[fact.status]}</p>
              <p className="mt-1 text-xs leading-relaxed">{fact.summary}</p>
-             <p className="mt-2 text-xs">Checked {new Date(fact.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(fact.source_url)&&<> · <a href={safeExternalUrl(fact.source_url)!} target="_blank" rel="noopener noreferrer" className="text-[#07472B] underline">Official source <ExternalLinkIcon /></a></>}</p>
+             <p className="mt-2 text-xs">Checked {new Date(fact.checked_at).toLocaleDateString("en-US",{timeZone:"America/New_York"})}{safeExternalUrl(fact.source_url)&&<> · <OpportunitySourceLink href={fact.source_url} applicationUrl={item.application_url} className="text-[#07472B] underline" /></>}</p>
            </li>)}</ul>
          </div>}
            </div>
          </details>}
          <p className="text-xs">Organizer approval is required. Confirm current terms and availability before applying; reviews describe past experiences.</p>
-         {safeExternalUrl(item.source_url)&&<a href={safeExternalUrl(item.source_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline">Official source <ExternalLinkIcon /></a>}
+         <OpportunitySourceLink href={item.source_url} applicationUrl={item.application_url} className="inline-flex min-h-11 items-center font-semibold text-[#07472B] underline" />
        </div>
   </div>
   <div className="opportunity-dialog-footer grid shrink-0 grid-cols-2 items-center gap-x-3 gap-y-2 border-t border-[#252521]/20 bg-[#FFFCF6] px-4 py-3 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-3 sm:px-7 sm:py-4">
    {available&&actionUrl?<a href={actionUrl} target="_blank" rel="noopener noreferrer" className="heritage-button col-span-2 min-h-11 sm:w-auto">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} <ExternalLinkIcon /></a>:<p className="col-span-2 text-sm font-semibold text-[#626C57]">{item.effective_status==="closed"?"Application closed":"Application availability not verified"}</p>}
    <Link href={`/markets/${item.market_slug}`} className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline underline-offset-4 sm:text-sm">View market profile</Link>
-   {sourceUrl&&<a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline sm:text-sm">Official source <ExternalLinkIcon /></a>}
+   {sourceUrl&&<OpportunitySourceLink href={sourceUrl} applicationUrl={item.application_url} className="inline-flex min-h-11 items-center text-xs font-semibold text-[#07472B] underline sm:text-sm" />}
   </div>
  </dialog>;
 }
