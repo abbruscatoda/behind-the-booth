@@ -1,5 +1,6 @@
 "use client";
 import ExternalLinkIcon from "./ExternalLinkIcon";
+import OpportunityVendorRating from "./OpportunityVendorRating";
 import Link from "next/link";
 import { categoryEvidenceLabel, categoryMatchLabel, categoryHighlights, activeCategoryEvidence, listedOpportunityCategories, opportunityCategoryStatus } from "../lib/opportunityCategories";
 import { opportunityDeadline, opportunityBoothPrice } from "../lib/opportunityPresentation";
@@ -7,6 +8,7 @@ import { formatAttendanceDate } from "../lib/attendanceDate";
 import { isNewlyPosted } from "../lib/opportunityRecency";
 import { applicationFeePresentation, hasPublishedApplicationFee } from "../lib/opportunityFacts";
 import { fee, safeExternalUrl, statusLabel, type Opportunity } from "../lib/opportunities";
+import { hasVendorRating } from "../lib/ratingColors";
 
 /** Quick comparison card: verified facts first; detailed evidence lives in a modal. */
 export default function OpportunityCard({
@@ -33,6 +35,7 @@ export default function OpportunityCard({
  const isProgram=item.schedule_type==="seasonal_application"||item.schedule_type==="recurring_season";
  const available=["open","limited","waitlist"].includes(item.effective_status);
  const applicationUrl=safeExternalUrl(item.application_url);
+ const hasRatedReviews=hasVendorRating(item.history.review_count,item.history.overall);
  const statusTone=item.effective_status==="open"
    ? "border-[#07472B]/25 bg-[#E9E7DA] text-[#07472B]"
    : item.effective_status==="limited" || item.effective_status==="waitlist"
@@ -56,6 +59,7 @@ export default function OpportunityCard({
    <h2 className="mt-3 font-serif text-[1.45rem] font-bold leading-[1.13] tracking-[-0.015em]"><button type="button" onClick={onViewDetails} aria-haspopup="dialog" className="block min-h-11 w-full text-left text-inherit underline-offset-4 hover:text-[#07472B] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07472B]">{displayTitle}</button></h2>
    {item.organizer && item.organizer.toLocaleLowerCase()!==displayTitle.toLocaleLowerCase()&&<p className="mt-1.5 line-clamp-2 text-xs font-semibold text-[#07472B]">By {item.organizer}</p>}
    <p className="mt-1.5 text-[13px] leading-snug text-[#55554E]"><span className="font-medium">{item.city}, {item.state}</span>{item.venue && item.venue.toLocaleLowerCase()!==`${item.city}, ${item.state}`.toLocaleLowerCase()&&<> <span aria-hidden="true">·</span> <span className="text-[#626C57]">{item.venue}</span></>}</p>
+   {hasRatedReviews&&<OpportunityVendorRating score={item.history.overall!} reviewCount={item.history.review_count} marketSlug={item.market_slug} marketTitle={displayTitle} />}
    <div className="mt-3 border-t border-[#252521]/15 pt-2.5">
      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#626C57]">{isRolling?"When to apply":isProgram?"Application / program season":"Market dates"}</p>
      <p className="mt-1 text-sm font-semibold leading-snug">{isRolling?"Ongoing · rolling applications":formatAttendanceDate(item.starts_on)+(item.ends_on!==item.starts_on?" – "+formatAttendanceDate(item.ends_on):"")}</p>
@@ -72,7 +76,7 @@ export default function OpportunityCard({
    {item.field_facts?.restrictions?.map((restriction,index)=><p key={index} className="mt-2 border-l-2 border-[#AD573B] pl-2.5 text-xs font-semibold leading-snug text-[#55554E]">{restriction}</p>)}
    {highlights.length>0&&<p className="mt-2 border-l-2 border-[#AD573B] pl-2.5 text-xs leading-snug text-[#55554E]"><strong>{highlights[0][0]}:</strong> {highlights[0][1].status==="eligible"?categoryMatchLabel(highlights[0][0],highlights[0][1]):categoryEvidenceLabel(highlights[0][1])}{highlights.length>1?` · +${highlights.length-1} more notes`:""}</p>}
    {selected?.note&&!highlights.some(([category])=>category===categoryFilter)&&<p className="mt-1.5 line-clamp-2 text-xs leading-snug text-[#626C57]">{selected.note}</p>}
-   <p className="mt-2 text-xs leading-snug text-[#626C57]">{item.history.review_count>0?`${item.history.overall?.toFixed(1)??"—"}/5 · ${item.history.review_count} vendor ${item.history.review_count===1?"review":"reviews"}`:"No vendor reviews yet"}</p>
+   {!hasRatedReviews&&<p className="mt-2 text-xs leading-snug text-[#626C57]">{item.history.review_count>0?`${item.history.review_count} vendor ${item.history.review_count===1?"review":"reviews"} · Rating unavailable`:"No vendor reviews yet"}</p>}
    <div className="mt-auto pt-4">
      {available&&applicationUrl
        ? <a href={applicationUrl} target="_blank" rel="noopener noreferrer" className="heritage-button opportunity-application min-h-11 w-full text-center">{item.effective_status==="waitlist"?"Official waitlist":"Official application"} <ExternalLinkIcon /></a>

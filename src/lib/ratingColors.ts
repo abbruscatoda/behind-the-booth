@@ -7,6 +7,11 @@ export const RATING_COLORS = [
   "#07472B", // 5 — forest green
 ] as const;
 
+/** Only show a rating when approved reviews provide a valid 1–5 score. */
+export function hasVendorRating(reviewCount: number, score: number | null | undefined): score is number {
+  return reviewCount > 0 && Number.isFinite(reviewCount) && typeof score === "number" && Number.isFinite(score) && score >= 1 && score <= 5;
+}
+
 /** Matches the review form's five-point scale; averages use the nearest point. */
 export function getRatingDescriptor(score: number): string {
   const labels = ["Poor", "Below Average", "Average", "Good", "Exceptional"];

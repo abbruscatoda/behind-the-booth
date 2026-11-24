@@ -1,8 +1,10 @@
 import Link from "next/link";
+import OpportunityVendorRating from "./OpportunityVendorRating";
 import { formatAttendanceDate } from "../lib/attendanceDate";
 import { opportunityBoothPrice } from "../lib/opportunityPresentation";
 import { isNewlyPosted } from "../lib/opportunityRecency";
 import { statusLabel, type Opportunity } from "../lib/opportunities";
+import { hasVendorRating } from "../lib/ratingColors";
 
 /** Public summaries are also redacted by the database, not merely hidden here. */
 export default function OpportunityPreviewCard({item,joinHref}:{item:Opportunity;joinHref:string}) {
@@ -18,6 +20,7 @@ export default function OpportunityPreviewCard({item,joinHref}:{item:Opportunity
     <h2 className="mt-3 font-serif text-[1.45rem] font-bold leading-tight"><Link href={`/markets/${item.market_slug}`} className="hover:underline">{item.title.replace(/\s*[—–-]\s*Rolling Vendor Applications$/i, "")}</Link></h2>
     {item.organizer && <p className="mt-1.5 text-sm font-semibold text-[#07472B]">{item.organizer}</p>}
     <p className="mt-2 text-sm text-[#55554E]">{item.city}, {item.state}</p>
+    {hasVendorRating(item.history.review_count,item.history.overall)&&<OpportunityVendorRating score={item.history.overall} reviewCount={item.history.review_count} marketSlug={item.market_slug} marketTitle={item.title} />}
     <div className="my-3 border-y border-[#252521]/15 py-3 text-sm">
       <p className="text-[#626C57]">{rolling ? "Ongoing market" : program ? "Application / program season" : "Market dates"}</p>
       <p className="mt-1 font-semibold">{rolling ? "Rolling vendor applications" : formatAttendanceDate(item.starts_on) + (item.ends_on !== item.starts_on ? ` – ${formatAttendanceDate(item.ends_on)}` : "")}</p>
