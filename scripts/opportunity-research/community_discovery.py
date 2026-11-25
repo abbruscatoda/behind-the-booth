@@ -18,6 +18,18 @@ MONTHS='January February March April May June July August September October Nove
 EMAIL=re.compile(r'[A-Za-z0-9.!#$%&\x27*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]{0,240}[A-Za-z0-9])?\.[A-Za-z]{2,24}')
 CLOSED=re.compile(r'no longer accepting|applications?\s+(?:have\s+|are\s+)?closed|vendor\s+(?:spaces?\s+)?sold out|not accepting (?:any |new )?vendors',re.I)
 CALL=re.compile(r'call(?:ing)?\s+(?:for\s+)?(?:local\s+)?(?:vendors?|makers?|artists?)|(?:seeking|looking for|accepting|inviting)\s+(?:local\s+|new\s+)?(?:vendors?|makers?|artists?)|(?:vendor|artist)\s+(?:application|call|registration)|applications?\s+open|apply\s+(?:now|today|to vend|to this show)|become a vendor',re.I)
+WAITLIST_ONLY=re.compile(r'\b(?:wait(?:ing)?[ -]?list[ -]+only|only (?:accepting|taking) (?:applications? (?:for|to) )?(?:the )?wait(?:ing)?[ -]?list)\b',re.I)
+WAITLIST_FEE_WAIVED=re.compile(r'\b(?:do not pay (?:the |an )?application fee|(?:no|waived) application fee)\b.{0,85}\bwait(?:ing)?[ -]?list\b',re.I)
+
+def vendor_invitation(receipt):
+ text=receipt['text']
+ if CALL.search(text):return True
+ # Organizers also title their forms "Author/Vendor event" or "Vendor/Author
+ # application". Require a live application and a vendor audience together.
+ return (receipt.get('role')=='application' and receipt.get('form_state')=='accepting'
+         and re.search(r'\bapplication\b',text,re.I)
+         and re.search(r'\b(?:authors?|vendors?|artists?|makers?)\b',text,re.I)
+         and re.search(r'\b(?:submit|apply)\b',text,re.I))
 
 def safe_url(value):
  try:
@@ -45,6 +57,7 @@ def date_attested(day,text):
            rf'\b0?{d.month}/0?{d.day}/(?:{d.year}|{str(d.year)[2:]})\b']
  # The second day in an explicitly dated range is independently supported.
  patterns.append(rf'\b(?:{month}|{month[:3]}\.?)\s+\d{{1,2}}(?:st|nd|rd|th)?\s*[-–—&]+\s*{d.day}(?:st|nd|rd|th)?\s*,?\s*{d.year}\b')
+ patterns.append(rf'\b{d.year}\s+(?:{month}|{month[:3]}\.?)\s+{d.day}(?:st|nd|rd|th)?\b')
  return any(re.search(p,text,re.I) for p in patterns)
 
 def validated_receipts(lead,source,now):
@@ -90,14 +103,15 @@ def verify_research_lead(lead,now=None):
  method=c.get('application_method','form');contact=c.get('application_contact','')
  app=c.get('application_url','');opening=c.get('opens_on')
  if method not in {'form','email','instagram'} or not safe_url(app):raise Uncertain('Unsupported application method or URL.')
- intake=next((r for r in intakes if CALL.search(r['text'])),None)
+ intake=next((r for r in intakes if vendor_invitation(r)),None)
  if not intake:raise Uncertain('A vendor invitation is required; a general contact address is insufficient.')
  if not (date_attested(start.isoformat(),intake['text']) or norm(title) in norm(intake['text'])):raise Uncertain('The vendor invitation is not scoped to this exact event.')
  if re.search(r'interest list|mailing list|receive (?:future|upcoming) (?:event )?applications|not an application',intake['text'],re.I):raise Uncertain('A general interest list is not a dated vendor application.')
  # External forms must be visibly linked by an official source read. Reading
  # an arbitrary matching form is not proof the organizer owns the application.
  if method!='instagram' and not official_url(app,source) and not any(app in r['text'] for r in receipts if r['official']):raise Uncertain('The official source does not link this exact vendor application.')
- status='closed' if closed else 'open'
+ status='closed' if closed else 'waitlist' if WAITLIST_ONLY.search(intake['text']) else 'open'
+ if c.get('availability')=='waitlist' and status=='open':raise Uncertain('A current event-specific waitlist invitation is required.')
  if opening:
   try:opens=datetime.fromisoformat(opening).date()
   except (ValueError,TypeError):raise Uncertain('Invalid application opening date.')
@@ -119,6 +133,8 @@ def verify_research_lead(lead,now=None):
   if value is not None:
    if not isinstance(value,(int,float)) or isinstance(value,bool) or not 0<=value<=100000:raise Uncertain('Invalid sourced fee.')
    proof=next((r for r in receipts if r.get('role') in {'fee','application'} and any(float(m.replace(',',''))==value for m in re.findall(r'\$\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',r['text']))),None)
+   if field=='application_fee' and value==0 and status=='waitlist':
+    proof=next((r for r in receipts if r.get('role') in {'fee','application'} and r['url']==app and WAITLIST_FEE_WAIVED.search(r['text'])),proof)
    if not proof or not re.search({'booth_fee':r'booth|vendor fee|table|space','application_fee':r'application|jury','deposit':r'deposit'}[field],proof['text'],re.I):raise Uncertain('A fee needs its own application-specific labeled evidence.')
   fees[field]=value
  options=c.get('pricing_options',[])
@@ -146,6 +162,13 @@ def research_inbox(db,now=None,dry_run=False):
  context=db.rpc('btb_research_community_context')
  results=[];notes=[]
  for lead in context.get('leads',[])[:40]:
+  # Only a new primary read may renew a published listing. Routine hints can
+  # advance last_seen without refreshing the evidence itself.
+  if lead.get('state') in {'published','closed'} and lead.get('last_checked_at'):
+   try:
+    last_checked=datetime.fromisoformat(lead['last_checked_at'].replace('Z','+00:00'))
+    if all(datetime.fromisoformat(r['checked_at'].replace('Z','+00:00'))<=last_checked for r in lead.get('receipts',[])):continue
+   except (TypeError,ValueError,AttributeError,KeyError):pass
   try:result=verify_research_lead(lead,now)
   except (Uncertain,ValueError,TypeError,KeyError,AttributeError) as error:
    notes.append({'id':lead.get('id'),'title':str(lead.get('title',''))[:160],'reason':str(error)[:220]})

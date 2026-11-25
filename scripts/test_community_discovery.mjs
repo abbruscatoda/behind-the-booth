@@ -18,6 +18,8 @@ test('community calls preserve evidence, membership, expiry and moderation bound
  const dir=new URL('../supabase/migrations/',import.meta.url);
  const file=(await readdir(dir)).find(p=>p.endsWith('_community_vendor_discovery.sql'));
  try{await db.exec(await readFile(new URL(file,dir),'utf8'));}catch(error){delete error.query;throw error;}
+ const intakeUpdate=(await readdir(dir)).find(p=>p.endsWith('_community_verified_intake.sql'));
+ await db.exec(await readFile(new URL(intakeUpdate,dir),'utf8'));
  const sources=JSON.parse(await readFile(new URL('./opportunity-research/community_sources.json',import.meta.url),'utf8'));
  const now=(await db.query('select now()::text as v')).rows[0].v;
  const day=(await db.query("select (current_date+12)::text as v")).rows[0].v;
@@ -54,6 +56,23 @@ test('community calls preserve evidence, membership, expiry and moderation bound
    {...result,candidate:{...c,application_contact:'victim@example.com?bcc=elsewhere@example.com'}},
    {...result,receipts:[{...receipt,role:'event',checked_at:null},{...receipt,role:'intake'}]}])
    await assert.rejects(publish(r),/Unverified|Invalid|Stale|reviewed/);
+ });
+ await t.test('a pending lead resolves through its reviewed venue and reconciles in place',async()=>{
+  const staged={...c,reviewed_source_key:'songbird-raleigh'};
+  await db.query('insert into btb_private.community_discovery_inbox(target_url,title,proposal,receipts) values($1,$2,$3,$4)',[event,c.title,staged,JSON.stringify(result.receipts)]);
+  const pending=(await query('select public.btb_research_community_context() as result')).leads.find(x=>x.target_url===event);
+  assert.equal(pending.source_key,'songbird-raleigh');
+  await publish();
+  const rows=(await db.query('select source_key,state,opportunity_id from btb_private.community_discovery_inbox where target_url=$1',[event])).rows;
+  assert.deepEqual(rows,[{source_key:'songbird-raleigh',state:'published',opportunity_id:id}]);
+ });
+ await t.test('waitlist status requires explicit proof and stays waitlist in the public feed',async()=>{
+  const wait={...result,candidate:{...c,availability:'waitlist'}};
+  await assert.rejects(publish(wait),/Waitlist-only/);
+  const intake={...receipt,role:'intake',text:text+' Waiting list only.'};
+  assert.equal((await publish({...wait,receipts:[result.receipts[0],intake]})).id,id);
+  const row=(await query('select public.btb_public_opportunities() as result')).items.find(x=>x.id===id);
+  assert.equal(row.effective_status,'waitlist');
  });
  await t.test('opening day needs new verification instead of automatically claiming open',async()=>{
   await publish({...result,candidate:{...c,availability:'announced',opens_on:opening}});

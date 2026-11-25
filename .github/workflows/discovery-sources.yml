@@ -8,6 +8,7 @@ on:
       - 'scripts/opportunity-research/community_sources.json'
       - 'scripts/test_community_discovery.mjs'
       - 'supabase/migrations/*community_vendor_discovery.sql'
+      - 'supabase/migrations/*community_verified_intake.sql'
       - 'scripts/opportunity-research/run.py'
       - 'scripts/opportunity-research/sync_sources.py'
       - 'scripts/opportunity-research/independent_markets.py'
@@ -15,7 +16,14 @@ on:
       - 'scripts/test_independent_market_publication.mjs'
       - 'supabase/migrations/*independent_market_discovery.sql'
       - '.github/workflows/discovery-sources.yml'
+  schedule:
+    - cron: '43 */3 * * *'
   workflow_dispatch:
+    inputs:
+      community_only:
+        description: 'Publish fresh community applications only'
+        type: boolean
+        default: true
 permissions:
   contents: read
 concurrency:
@@ -32,15 +40,24 @@ jobs:
       - name: Check verifier rules
         run: python3 -m unittest discover -s scripts/opportunity-research -p 'test_*.py'
       - uses: actions/setup-node@v4
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.community_only)
         with:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.community_only)
       - name: Check database publication guards
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.community_only)
         run: node --test scripts/test_independent_market_publication.mjs scripts/test_community_discovery.mjs
       - name: Synchronize reviewed sources
         env:
+          COMMUNITY_ONLY: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.community_only) }}
           BTB_SUPABASE_URL: ${{ secrets.BTB_SUPABASE_URL }}
           BTB_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.BTB_SUPABASE_PUBLISHABLE_KEY }}
           BTB_RESEARCH_SECRET: ${{ secrets.BTB_RESEARCH_SECRET }}
-        run: python3 scripts/opportunity-research/sync_sources.py
+        run: |
+          if [ "$COMMUNITY_ONLY" = "true" ]; then
+            python3 scripts/opportunity-research/sync_sources.py --community-only
+          else
+            python3 scripts/opportunity-research/sync_sources.py
+          fi

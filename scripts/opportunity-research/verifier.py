@@ -53,7 +53,7 @@ HOSTS={'forms.monday.com','linktr.ee','grlmarket.com','www.grlmarket.com','www.d
  'garnernc.gov','www.garnernc.gov','knightdalenc.gov','www.knightdalenc.gov','ncagr.gov','www.ncagr.gov'}
 HOSTS.update({'www.theoptimistraleigh.com','www.songbird.bar','www.nomadascoffee.com',
  'www.frontpaigemedia.org','raleighironworks.com','downtowndurham.com','www.ncarts.org',
- 'www.zapplication.org'})
+ 'www.zapplication.org','www.caryquilting.com'})
 MAX_SOURCE_BYTES=4_000_000
 VOID={'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
 def norm(value):return re.sub(r'[^a-z0-9]','',value.lower())

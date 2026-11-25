@@ -218,5 +218,101 @@
     ],
     "venue_terms": [],
     "publish": false
+  },
+  {
+    "key": "spring-daze-cary",
+    "organizer": "Town of Cary",
+    "city": "Cary",
+    "market_name": "Spring Daze Arts & Crafts Festival",
+    "slug": "spring-daze-arts-and-crafts-festival",
+    "sources": [
+      "https://www.carync.gov/recreation-enjoyment/events/festivals/spring-daze-arts-and-crafts-festival",
+      "https://www.zapplication.org/event-info.php?ID=14817"
+    ],
+    "instagram": [
+      "caryartdaze"
+    ],
+    "venue_terms": [
+      "Bond Park",
+      "801 High House Rd"
+    ],
+    "publish": true,
+    "market_url": "https://www.carync.gov/recreation-enjoyment/events/festivals/spring-daze-arts-and-crafts-festival"
+  },
+  {
+    "key": "oak-ink-tap-yard",
+    "organizer": "Oak & Ink Bookish Boutiques",
+    "city": "Raleigh",
+    "market_name": "Oak & Ink at Tap Yard Beer Garden",
+    "slug": "oak-and-ink-tap-yard-book-fair",
+    "sources": [
+      "https://linktr.ee/oakandinknc",
+      "https://docs.google.com/forms/d/e/1FAIpQLSfOg-4r4-x6lNVetXuHlRXge0AQ2OA95A2ax0M1bb29lJfVZQ/viewform?usp=send_form"
+    ],
+    "instagram": [
+      "oakandink_bookish"
+    ],
+    "venue_terms": [
+      "Tap Yard Beer Garden",
+      "1610 Automotive Way"
+    ],
+    "publish": true,
+    "market_url": "https://linktr.ee/oakandinknc"
+  },
+  {
+    "key": "oak-ink-compass-rose",
+    "organizer": "Oak & Ink Bookish Boutiques",
+    "city": "Raleigh",
+    "market_name": "Oak & Ink at Compass Rose Brewery",
+    "slug": "oak-and-ink-compass-rose-book-fair",
+    "sources": [
+      "https://linktr.ee/oakandinknc",
+      "https://docs.google.com/forms/d/e/1FAIpQLScy5RQkYSVCdR1BWsqJFaWSrsx3oLu2e7WDChLagUdpX_M6jQ/viewform?usp=send_form"
+    ],
+    "instagram": [
+      "oakandink_bookish"
+    ],
+    "venue_terms": [
+      "Compass Rose Brewery",
+      "3201 Northside Dr"
+    ],
+    "publish": true,
+    "market_url": "https://linktr.ee/oakandinknc"
+  },
+  {
+    "key": "pop-up-raleigh-trophy",
+    "organizer": "Pop-Up Raleigh",
+    "city": "Raleigh",
+    "market_name": "Pop-Up Raleigh",
+    "slug": "pop-up-raleigh",
+    "sources": [
+      "https://popupraleigh.com/9-2/",
+      "https://docs.google.com/forms/d/e/1FAIpQLSdNH5omnKYyQ18YbJj82Eh2Z2dxlbYRBvVhjXCCGwowUg_tEw/viewform?usp=send_form"
+    ],
+    "instagram": [
+      "popupraleigh"
+    ],
+    "venue_terms": [
+      "Trophy Brewery",
+      "656 Maywood Avenue"
+    ],
+    "publish": true,
+    "market_url": "https://popupraleigh.com/9-2/"
+  },
+  {
+    "key": "cary-quilting-handmade-market",
+    "organizer": "Cary Quilting Company",
+    "city": "Cary",
+    "market_name": "Cary Quilting Company Handmade Market",
+    "slug": "cary-quilting-company-handmade-market",
+    "sources": [
+      "https://www.caryquilting.com/pages/market"
+    ],
+    "instagram": [],
+    "venue_terms": [
+      "935 N Harrison Ave"
+    ],
+    "publish": true,
+    "market_url": "https://www.caryquilting.com/pages/market"
   }
 ]

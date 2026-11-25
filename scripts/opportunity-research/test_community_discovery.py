@@ -69,8 +69,30 @@ class CommunityTests(unittest.TestCase):
   with self.assertRaisesRegex(Uncertain,'reviewed venue'):verify_research_lead(item,NOW)
  def test_explicit_year_and_range_dates(self):
   self.assertTrue(date_attested('2027-08-29','August 28–29, 2027'))
+  self.assertTrue(date_attested('2027-05-01','2027 May 1st- Kentucky Derby Hat Author/Vendor event'))
+  self.assertFalse(date_attested('2027-05-01','2027 season. May 1st market'))
   self.assertFalse(date_attested('2027-08-29','August 28–29, 2026'))
   self.assertFalse(date_attested('2027-08-29','August 28–29'))
+ def test_event_specific_author_form_is_a_vendor_invitation(self):
+  item=lead('form')
+  item['receipts'][1]['text']='Songbird Holiday Market. APPLICATION to December 12, 2026. All authors/vendors must be bookish. Table $40. Submit'
+  self.assertEqual(verify_research_lead(item,NOW)['candidate']['availability'],'open')
+  item['receipts'][1]['text']=item['receipts'][1]['text'].replace('authors/vendors','visitors')
+  with self.assertRaisesRegex(Uncertain,'invitation'):verify_research_lead(item,NOW)
+ def test_waitlist_only_requires_current_intake_and_scoped_fee_waiver(self):
+  item=lead('form')
+  receipt=item['receipts'][1]
+  receipt['text']+=' Markets are FULL-WAITING LIST ONLY. Do not pay the application fee to be added to the waiting list.'
+  item['proposal']['application_fee']=0
+  c=verify_research_lead(item,NOW)['candidate']
+  self.assertEqual((c['availability'],c['application_fee']),('waitlist',0))
+  receipt['text']=receipt['text'].replace('Do not pay the application fee to be added to the waiting list.','')
+  with self.assertRaisesRegex(Uncertain,'fee'):verify_research_lead(item,NOW)
+  del item['proposal']['application_fee']
+  receipt['text']=receipt['text'].replace('Markets are FULL-WAITING LIST ONLY.', 'A waitlist will be created after the jury.')
+  self.assertEqual(verify_research_lead(item,NOW)['candidate']['availability'],'open')
+  receipt['text']+=' Waiting list only. Applications have closed.'
+  self.assertEqual(verify_research_lead(item,NOW)['candidate']['availability'],'closed')
  def test_reviewed_website_roots_are_fetchable_and_query_scoped(self):
   for source in SOURCES.values():
    for url in source['sources']:self.assertTrue(valid_url(url),url)

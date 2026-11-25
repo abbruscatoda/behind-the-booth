@@ -1,25 +1,33 @@
 """Synchronize reviewed sources, market identities and verified vendor intake."""
+import argparse
+import json
 from run import Database,register_discovery_sources
 from independent_markets import monitoring_leads,discover_independent
+from community_discovery import WATCHLIST,research_inbox
 
-def main():
+def publish_community(db):
+ synced=db.rpc('btb_research_community_sync',{'p_sources':WATCHLIST})
+ if synced.get('paused'):return
+ if synced.get('sources')!=len(WATCHLIST):raise RuntimeError('Community source synchronization failed.')
+ candidates,_=research_inbox(db)
+ for candidate in candidates:
+  outcome=db.rpc('btb_research_publish_community_call',{'p_result':candidate})
+  print(json.dumps({'community_event':candidate['candidate']['title'],'action':outcome.get('action'),'reason':outcome.get('reason')}))
+
+def main(community_only=False):
  db=Database()
+ if community_only:
+  publish_community(db)
+  return
  result=register_discovery_sources(db,monitoring_leads())
  if result.get('paused'):
   print('Automatic research is paused; source synchronization skipped.')
  else:
   print('Reviewed discovery sources synchronized:',result['approved_sources'])
-  from community_discovery import WATCHLIST,research_inbox
-  synced=db.rpc('btb_research_community_sync',{'p_sources':WATCHLIST})
-  if synced.get('sources')!=len(WATCHLIST):raise RuntimeError('Community source synchronization failed.')
-  community,community_stats=research_inbox(db)
-  for candidate in community:
-   db.rpc('btb_research_publish_community_call',{'p_result':candidate})
-  print('Community sources synchronized:',synced['sources'],'Verified calls:',len(community))
+  publish_community(db)
   from verifier import Fetcher
   from market_catalog import discover_catalog
   from official_vendor_programs import verify_program
-  import json
   fetcher=Fetcher(limit=48)
   receipts,notes=discover_catalog(fetcher)
   for receipt in receipts:
@@ -38,4 +46,7 @@ def main():
    outcome=db.rpc('btb_research_publish_official_program',{'p_result':program})
    print(json.dumps({'program':program['program'],'action':outcome.get('action')}))
 
-if __name__=='__main__':main()
+if __name__=='__main__':
+ parser=argparse.ArgumentParser()
+ parser.add_argument('--community-only',action='store_true')
+ main(parser.parse_args().community_only)
