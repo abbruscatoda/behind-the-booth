@@ -20,6 +20,8 @@ test('community calls preserve evidence, membership, expiry and moderation bound
  try{await db.exec(await readFile(new URL(file,dir),'utf8'));}catch(error){delete error.query;throw error;}
  const intakeUpdate=(await readdir(dir)).find(p=>p.endsWith('_community_verified_intake.sql'));
  await db.exec(await readFile(new URL(intakeUpdate,dir),'utf8'));
+ const hintUpdate=(await readdir(dir)).find(p=>p.endsWith('_reconcile_community_source_hints.sql'));
+ await db.exec(await readFile(new URL(hintUpdate,dir),'utf8'));
  const sources=JSON.parse(await readFile(new URL('./opportunity-research/community_sources.json',import.meta.url),'utf8'));
  const now=(await db.query('select now()::text as v')).rows[0].v;
  const day=(await db.query("select (current_date+12)::text as v")).rows[0].v;
@@ -60,6 +62,7 @@ test('community calls preserve evidence, membership, expiry and moderation bound
  await t.test('a pending lead resolves through its reviewed venue and reconciles in place',async()=>{
   const staged={...c,reviewed_source_key:'songbird-raleigh'};
   await db.query('insert into btb_private.community_discovery_inbox(target_url,title,proposal,receipts) values($1,$2,$3,$4)',[event,c.title,staged,JSON.stringify(result.receipts)]);
+  await query('select public.btb_research_community_hints($1) as result',[JSON.stringify([{source_key:'songbird-raleigh',target_url:event,title:c.title,notes:'A calendar hint.'}])]);
   const pending=(await query('select public.btb_research_community_context() as result')).leads.find(x=>x.target_url===event);
   assert.equal(pending.source_key,'songbird-raleigh');
   await publish();
@@ -73,6 +76,14 @@ test('community calls preserve evidence, membership, expiry and moderation bound
   assert.equal((await publish({...wait,receipts:[result.receipts[0],intake]})).id,id);
   const row=(await query('select public.btb_public_opportunities() as result')).items.find(x=>x.id===id);
   assert.equal(row.effective_status,'waitlist');
+ });
+ await t.test('an older empty hint inherits its exact published occurrence',async()=>{
+  const target=event+'?calendar';
+  await db.query("insert into btb_private.community_discovery_inbox(target_url,title,proposal,receipts,state,opportunity_id) values($1,$2,$3,$4,'published',$5)",[target,c.title,{...c,reviewed_source_key:'songbird-raleigh'},JSON.stringify(result.receipts),id]);
+  await db.query("insert into btb_private.community_discovery_inbox(source_key,target_url,title) values('songbird-raleigh',$1,$2)",[target,c.title]);
+  await db.exec(await readFile(new URL(hintUpdate,dir),'utf8'));
+  const canonical=(await db.query("select state,opportunity_id from btb_private.community_discovery_inbox where source_key='songbird-raleigh' and target_url=$1",[target])).rows[0];
+  assert.deepEqual(canonical,{state:'published',opportunity_id:id});
  });
  await t.test('opening day needs new verification instead of automatically claiming open',async()=>{
   await publish({...result,candidate:{...c,availability:'announced',opens_on:opening}});
